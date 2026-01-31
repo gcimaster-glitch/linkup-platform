@@ -1,0 +1,58 @@
+{
+  "name": "LinkUp",
+  "short_name": "LinkUp",
+  "description": "人と機会を繋げる - 次世代イベントチケット予約プラットフォーム",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "lifestyle", "productivity"],
+  "lang": "ja",
+  "dir": "ltr",
+  "scope": "/",
+  "screenshots": [
+    {
+      "src": "/screenshots/home.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "ホーム画面"
+    },
+    {
+      "src": "/screenshots/qr-ticket.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "label": "QRチケット表示"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "イベント検索",
+      "short_name": "検索",
+      "description": "イベントを探す",
+      "url": "/events",
+      "icons": [{ "src": "/icons/search.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "マイチケット",
+      "short_name": "チケット",
+      "description": "購入済みチケット",
+      "url": "/tickets",
+      "icons": [{ "src": "/icons/ticket.png", "sizes": "96x96" }]
+    }
+  ]
+}

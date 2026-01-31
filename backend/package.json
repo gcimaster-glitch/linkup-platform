@@ -1,0 +1,33 @@
+{
+  "name": "linkup-backend",
+  "version": "1.0.0",
+  "description": "LinkUp Backend API - 人と機会を繋げるイベントチケットプラットフォーム",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "@hono/zod-validator": "^0.2.0",
+    "stripe": "^14.0.0",
+    "qrcode": "^1.5.3",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4",
+    "date-fns": "^3.0.0",
+    "jose": "^5.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240117.0",
+    "@types/node": "^20.0.0",
+    "@types/qrcode": "^1.5.5",
+    "wrangler": "^3.22.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.0"
+  }
+}

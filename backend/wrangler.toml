@@ -1,0 +1,51 @@
+name = "linkup-backend"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Workers AI Binding
+[ai]
+binding = "AI"
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "linkup-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# R2 Bucket Binding
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "linkup-storage"
+
+# KV Namespace (セッション・QRキャッシュ用)
+[[kv_namespaces]]
+binding = "KV"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# Environment Variables
+[vars]
+ENVIRONMENT = "production"
+JWT_SECRET = "your-jwt-secret-change-in-production"
+FRONTEND_URL = "https://linkup.example.com"
+APP_NAME = "LinkUp"
+APP_TAGLINE = "人と機会を繋げる"
+
+# Secrets (wrangler secret putで設定)
+# STRIPE_SECRET_KEY
+# STRIPE_WEBHOOK_SECRET
+# GEMINI_API_KEY
+# NTT_API_KEY
+# NTT_API_SECRET
+
+[build]
+command = "npm run build"
+
+# 開発環境
+[env.development]
+name = "linkup-backend-dev"
+vars = { ENVIRONMENT = "development", FRONTEND_URL = "http://localhost:3000" }
+
+# ステージング環境
+[env.staging]
+name = "linkup-backend-staging"
+vars = { ENVIRONMENT = "staging", FRONTEND_URL = "https://staging.linkup.example.com" }

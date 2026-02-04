@@ -622,6 +622,7 @@
             else if (view === 'checkout_session') renderStripeMock(app);
             else if (view === 'organizer_profile') renderOrganizerProfile(app, params.id);
             else if (view === 'organizer') renderOrganizer(app);
+            else if (view === 'organizer_event_edit') renderOrganizerEventEdit(app, params.id);
             else if (view === 'admin') renderAdmin(app);
             else if (view === 'static') renderStaticPage(app, params.page);
             
@@ -3014,7 +3015,7 @@
             return `
                 <div class="flex justify-between items-center mb-6">
                     <h1 class="text-2xl font-bold text-slate-800">イベント管理</h1>
-                    <button onclick="openEventEditor()" class="flex items-center px-4 py-2 bg-primary text-white rounded-full hover:bg-blue-600 transition font-bold shadow-lg">
+                    <button onclick="router('organizer_event_edit', { id: 'new' })" class="flex items-center px-4 py-2 bg-primary text-white rounded-full hover:bg-blue-600 transition font-bold shadow-lg">
                         <span class="material-icons-outlined mr-2">add</span> 新規作成
                     </button>
                 </div>
@@ -3062,7 +3063,7 @@
                                         ${isFinished && !isCompleted ? 
                                             `<button onclick="store.completeEvent('${evt.event_id}'); renderOrganizer(document.getElementById('app'), 'events')" class="mr-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition" title="完了報告をして売上を確定する">完了報告</button>` : ''
                                         }
-                                        <button onclick="openEventEditor('${evt.event_id}')" class="text-slate-400 hover:text-primary mr-2"><span class="material-icons-outlined">edit</span></button>
+                                        <button onclick="router('organizer_event_edit', { id: '${evt.event_id}' })" class="text-slate-400 hover:text-primary mr-2"><span class="material-icons-outlined">edit</span></button>
                                         <button onclick="deleteEventConfirm('${evt.event_id}')" class="text-slate-400 hover:text-red-500"><span class="material-icons-outlined">delete</span></button>
                                     </td>
                                 </tr>
@@ -3073,6 +3074,326 @@
                     ${myEvents.length === 0 ? '<div class="p-8 text-center text-slate-400">イベントがまだありません。</div>' : ''}
                 </div>
             `;
+        }
+
+        function renderOrganizerEventEdit(container, eventId) {
+            const isNew = eventId === 'new';
+            const event = isNew ? null : store.events.find(e => e.event_id === eventId);
+            
+            if (!isNew && !event) {
+                container.innerHTML = '<div class="p-8 text-center"><p class="text-red-500">イベントが見つかりません</p></div>';
+                return;
+            }
+            
+            // 会場マスター取得
+            const venues = store.venues || [];
+            
+            container.innerHTML = `
+                <div class="min-h-screen bg-slate-50">
+                    <!-- Header -->
+                    <div class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+                        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                            <div class="flex items-center">
+                                <button onclick="renderOrganizer(document.getElementById('app'), 'events')" class="mr-4 text-slate-400 hover:text-slate-600">
+                                    <span class="material-icons-outlined">arrow_back</span>
+                                </button>
+                                <h1 class="text-2xl font-bold text-slate-800">${isNew ? '新規イベント作成' : 'イベント編集'}</h1>
+                                ${!isNew && event.approval_status ? `
+                                    <span class="ml-4 px-3 py-1 rounded-full text-xs font-bold ${
+                                        event.approval_status === 'approved' ? 'bg-green-100 text-green-700' :
+                                        event.approval_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-red-100 text-red-700'
+                                    }">
+                                        ${event.approval_status === 'approved' ? '承認済み' : 
+                                          event.approval_status === 'pending' ? '承認待ち' : '却下'}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="previewEvent()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
+                                    <span class="material-icons-outlined text-sm align-middle">visibility</span> プレビュー
+                                </button>
+                                <button onclick="saveEvent('${eventId}')" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
+                                    <span class="material-icons-outlined text-sm align-middle">save</span> 保存
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="max-w-7xl mx-auto px-4 py-8">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <!-- Main Form -->
+                            <div class="lg:col-span-2 space-y-6">
+                                <!-- 基本情報 -->
+                                <div class="bg-white rounded-2xl shadow-card p-6">
+                                    <h2 class="text-lg font-bold text-slate-800 mb-4">基本情報</h2>
+                                    
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-bold text-slate-700 mb-2">イベント名 <span class="text-red-500">*</span></label>
+                                            <input type="text" id="event-title" value="${event?.title || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="例: Web3 Summit 2026">
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-bold text-slate-700 mb-2">カテゴリー <span class="text-red-500">*</span></label>
+                                            <select id="event-category" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
+                                                <option value="tech" ${event?.category === 'tech' ? 'selected' : ''}>テック</option>
+                                                <option value="business" ${event?.category === 'business' ? 'selected' : ''}>ビジネス</option>
+                                                <option value="music" ${event?.category === 'music' ? 'selected' : ''}>音楽</option>
+                                                <option value="art" ${event?.category === 'art' ? 'selected' : ''}>アート</option>
+                                                <option value="social" ${event?.category === 'social' ? 'selected' : ''}>交流会</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-2">開始日時 <span class="text-red-500">*</span></label>
+                                                <input type="datetime-local" id="event-start" value="${event ? new Date(event.start_datetime).toISOString().slice(0, 16) : ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-2">終了日時 <span class="text-red-500">*</span></label>
+                                                <input type="datetime-local" id="event-end" value="${event ? new Date(event.end_datetime).toISOString().slice(0, 16) : ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- イベント詳細 -->
+                                <div class="bg-white rounded-2xl shadow-card p-6">
+                                    <h2 class="text-lg font-bold text-slate-800 mb-4">イベント詳細</h2>
+                                    
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-bold text-slate-700 mb-2">説明文（AI生成可能）</label>
+                                            <div class="flex space-x-2 mb-2">
+                                                <button onclick="generateDescriptionWithAI()" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200">
+                                                    <span class="material-icons-outlined text-sm align-middle">auto_awesome</span> AIで生成
+                                                </button>
+                                                <button onclick="toggleDescriptionEditor()" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm hover:bg-slate-200">
+                                                    <span class="material-icons-outlined text-sm align-middle">edit_note</span> エディター切替
+                                                </button>
+                                            </div>
+                                            <textarea id="event-description" rows="8" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary font-mono text-sm" placeholder="イベントの詳細を入力してください。箇条書きやメモでOK！AIが整形します。">${event?.description || ''}</textarea>
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-bold text-slate-700 mb-2">カバー画像URL</label>
+                                            <input type="url" id="event-cover-image" value="${event?.cover_image_url || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="https://example.com/image.jpg">
+                                            ${event?.cover_image_url ? `<img src="${event.cover_image_url}" class="mt-2 w-full h-48 object-cover rounded-lg">` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 会場設定 -->
+                                <div class="bg-white rounded-2xl shadow-card p-6">
+                                    <h2 class="text-lg font-bold text-slate-800 mb-4">会場設定</h2>
+                                    
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-bold text-slate-700 mb-2">会場タイプ <span class="text-red-500">*</span></label>
+                                            <select id="venue-type" onchange="updateVenueFields()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
+                                                <option value="custom">自由入力（会場名のみ）</option>
+                                                <option value="registered">指定会場（座席データあり）</option>
+                                                <option value="online">オンライン開催</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div id="venue-custom-fields" class="space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-2">会場名</label>
+                                                <input type="text" id="venue-name-custom" value="${event?.venue_name || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="例: 渋谷ストリームホール">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-2">住所</label>
+                                                <input type="text" id="venue-address-custom" value="${event?.venue_address || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="東京都渋谷区...">
+                                            </div>
+                                        </div>
+                                        
+                                        <div id="venue-registered-fields" class="hidden">
+                                            <label class="block text-sm font-bold text-slate-700 mb-2">登録済み会場を選択</label>
+                                            <select id="venue-select" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
+                                                <option value="">会場を選択...</option>
+                                                ${venues.map(v => `<option value="${v.id}">${v.name} (${v.layout ? v.layout.rows + 'x' + v.layout.cols + '席' : '座席なし'})</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        
+                                        <div id="venue-online-fields" class="hidden">
+                                            <label class="block text-sm font-bold text-slate-700 mb-2">Zoom URL</label>
+                                            <input type="url" id="venue-zoom-url" value="${event?.zoom_url || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="https://zoom.us/j/...">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- チケット設定 -->
+                                <div class="bg-white rounded-2xl shadow-card p-6">
+                                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between items-center">
+                                        <span>チケット設定</span>
+                                        <button onclick="addTicketType()" class="px-3 py-1 bg-primary text-white rounded-lg text-sm hover:bg-blue-600">
+                                            <span class="material-icons-outlined text-sm align-middle">add</span> チケット追加
+                                        </button>
+                                    </h2>
+                                    
+                                    <div id="ticket-list" class="space-y-4">
+                                        ${event && event.tickets ? event.tickets.map((ticket, idx) => `
+                                            <div class="border border-slate-200 rounded-lg p-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
+                                                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.name}" placeholder="一般参加">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
+                                                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.price}" placeholder="0">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
+                                                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.capacity || 100}" placeholder="100">
+                                                    </div>
+                                                    <div class="flex items-end">
+                                                        <button onclick="removeTicketType(${idx})" class="text-red-500 hover:text-red-700">
+                                                            <span class="material-icons-outlined">delete</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `).join('') : `
+                                            <div class="border border-slate-200 rounded-lg p-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
+                                                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="一般参加" placeholder="一般参加">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
+                                                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" value="3000" placeholder="0">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
+                                                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="100" placeholder="100">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        `}
+                                    </div>
+                                </div>
+
+                                <!-- 販売制限 -->
+                                <div class="bg-white rounded-2xl shadow-card p-6">
+                                    <h2 class="text-lg font-bold text-slate-800 mb-4">販売制限</h2>
+                                    
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="flex items-center">
+                                                <input type="radio" name="user-restriction" value="free" ${!event || event.user_restriction === 'free' ? 'checked' : ''} class="mr-2">
+                                                <span class="text-slate-700">フリーユーザーへの販売を許可</span>
+                                            </label>
+                                        </div>
+                                        <div>
+                                            <label class="flex items-center">
+                                                <input type="radio" name="user-restriction" value="verified" ${event?.user_restriction === 'verified' ? 'checked' : ''} class="mr-2">
+                                                <span class="text-slate-700">本人確認済みユーザーのみ販売可能</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                ${!isNew && event ? `
+                                <!-- 参加者と決済 -->
+                                <div class="bg-white rounded-2xl shadow-card p-6">
+                                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between items-center">
+                                        <span>参加者と決済</span>
+                                        <button onclick="showEventParticipants('${eventId}')" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200">
+                                            <span class="material-icons-outlined text-sm align-middle">people</span> 詳細を表示
+                                        </button>
+                                    </h2>
+                                    
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <div class="text-center">
+                                            <p class="text-2xl font-bold text-slate-900">0</p>
+                                            <p class="text-xs text-slate-500">参加者数</p>
+                                        </div>
+                                        <div class="text-center">
+                                            <p class="text-2xl font-bold text-green-600">¥0</p>
+                                            <p class="text-xs text-slate-500">総売上</p>
+                                        </div>
+                                        <div class="text-center">
+                                            <p class="text-2xl font-bold text-blue-600">0</p>
+                                            <p class="text-xs text-slate-500">チケット販売数</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+
+                            <!-- Sidebar -->
+                            <div class="space-y-6">
+                                <!-- ステータス -->
+                                <div class="bg-white rounded-2xl shadow-card p-6">
+                                    <h3 class="text-lg font-bold text-slate-800 mb-4">ステータス</h3>
+                                    
+                                    ${!isNew && event.approval_status === 'rejected' && event.rejection_reason ? `
+                                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                                            <p class="text-sm font-bold text-red-700 mb-2">却下理由</p>
+                                            <p class="text-sm text-red-600">${event.rejection_reason}</p>
+                                        </div>
+                                    ` : ''}
+                                    
+                                    <div class="space-y-3 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-500">公開状態</span>
+                                            <span class="font-bold text-slate-900">${isNew ? '下書き' : event.approval_status === 'approved' ? '公開中' : event.approval_status === 'pending' ? '承認待ち' : '下書き'}</span>
+                                        </div>
+                                        ${!isNew ? `
+                                            <div class="flex justify-between">
+                                                <span class="text-slate-500">作成日</span>
+                                                <span class="font-bold text-slate-900">${new Date(event.created_at || Date.now()).toLocaleDateString('ja-JP')}</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+
+                                <!-- アクション -->
+                                <div class="bg-white rounded-2xl shadow-card p-6">
+                                    <h3 class="text-lg font-bold text-slate-800 mb-4">アクション</h3>
+                                    
+                                    <div class="space-y-2">
+                                        <button onclick="saveEvent('${eventId}')" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
+                                            下書き保存
+                                        </button>
+                                        <button onclick="submitForApproval('${eventId}')" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold">
+                                            承認申請を送信
+                                        </button>
+                                        <button onclick="renderOrganizer(document.getElementById('app'), 'events')" class="w-full px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
+                                            キャンセル
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- ヘルプ -->
+                                <div class="bg-blue-50 rounded-2xl p-6">
+                                    <h3 class="text-sm font-bold text-blue-900 mb-2">💡 ヒント</h3>
+                                    <ul class="text-xs text-blue-700 space-y-2">
+                                        <li>• AI生成を使うと、メモや箇条書きから詳細な説明文を自動作成できます</li>
+                                        <li>• 座席データ付き会場を選ぶと、指定席販売が可能になります</li>
+                                        <li>• 承認申請後、管理者が24時間以内に審査します</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 会場タイプの初期設定
+            if (event) {
+                if (event.zoom_url) {
+                    document.getElementById('venue-type').value = 'online';
+                } else if (event.venue_id && venues.find(v => v.id === event.venue_id)) {
+                    document.getElementById('venue-type').value = 'registered';
+                }
+                updateVenueFields();
+            }
         }
 
         function renderOrganizerParticipants() {
@@ -4354,6 +4675,185 @@
                     </div>
                 </div>
             `;
+        }
+
+        function updateVenueFields() {
+            const venueType = document.getElementById('venue-type').value;
+            document.getElementById('venue-custom-fields').classList.toggle('hidden', venueType !== 'custom');
+            document.getElementById('venue-registered-fields').classList.toggle('hidden', venueType !== 'registered');
+            document.getElementById('venue-online-fields').classList.toggle('hidden', venueType !== 'online');
+        }
+
+        function addTicketType() {
+            const ticketList = document.getElementById('ticket-list');
+            const newTicket = document.createElement('div');
+            newTicket.className = 'border border-slate-200 rounded-lg p-4';
+            newTicket.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
+                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="VIP席">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
+                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="5000">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
+                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="50">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="this.closest('.border').remove()" class="text-red-500 hover:text-red-700">
+                            <span class="material-icons-outlined">delete</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            ticketList.appendChild(newTicket);
+        }
+
+        function generateDescriptionWithAI() {
+            const description = document.getElementById('event-description').value;
+            if (!description.trim()) {
+                showToast('説明文を入力してください', 'error');
+                return;
+            }
+            
+            showToast('AI生成中...', 'info');
+            
+            // シンプルな整形処理（実際のAI APIは後で実装）
+            setTimeout(() => {
+                const lines = description.split('\n').filter(l => l.trim());
+                const formatted = `
+<div class="event-description">
+    <h3>イベント概要</h3>
+    <p>${lines[0] || ''}</p>
+    
+    <h3>詳細</h3>
+    <ul>
+        ${lines.slice(1).map(line => `<li>${line}</li>`).join('\n        ')}
+    </ul>
+    
+    <h3>こんな方におすすめ</h3>
+    <ul>
+        <li>業界の最新トレンドに興味がある方</li>
+        <li>ネットワーキングを広げたい方</li>
+        <li>新しい知識やスキルを習得したい方</li>
+    </ul>
+</div>
+                `.trim();
+                
+                document.getElementById('event-description').value = formatted;
+                showToast('AI生成が完了しました', 'success');
+            }, 1000);
+        }
+
+        function saveEvent(eventId) {
+            const isNew = eventId === 'new';
+            
+            // フォームデータ取得
+            const title = document.getElementById('event-title').value;
+            const category = document.getElementById('event-category').value;
+            const startDatetime = document.getElementById('event-start').value;
+            const endDatetime = document.getElementById('event-end').value;
+            const description = document.getElementById('event-description').value;
+            const coverImage = document.getElementById('event-cover-image').value;
+            const venueType = document.getElementById('venue-type').value;
+            const userRestriction = document.querySelector('input[name="user-restriction"]:checked').value;
+            
+            // バリデーション
+            if (!title || !startDatetime || !endDatetime) {
+                showToast('必須項目を入力してください', 'error');
+                return;
+            }
+            
+            // 会場情報取得
+            let venueData = {};
+            if (venueType === 'custom') {
+                venueData.venue_name = document.getElementById('venue-name-custom').value;
+                venueData.venue_address = document.getElementById('venue-address-custom').value;
+            } else if (venueType === 'registered') {
+                const venueId = document.getElementById('venue-select').value;
+                const venue = store.venues.find(v => v.id === venueId);
+                if (venue) {
+                    venueData.venue_id = venue.id;
+                    venueData.venue_name = venue.name;
+                    venueData.venue_address = venue.address;
+                }
+            } else if (venueType === 'online') {
+                venueData.venue_name = 'オンライン';
+                venueData.venue_address = 'Zoom Link';
+                venueData.zoom_url = document.getElementById('venue-zoom-url').value;
+            }
+            
+            // チケット情報取得
+            const ticketElements = document.querySelectorAll('#ticket-list > div');
+            const tickets = Array.from(ticketElements).map((el, idx) => ({
+                id: `ticket-${Date.now()}-${idx}`,
+                name: el.querySelector('.ticket-name').value,
+                price: parseInt(el.querySelector('.ticket-price').value) || 0,
+                capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,
+                available: parseInt(el.querySelector('.ticket-capacity').value) || 100
+            }));
+            
+            // イベントオブジェクト作成
+            const eventData = {
+                event_id: isNew ? `evt-${Date.now()}` : eventId,
+                title,
+                category,
+                start_datetime: new Date(startDatetime).toISOString(),
+                end_datetime: new Date(endDatetime).toISOString(),
+                description,
+                cover_image_url: coverImage || `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80`,
+                ...venueData,
+                tickets,
+                organizer_name: store.organizerProfile.name,
+                organizer_rating: 4.8,
+                user_restriction: userRestriction,
+                status: 'draft',
+                approval_status: 'draft',
+                created_at: isNew ? new Date().toISOString() : (store.events.find(e => e.event_id === eventId)?.created_at || new Date().toISOString()),
+                updated_at: new Date().toISOString()
+            };
+            
+            // 保存
+            if (isNew) {
+                store.addEvent(eventData);
+            } else {
+                store.updateEvent(eventData);
+            }
+            
+            showToast('イベントを保存しました', 'success');
+            
+            setTimeout(() => {
+                renderOrganizer(document.getElementById('app'), 'events');
+            }, 1000);
+        }
+
+        function submitForApproval(eventId) {
+            // まず保存
+            saveEvent(eventId);
+            
+            // 承認ステータスを更新
+            setTimeout(() => {
+                const event = store.events.find(e => e.event_id === (eventId === 'new' ? store.events[0].event_id : eventId));
+                if (event) {
+                    event.approval_status = 'pending';
+                    event.submitted_at = new Date().toISOString();
+                    store.updateEvent(event);
+                    
+                    showToast('承認申請を送信しました', 'success');
+                    
+                    setTimeout(() => {
+                        renderOrganizer(document.getElementById('app'), 'events');
+                    }, 1500);
+                }
+            }, 500);
+        }
+
+        function showEventParticipants(eventId) {
+            // 参加者詳細ページへ遷移（後で実装）
+            showToast('参加者詳細ページは準備中です', 'info');
         }
 
         function showTicketDetail(ticketId) {

@@ -150,6 +150,6 @@ npx wrangler d1 execute event-ticket-db --file=../database/schema.sql
 
 プルリクエスト歓迎! 詳細は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照。
 
-## 📄 ライセンス
+## 📄 ライセンス　　
 
 MIT License

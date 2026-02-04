@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import QRCode from 'qrcode';
-import { createHmac } from 'crypto';
+import { createHmac } from 'node:crypto';
 import type { Bindings } from '../index';
 import { authMiddleware } from '../middleware/auth';
 

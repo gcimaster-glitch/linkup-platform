@@ -116,7 +116,7 @@ CREATE TABLE tickets (
   ticket_name TEXT NOT NULL,
   description TEXT,
   price INTEGER NOT NULL,
-  quantity INTEGER,
+  stock INTEGER,
   sold_count INTEGER DEFAULT 0,
   sale_start_datetime DATETIME,
   sale_end_datetime DATETIME,

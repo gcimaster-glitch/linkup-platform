@@ -63,6 +63,9 @@ wrangler r2 bucket create linkup-storage
 
 # 確認
 wrangler r2 bucket list
+
+# 重要: R2のパブリックドメインを有効化し、IDをメモしてください
+# frontend/next.config.js の 'pub-YOUR_R2_ID.r2.dev' を書き換える必要があります。
 ```
 
 ---
@@ -160,8 +163,8 @@ git push -u origin main
    ```
    Project name: linkup-demo
    Production branch: main
-   Build command: npm run build
-   Build output directory: out
+   Build command: npm run pages:build
+   Build output directory: .vercel/output/static
    Root directory: frontend
    ```
 
@@ -180,10 +183,10 @@ cd frontend
 
 # ビルド
 npm install
-npm run build
+npm run pages:build
 
 # デプロイ
-npx wrangler pages deploy out --project-name=linkup-demo
+npx wrangler pages deploy .vercel/output/static --project-name=linkup-demo
 ```
 
 ---

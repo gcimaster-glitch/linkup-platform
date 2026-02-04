@@ -3577,6 +3577,10 @@
 
                             <!-- アクション -->
                             <div class="border-t border-slate-200 pt-6 flex space-x-3">
+                                <button onclick="editParticipant('${participantId}')" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                                    <span class="material-icons-outlined text-sm align-middle mr-1">edit</span>
+                                    編集
+                                </button>
                                 <button onclick="this.closest('.fixed').remove()" class="flex-1 px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
                                     閉じる
                                 </button>
@@ -3588,6 +3592,103 @@
                     </div>
                 </div>
             `;
+        }
+
+        function editParticipant(participantId) {
+            const participant = store.participants.find(p => p.id === participantId);
+            if (!participant) return;
+            
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                        <div class="sticky top-0 bg-white border-b border-slate-200 p-6 flex justify-between items-center">
+                            <h2 class="text-2xl font-bold text-slate-800">参加者情報を編集</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-600">
+                                <span class="material-icons-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <form onsubmit="saveParticipantEdit(event, '${participantId}')" class="p-6 space-y-6">
+                            <div class="border border-slate-200 rounded-lg p-4">
+                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">基本情報</h3>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">参加者名</label>
+                                        <input type="text" name="userName" value="${participant.userName}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
+                                        <input type="email" name="email" value="user@example.com" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">電話番号</label>
+                                        <input type="tel" name="phone" value="090-1234-5678" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border border-slate-200 rounded-lg p-4">
+                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">チケット情報</h3>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット種別</label>
+                                        <input type="text" name="ticketName" value="${participant.ticketName}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">購入金額（円）</label>
+                                        <input type="number" name="amount" value="${participant.amount || 0}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">ステータス</label>
+                                        <select name="status" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                                            <option value="paid" ${participant.status === 'paid' ? 'selected' : ''}>決済済み</option>
+                                            <option value="pending" ${participant.status === 'pending' ? 'selected' : ''}>未決済</option>
+                                            <option value="cancelled" ${participant.status === 'cancelled' ? 'selected' : ''}>キャンセル</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-slate-200 pt-6 flex space-x-3">
+                                <button type="button" onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
+                                    キャンセル
+                                </button>
+                                <button type="submit" class="flex-1 px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
+                                    保存
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveParticipantEdit(event, participantId) {
+            event.preventDefault();
+            const form = event.target;
+            
+            const updatedData = {
+                userName: form.userName.value,
+                email: form.email.value,
+                phone: form.phone.value,
+                ticketName: form.ticketName.value,
+                amount: parseInt(form.amount.value),
+                status: form.status.value
+            };
+            
+            const participants = store.participants.map(p => {
+                if (p.id === participantId) {
+                    return { ...p, ...updatedData };
+                }
+                return p;
+            });
+            
+            store.participants = participants;
+            
+            showToast('参加者情報を更新しました', 'success');
+            document.querySelector('.fixed').remove();
+            renderOrganizer(document.getElementById('app'), 'operations', 'participants');
         }
 
         function cancelParticipant(ptId, eventId, ticketName) {
@@ -4635,44 +4736,99 @@
         // --- ADMIN ACTIONS ---
 
         function openVenueEditor(id = null) {
-            const venue = id ? store.venues.find(v => v.id === id) : { name: '', address: '', layout: { rows: 10, cols: 12 } };
+            const venue = id ? store.venues.find(v => v.id === id) : { name: '', address: '', layout: { rows: 10, cols: 12 }, seats: [] };
             const isEdit = !!id;
             
             const modal = document.getElementById('modal-content');
             document.getElementById('modal-container').classList.remove('hidden');
             
             modal.innerHTML = `
-                <div class="p-6">
+                <div class="p-6 max-w-4xl max-h-[90vh] overflow-y-auto">
                     <h3 class="text-xl font-bold mb-6 text-slate-800">${isEdit ? '施設編集' : '施設登録'}</h3>
-                    <form onsubmit="saveVenue(event, '${id || ''}')" class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">施設名</label>
-                            <input type="text" name="name" value="${venue.name}" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary outline-none" required>
+                    <form onsubmit="saveVenue(event, '${id || ''}')" class="space-y-6">
+                        <!-- 基本情報 -->
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">施設名 <span class="text-red-500">*</span></label>
+                                <input type="text" name="name" value="${venue.name}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">住所 <span class="text-red-500">*</span></label>
+                                <input type="text" name="address" value="${venue.address}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">住所</label>
-                            <input type="text" name="address" value="${venue.address}" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary outline-none" required>
-                        </div>
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <p class="text-xs font-bold text-slate-500 mb-3">座席レイアウト設定</p>
-                            <div class="grid grid-cols-2 gap-4">
+
+                        <!-- 座席レイアウト設定 -->
+                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-sm font-bold text-slate-700">座席レイアウト設定</h4>
+                                <div class="flex space-x-2">
+                                    <button type="button" onclick="showSeatLayoutMethod('grid')" class="px-3 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-100" id="btn-grid-layout">
+                                        グリッド方式
+                                    </button>
+                                    <button type="button" onclick="showSeatLayoutMethod('csv')" class="px-3 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-100" id="btn-csv-layout">
+                                        CSV登録
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- グリッド方式 -->
+                            <div id="grid-layout-section" class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-slate-500 mb-1">行数 (Rows) A-Z</label>
+                                        <input type="number" name="rows" value="${venue.layout ? venue.layout.rows : 10}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" min="1" max="26">
+                                        <p class="text-xs text-slate-400 mt-1">最大26行（A-Z）</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-500 mb-1">列数 (Cols) 1-n</label>
+                                        <input type="number" name="cols" value="${venue.layout ? venue.layout.cols : 12}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" min="1" max="50">
+                                        <p class="text-xs text-slate-400 mt-1">最大50列</p>
+                                    </div>
+                                </div>
+                                <div class="bg-white p-4 rounded border border-slate-200">
+                                    <p class="text-xs font-bold text-slate-600 mb-2">座席自動生成</p>
+                                    <p class="text-xs text-slate-500">行数×列数の座席が自動生成されます。例: 10行×12列 = 120席</p>
+                                    <p class="text-xs text-slate-500 mt-1">座席番号: A-1, A-2, ..., B-1, B-2, ...</p>
+                                </div>
+                            </div>
+
+                            <!-- CSV登録方式 -->
+                            <div id="csv-layout-section" class="hidden space-y-4">
                                 <div>
-                                    <label class="block text-xs text-slate-400 mb-1">行数 (Rows)</label>
-                                    <input type="number" name="rows" value="${venue.layout ? venue.layout.rows : 10}" class="w-full p-2 border border-slate-300 rounded" min="1" max="26">
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">座席データCSVアップロード</label>
+                                    <input type="file" id="csv-upload" accept=".csv" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                                    <p class="text-xs text-slate-500 mt-2">CSVフォーマット: 座席番号,行,列,セクション,価格タイプ</p>
+                                    <p class="text-xs text-slate-500">例: A-1,A,1,VIPエリア,premium</p>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-slate-400 mb-1">列数 (Cols)</label>
-                                    <input type="number" name="cols" value="${venue.layout ? venue.layout.cols : 12}" class="w-full p-2 border border-slate-300 rounded" min="1" max="20">
+                                    <button type="button" onclick="downloadSeatTemplate()" class="text-blue-600 hover:text-blue-700 text-sm">
+                                        <span class="material-icons-outlined text-sm align-middle">download</span> サンプルCSVをダウンロード
+                                    </button>
+                                </div>
+                                <div id="csv-preview" class="hidden">
+                                    <p class="text-xs font-bold text-slate-600 mb-2">プレビュー</p>
+                                    <div class="bg-white border border-slate-200 rounded p-3 text-xs max-h-40 overflow-y-auto">
+                                        <div id="csv-preview-content"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="pt-4 flex justify-end space-x-3">
-                            <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded">キャンセル</button>
-                            <button type="submit" class="px-6 py-2 bg-primary text-white font-bold rounded shadow hover:bg-blue-600">保存</button>
+
+                        <!-- ボタン -->
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button type="button" onclick="closeModal()" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">キャンセル</button>
+                            <button type="submit" class="px-6 py-2 bg-primary text-white font-bold rounded-lg shadow hover:bg-blue-600">保存</button>
                         </div>
                     </form>
                 </div>
             `;
+            
+            // CSV upload handler
+            const csvInput = document.getElementById('csv-upload');
+            if (csvInput) {
+                csvInput.addEventListener('change', handleCSVUpload);
+            }
         }
 
         function saveVenue(e, id) {
@@ -4685,8 +4841,32 @@
                 layout: {
                     rows: parseInt(form.rows.value),
                     cols: parseInt(form.cols.value)
-                }
+                },
+                seats: []
             };
+            
+            // CSVアップロードされた座席データがあれば使用
+            if (window.uploadedSeats && window.uploadedSeats.length > 0) {
+                newVenue.seats = window.uploadedSeats;
+                delete window.uploadedSeats; // Clean up
+            } else {
+                // グリッド方式: 自動生成
+                const rows = newVenue.layout.rows;
+                const cols = newVenue.layout.cols;
+                for (let r = 0; r < rows; r++) {
+                    const rowLabel = String.fromCharCode(65 + r); // A, B, C, ...
+                    for (let c = 1; c <= cols; c++) {
+                        newVenue.seats.push({
+                            seatNumber: `${rowLabel}-${c}`,
+                            row: rowLabel,
+                            col: c,
+                            section: '',
+                            priceType: 'standard',
+                            status: 'available'
+                        });
+                    }
+                }
+            }
             
             let venues = store.venues;
             if (id) {
@@ -4707,6 +4887,95 @@
                 renderAdmin(document.getElementById('app'), 'venues');
                 showToast('施設を削除しました', 'delete');
             }
+        }
+
+        // --- 座席管理ヘルパー関数 ---
+        function showSeatLayoutMethod(method) {
+            const gridSection = document.getElementById('grid-layout-section');
+            const csvSection = document.getElementById('csv-layout-section');
+            const gridBtn = document.getElementById('btn-grid-layout');
+            const csvBtn = document.getElementById('btn-csv-layout');
+            
+            if (method === 'grid') {
+                gridSection.classList.remove('hidden');
+                csvSection.classList.add('hidden');
+                gridBtn.classList.add('bg-primary', 'text-white');
+                gridBtn.classList.remove('bg-white');
+                csvBtn.classList.remove('bg-primary', 'text-white');
+                csvBtn.classList.add('bg-white');
+            } else {
+                gridSection.classList.add('hidden');
+                csvSection.classList.remove('hidden');
+                csvBtn.classList.add('bg-primary', 'text-white');
+                csvBtn.classList.remove('bg-white');
+                gridBtn.classList.remove('bg-primary', 'text-white');
+                gridBtn.classList.add('bg-white');
+            }
+        }
+
+        function downloadSeatTemplate() {
+            const csvContent = `座席番号,行,列,セクション,価格タイプ,ステータス
+A-1,A,1,VIPエリア,premium,available
+A-2,A,2,VIPエリア,premium,available
+B-1,B,1,一般エリア,standard,available
+B-2,B,2,一般エリア,standard,available
+C-1,C,1,自由席エリア,free,available`;
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'seat_template.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvContent = e.target.result;
+                const lines = csvContent.split('\n');
+                const seats = [];
+                
+                // Skip header line
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    const parts = line.split(',');
+                    if (parts.length >= 3) {
+                        seats.push({
+                            seatNumber: parts[0],
+                            row: parts[1],
+                            col: parts[2],
+                            section: parts[3] || '',
+                            priceType: parts[4] || 'standard',
+                            status: parts[5] || 'available'
+                        });
+                    }
+                }
+                
+                // Preview
+                const preview = document.getElementById('csv-preview');
+                const previewContent = document.getElementById('csv-preview-content');
+                preview.classList.remove('hidden');
+                previewContent.innerHTML = `
+                    <p class="font-bold mb-2">${seats.length}席を読み込みました</p>
+                    <div class="space-y-1">
+                        ${seats.slice(0, 10).map(s => `<p>${s.seatNumber} - ${s.section || 'エリア未設定'} (${s.priceType})</p>`).join('')}
+                        ${seats.length > 10 ? `<p class="text-slate-400">... 他 ${seats.length - 10}席</p>` : ''}
+                    </div>
+                `;
+                
+                // Store the uploaded seats temporarily
+                window.uploadedSeats = seats;
+            };
+            reader.readAsText(file);
         }
 
         function saveSystemSettings() {
@@ -4893,6 +5162,25 @@
             document.getElementById('venue-custom-fields').classList.toggle('hidden', venueType !== 'custom');
             document.getElementById('venue-registered-fields').classList.toggle('hidden', venueType !== 'registered');
             document.getElementById('venue-online-fields').classList.toggle('hidden', venueType !== 'online');
+            
+            // 指定会場選択時に座席データを表示
+            if (venueType === 'registered') {
+                const venueSelect = document.getElementById('venue-select');
+                venueSelect.addEventListener('change', function() {
+                    const venueId = this.value;
+                    if (venueId) {
+                        const venue = store.venues.find(v => v.id === venueId);
+                        if (venue && venue.seats && venue.seats.length > 0) {
+                            showToast(`${venue.name}の座席データ（${venue.seats.length}席）を読み込みました`, 'info');
+                            // 座席データをイベントに紐付ける
+                            window.currentVenueSeats = venue.seats;
+                        } else {
+                            showToast('この会場には座席データがありません', 'warning');
+                            window.currentVenueSeats = null;
+                        }
+                    }
+                });
+            }
         }
 
         function addTicketType() {
@@ -4990,6 +5278,13 @@
                     venueData.venue_id = venue.id;
                     venueData.venue_name = venue.name;
                     venueData.venue_address = venue.address;
+                    // 座席データを紐付け
+                    if (venue.seats && venue.seats.length > 0) {
+                        venueData.seats = venue.seats.map(seat => ({
+                            ...seat,
+                            event_status: 'available' // イベント固有のステータス
+                        }));
+                    }
                 }
             } else if (venueType === 'online') {
                 venueData.venue_name = 'オンライン';

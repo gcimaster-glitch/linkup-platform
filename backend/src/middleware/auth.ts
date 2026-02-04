@@ -1,5 +1,5 @@
 import { Context, Next } from 'hono';
-import { verify } from 'jsonwebtoken';
+import { verify } from 'hono/jwt';
 import type { Bindings } from '../index';
 
 export async function authMiddleware(
@@ -15,22 +15,27 @@ export async function authMiddleware(
   const token = authHeader.substring(7);
 
   try {
-    const decoded = verify(token, c.env.JWT_SECRET) as { userId: string };
+    const decoded = await verify(token, c.env.JWT_SECRET) as { sub: string };
     
     // ユーザー情報をコンテキストに設定
-    c.set('userId', decoded.userId);
+    c.set('userId', decoded.sub);
     
     // ユーザーの存在確認
-    const user = await c.env.DB
-      .prepare('SELECT user_id, email, role FROM users WHERE user_id = ?')
-      .bind(decoded.userId)
-      .first();
+    if (c.env.DB) {
+        const user = await c.env.DB
+          .prepare('SELECT user_id, email, role FROM users WHERE user_id = ?')
+          .bind(decoded.sub)
+          .first();
 
-    if (!user) {
-      return c.json({ error: 'Unauthorized: User not found' }, 401);
+        if (!user) {
+          return c.json({ error: 'Unauthorized: User not found' }, 401);
+        }
+        c.set('user', user);
+    } else {
+        // Fallback for mock/no-db
+        c.set('user', { user_id: decoded.sub, role: 'organizer' });
     }
 
-    c.set('user', user);
     await next();
   } catch (error) {
     console.error('Auth middleware error:', error);

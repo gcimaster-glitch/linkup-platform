@@ -11,6 +11,7 @@ echo "1. Cloudflare D1データベース作成"
 echo "2. スキーマ適用"
 echo "3. R2バケット作成"
 echo "4. バックエンドデプロイ"
+echo "5. フロントエンドビルド & デプロイ"
 echo ""
 read -p "続行しますか? (y/n): " CONTINUE
 
@@ -151,9 +152,43 @@ if [ $? -eq 0 ]; then
     echo "✅ バックエンドデプロイ完了！"
     echo "========================================="
     echo ""
+    
+    echo ""
+    read -p "Step 5に進みますか? (y/n): " CONTINUE_STEP5
+    if [ "$CONTINUE_STEP5" != "y" ]; then
+        exit 0
+    fi
+    
+    cd ..
+    
+    echo ""
+    echo "========================================="
+    echo "Step 5/5: フロントエンドビルド & デプロイ"
+    echo "========================================="
+    echo ""
+    echo "Frontendのデプロイを開始します..."
+    
+    cd frontend
+    echo "依存関係をインストールします..."
+    npm install
+    
+    echo "Pages用にビルドします..."
+    npm run pages:build
+    
+    echo "デプロイします..."
+    npx wrangler pages deploy .vercel/output/static --project-name=linkup-demo
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ フロントエンドデプロイ完了！"
+        echo "https://linkup-demo.pages.dev を確認してください。"
+    else
+        echo "❌ フロントエンドデプロイに失敗しました"
+    fi
+    
+    cd ..
+
     echo "次のステップ:"
-    echo "1. 出力されたWorker URLをメモ"
-    echo "2. GitHubリポジトリ作成: https://github.com/new"
+    echo "1. GitHubリポジトリ作成: https://github.com/new"
     echo "3. リポジトリ名: linkup-platform"
     echo "4. Cloudflare Pages でフロントエンドデプロイ"
     echo ""

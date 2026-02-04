@@ -1,29 +1,15 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { StoreProvider } from '../context/StoreContext';
+import { ToastProvider } from '../context/ToastContext';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import AuthModal from '../components/AuthModal';
+import CartModal from '../components/CartModal';
 
 export const metadata: Metadata = {
-  title: 'LinkUp - 人と機会を繋げる | イベントチケット予約プラットフォーム',
-  description: '次世代のイベントチケット予約プラットフォーム。簡単にイベントを作成・管理・宣伝。QR入場管理システムで瞬時にチェックイン。',
-  manifest: '/manifest.json',
-  themeColor: '#4F46E5',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
-  keywords: 'イベント,チケット,予約,QRコード,入場管理,LinkUp,リンクアップ',
-  openGraph: {
-    title: 'LinkUp - 人と機会を繋げる',
-    description: '次世代のイベントチケット予約プラットフォーム',
-    type: 'website',
-    locale: 'ja_JP',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'LinkUp - 人と機会を繋げる',
-    description: '次世代のイベントチケット予約プラットフォーム',
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'LinkUp',
-  },
+  title: 'LinkUp - 日本最大級のイベントプラットフォーム',
+  description: '感動を、予約しよう。',
 };
 
 export default function RootLayout({
@@ -34,13 +20,21 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <head>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
       </head>
-      <body className="antialiased bg-white">
-        {children}
+      <body className="flex flex-col min-h-screen">
+        <StoreProvider>
+          <ToastProvider>
+            <Header />
+            <main className="flex-grow pb-20">
+              {children}
+            </main>
+            <Footer />
+            <AuthModal />
+            <CartModal />
+          </ToastProvider>
+        </StoreProvider>
       </body>
     </html>
   );

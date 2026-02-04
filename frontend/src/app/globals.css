@@ -2,24 +2,61 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 249, 250, 251;
-  --background-end-rgb: 255, 255, 255;
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@layer components {
+  .btn-primary {
+    @apply bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-sm hover:bg-blue-700 transition flex items-center justify-center gap-2 active:scale-95;
   }
+  .btn-secondary {
+    @apply bg-white text-gray-700 border border-gray-300 font-bold py-2.5 px-4 rounded-lg hover:bg-gray-50 transition flex items-center justify-center gap-2 active:scale-95;
+  }
+  .card {
+    @apply bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition;
+  }
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition bg-gray-50 focus:bg-white;
+  }
+}
+
+/* Custom Styles */
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+.modal-container {
+  @apply fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-200 opacity-0 pointer-events-none;
+}
+.modal-container.active {
+  @apply opacity-100 pointer-events-auto;
+}
+.modal-content {
+  @apply bg-white rounded-2xl shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] overflow-y-auto;
+}
+.modal-container.active .modal-content {
+  @apply scale-100;
+}
+
+/* Rich Text Styles for Description */
+.prose h3 {
+  @apply text-xl font-bold mt-8 mb-4 pl-4 border-l-4 border-blue-600 text-gray-800;
+}
+.prose ul {
+  @apply list-disc pl-6 mb-6 text-gray-600;
+}
+.prose p {
+  @apply mb-5 leading-relaxed text-gray-600;
+}
+.prose .timetable {
+  @apply bg-gray-50 p-6 rounded-xl border border-gray-200;
+}
+.prose .time {
+  @apply text-blue-600 font-bold w-20 inline-block;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
 }

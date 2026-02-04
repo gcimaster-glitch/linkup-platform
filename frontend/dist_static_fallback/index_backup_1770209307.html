@@ -453,38 +453,6 @@
                 return JSON.parse(localStorage.getItem('participants'));
             },
 
-            // Payment History (決済履歴)
-            get paymentHistory() {
-                // Generate from tickets if not exists
-                if (!localStorage.getItem('paymentHistory')) {
-                    const history = this.tickets.map(ticket => ({
-                        id: `pay-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        ticketId: ticket.id,
-                        userId: this.user ? this.user.email : 'demo@example.com',
-                        userName: this.user ? this.user.name : 'Demo User',
-                        eventId: ticket.eventId,
-                        eventTitle: ticket.title,
-                        ticketName: ticket.ticketName,
-                        amount: ticket.total || 0,
-                        quantity: ticket.count,
-                        paymentMethod: 'credit_card',
-                        paymentStatus: 'completed',
-                        transactionDate: ticket.purchaseDate,
-                        platformFee: Math.round((ticket.total || 0) * 0.05),
-                        organizerRevenue: Math.round((ticket.total || 0) * 0.95)
-                    }));
-                    localStorage.setItem('paymentHistory', JSON.stringify(history));
-                }
-                return JSON.parse(localStorage.getItem('paymentHistory')) || [];
-            },
-            set paymentHistory(v) { localStorage.setItem('paymentHistory', JSON.stringify(v)); },
-
-            addPaymentRecord(record) {
-                const history = this.paymentHistory;
-                history.push(record);
-                this.paymentHistory = history;
-            },
-
             // System Settings (Admin Config)
             get systemSettings() {
                 return JSON.parse(localStorage.getItem('systemSettings')) || {
@@ -622,7 +590,6 @@
             else if (view === 'checkout_session') renderStripeMock(app);
             else if (view === 'organizer_profile') renderOrganizerProfile(app, params.id);
             else if (view === 'organizer') renderOrganizer(app);
-            else if (view === 'organizer_event_edit') renderOrganizerEventEdit(app, params.id);
             else if (view === 'admin') renderAdmin(app);
             else if (view === 'static') renderStaticPage(app, params.page);
             
@@ -2300,28 +2267,6 @@
                 qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=LINKUP-TKT-${Date.now()}`
             };
             
-            // 決済履歴を生成
-            const paymentRecord = {
-                id: `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                eventId: event.event_id,
-                eventTitle: event.title,
-                ticketName: ticket.name,
-                quantity: count,
-                amount: ticket.price * count,
-                paymentMethod: 'credit_card', // デモでは固定
-                paymentDate: new Date().toISOString(),
-                status: 'success',
-                userName: store.user?.name || 'ゲスト',
-                userEmail: store.user?.email || '-',
-                seats: newTicket.seats || null
-            };
-            
-            // 決済履歴を保存
-            const currentPaymentHistory = localStorage.getItem('paymentHistory');
-            const paymentHistory = currentPaymentHistory ? JSON.parse(currentPaymentHistory) : [];
-            paymentHistory.unshift(paymentRecord);
-            localStorage.setItem('paymentHistory', JSON.stringify(paymentHistory));
-            
             // Save
             const currentTickets = store.tickets;
             currentTickets.unshift(newTicket);
@@ -2338,30 +2283,14 @@
         }
 
         // --- DASHBOARDS ---
-        function renderDashboard(container, activeTab = 'tickets') {
+        function renderDashboard(container) {
             const myTickets = store.tickets;
-            const paymentHistory = store.paymentHistory.filter(p => p.userId === (store.user ? store.user.email : 'demo@example.com'));
             
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto px-4 py-8">
                     <h1 class="text-2xl font-bold text-slate-800 mb-2">マイページ</h1>
                     <p class="text-slate-500 text-sm mb-8">ようこそ、${store.user.name}さん</p>
 
-                    <!-- タブメニュー -->
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
-                        <div class="flex border-b border-slate-200">
-                            <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="px-6 py-3 text-sm font-bold ${activeTab === 'tickets' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
-                                <span class="material-icons-outlined text-sm align-middle mr-1">confirmation_number</span>
-                                チケット一覧
-                            </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'payments')" class="px-6 py-3 text-sm font-bold ${activeTab === 'payments' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
-                                <span class="material-icons-outlined text-sm align-middle mr-1">receipt</span>
-                                決済履歴
-                            </button>
-                        </div>
-                    </div>
-
-                    ${activeTab === 'tickets' ? `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div class="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex items-center">
                             <div class="w-12 h-12 rounded-full bg-blue-100 text-primary flex items-center justify-center mr-4">
@@ -2416,7 +2345,7 @@
                                         <button onclick="openShareModal('${t.id}')" class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full flex items-center hover:bg-slate-200 transition">
                                             <span class="material-icons-outlined text-sm mr-1">ios_share</span> 分配・譲渡
                                         </button>
-                                        <button onclick="showTicketDetail('${t.id}')" class="text-xs font-bold text-primary hover:underline flex items-center">
+                                        <button class="text-xs font-bold text-primary hover:underline flex items-center">
                                             詳細を表示 <span class="material-icons-outlined text-sm ml-1">chevron_right</span>
                                         </button>
                                     </div>
@@ -2424,71 +2353,6 @@
                             </div>
                         `).join('')}
                     </div>
-                    ` : ''}
-
-                    ${activeTab === 'payments' ? `
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-xl font-bold text-slate-800">決済履歴</h2>
-                            <div class="text-sm text-slate-500">
-                                合計: <span class="font-bold text-slate-800">¥${paymentHistory.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        ${paymentHistory.length === 0 ? '<p class="text-slate-400 text-center py-8">決済履歴がありません。</p>' : `
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="border-b border-slate-200">
-                                        <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">取引日時</th>
-                                        <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">イベント名</th>
-                                        <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">チケット</th>
-                                        <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">枚数</th>
-                                        <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">金額</th>
-                                        <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">決済方法</th>
-                                        <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">ステータス</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${paymentHistory.map(p => `
-                                    <tr class="border-b border-slate-100 hover:bg-slate-50">
-                                        <td class="py-4 px-4 text-sm text-slate-600">${new Date(p.transactionDate).toLocaleDateString('ja-JP', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'})}</td>
-                                        <td class="py-4 px-4">
-                                            <div class="font-bold text-slate-800 text-sm">${p.eventTitle}</div>
-                                        </td>
-                                        <td class="py-4 px-4 text-sm text-slate-600">${p.ticketName}</td>
-                                        <td class="py-4 px-4 text-center text-sm font-bold text-slate-800">${p.quantity}枚</td>
-                                        <td class="py-4 px-4 text-right font-bold text-slate-800">¥${p.amount.toLocaleString()}</td>
-                                        <td class="py-4 px-4 text-center">
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                                                p.paymentMethod === 'credit_card' ? 'bg-blue-100 text-blue-700' : 
-                                                p.paymentMethod === 'konbini' ? 'bg-orange-100 text-orange-700' :
-                                                p.paymentMethod === 'point' ? 'bg-purple-100 text-purple-700' : 
-                                                'bg-slate-100 text-slate-700'
-                                            }">
-                                                ${p.paymentMethod === 'credit_card' ? 'カード' : 
-                                                  p.paymentMethod === 'konbini' ? 'コンビニ' : 
-                                                  p.paymentMethod === 'point' ? 'ポイント' : '現金'}
-                                            </span>
-                                        </td>
-                                        <td class="py-4 px-4 text-center">
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                                                p.paymentStatus === 'completed' ? 'bg-green-100 text-green-700' : 
-                                                p.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
-                                                'bg-red-100 text-red-700'
-                                            }">
-                                                ${p.paymentStatus === 'completed' ? '完了' : 
-                                                  p.paymentStatus === 'pending' ? '処理中' : 'キャンセル'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                        `}
-                    </div>
-                    ` : ''}
                 </div>
             `;
         }
@@ -2529,9 +2393,6 @@
                                 </button>
                                 <button onclick="renderOrganizer(document.getElementById('app'), 'marketing')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'marketing' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">campaign</span> マーケティング
-                                </button>
-                                <button onclick="renderOrganizer(document.getElementById('app'), 'payment-history')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'payment-history' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
-                                    <span class="material-icons-outlined mr-3 text-sm">receipt_long</span> 決済履歴
                                 </button>
                                 <button onclick="renderOrganizer(document.getElementById('app'), 'finance')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'finance' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">account_balance</span> 売上・振込
@@ -2664,232 +2525,9 @@
             if (tab === 'events') return renderOrganizerEvents();
             if (tab === 'operations') return renderOrganizerOperations();
             if (tab === 'marketing') return renderOrganizerMarketing();
-            if (tab === 'payment-history') return renderOrganizerPaymentHistory();
-            if (tab === 'finance') return renderOrganizerFinance();
-            if (tab === 'settings') return renderOrganizerProfileSettings();
+            if (tab === 'finance') return renderOrganizerSales(); // Re-use Sales for Finance tab
+            if (tab === 'settings') return renderOrganizerProfileSettings(); // Re-use Profile for Settings tab
             return '';
-        }
-
-        function renderOrganizerPaymentHistory() {
-            const organizerName = store.organizerProfile.name;
-            // 主催者のイベントIDを取得
-            const organizerEvents = store.events.filter(e => e.organizer_name === organizerName);
-            const organizerEventIds = organizerEvents.map(e => e.event_id);
-            
-            // 主催者のイベントに関する決済履歴のみ取得
-            const paymentHistory = store.paymentHistory.filter(p => 
-                organizerEventIds.includes(p.eventId)
-            );
-            
-            const totalAmount = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
-            const todayPayments = paymentHistory.filter(p => {
-                const today = new Date().toISOString().split('T')[0];
-                return p.paymentDate.split('T')[0] === today;
-            });
-            const todayAmount = todayPayments.reduce((sum, p) => sum + p.amount, 0);
-            
-            return `
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold text-slate-800">決済履歴（自分のイベント）</h1>
-                    <div class="flex space-x-2">
-                        <button onclick="exportPaymentHistory('organizer')" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50">
-                            <span class="material-icons-outlined text-sm align-middle mr-1">download</span> CSV出力
-                        </button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div class="bg-white p-6 rounded-2xl shadow-card">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-slate-500 text-sm">総売上</span>
-                            <span class="material-icons-outlined text-blue-500">payments</span>
-                        </div>
-                        <p class="text-3xl font-bold text-slate-900">¥${totalAmount.toLocaleString()}</p>
-                        <p class="text-xs text-slate-500 mt-1">累計</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-2xl shadow-card">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-slate-500 text-sm">本日の売上</span>
-                            <span class="material-icons-outlined text-green-500">trending_up</span>
-                        </div>
-                        <p class="text-3xl font-bold text-slate-900">¥${todayAmount.toLocaleString()}</p>
-                        <p class="text-xs text-slate-500 mt-1">${todayPayments.length}件</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-2xl shadow-card">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-slate-500 text-sm">チケット販売数</span>
-                            <span class="material-icons-outlined text-purple-500">confirmation_number</span>
-                        </div>
-                        <p class="text-3xl font-bold text-slate-900">${paymentHistory.reduce((sum, p) => sum + p.quantity, 0)}</p>
-                        <p class="text-xs text-slate-500 mt-1">${paymentHistory.length}件の取引</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                    <div class="p-4 border-b border-slate-100">
-                        <div class="flex items-center space-x-4">
-                            <input type="text" placeholder="検索: イベント名、ユーザー名..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm">
-                            <select class="px-4 py-2 border border-slate-300 rounded-lg text-sm">
-                                <option value="">すべてのイベント</option>
-                                ${organizerEvents.map(e => `<option value="${e.event_id}">${e.title}</option>`).join('')}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
-                                <tr>
-                                    <th class="py-4 px-6">決済ID</th>
-                                    <th class="py-4 px-6">日時</th>
-                                    <th class="py-4 px-6">購入者</th>
-                                    <th class="py-4 px-6">イベント</th>
-                                    <th class="py-4 px-6">チケット種別</th>
-                                    <th class="py-4 px-6">決済方法</th>
-                                    <th class="py-4 px-6 text-right">金額</th>
-                                    <th class="py-4 px-6 text-center">ステータス</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                ${paymentHistory.length === 0 ? `
-                                    <tr>
-                                        <td colspan="8" class="py-12 text-center text-slate-500">
-                                            <span class="material-icons-outlined text-6xl text-slate-300 mb-4">receipt_long</span>
-                                            <p>決済履歴はありません</p>
-                                        </td>
-                                    </tr>
-                                ` : paymentHistory.map(payment => `
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="py-4 px-6">
-                                            <span class="font-mono text-xs text-slate-600">${payment.id.substring(0, 16)}...</span>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <p class="text-sm text-slate-900">${new Date(payment.paymentDate).toLocaleDateString('ja-JP')}</p>
-                                            <p class="text-xs text-slate-500">${new Date(payment.paymentDate).toLocaleTimeString('ja-JP')}</p>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <p class="text-sm font-medium text-slate-900">${payment.userName || 'ゲスト'}</p>
-                                            <p class="text-xs text-slate-500">${payment.userEmail || '-'}</p>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <p class="text-sm text-slate-900">${payment.eventTitle}</p>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <span class="text-sm text-slate-700">${payment.ticketName}</span>
-                                            <span class="text-xs text-slate-500">× ${payment.quantity}</span>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <span class="inline-flex items-center text-xs">
-                                                <span class="material-icons-outlined text-sm mr-1">${payment.paymentMethod === 'credit_card' ? 'credit_card' : payment.paymentMethod === 'convenience_store' ? 'store' : 'account_balance'}</span>
-                                                ${payment.paymentMethod === 'credit_card' ? 'カード' : payment.paymentMethod === 'convenience_store' ? 'コンビニ' : '銀行振込'}
-                                            </span>
-                                        </td>
-                                        <td class="py-4 px-6 text-right">
-                                            <span class="text-sm font-bold text-slate-900">¥${payment.amount.toLocaleString()}</span>
-                                        </td>
-                                        <td class="py-4 px-6 text-center">
-                                            <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                                ${payment.status === 'success' ? '成功' : '保留'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="p-4 border-t border-slate-100 flex justify-between items-center">
-                        <p class="text-sm text-slate-500">${paymentHistory.length}件の決済履歴を表示中</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderOrganizerFinance() {
-            const organizerName = store.organizerProfile.name;
-            const organizerPayments = store.paymentHistory.filter(p => {
-                const event = store.events.find(e => e.event_id === p.eventId);
-                return event && event.organizer_name === organizerName;
-            });
-
-            const totalRevenue = organizerPayments.reduce((sum, p) => sum + p.organizerRevenue, 0);
-            const totalSales = organizerPayments.reduce((sum, p) => sum + p.amount, 0);
-            const platformFees = organizerPayments.reduce((sum, p) => sum + p.platformFee, 0);
-
-            return `
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold text-slate-800">売上・決済履歴</h1>
-                </div>
-
-                <!-- Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-6 shadow-lg">
-                        <p class="text-blue-100 text-sm mb-2">総売上</p>
-                        <p class="text-3xl font-bold">¥${totalSales.toLocaleString()}</p>
-                    </div>
-                    <div class="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl p-6 shadow-lg">
-                        <p class="text-green-100 text-sm mb-2">手取り収益</p>
-                        <p class="text-3xl font-bold">¥${totalRevenue.toLocaleString()}</p>
-                    </div>
-                    <div class="bg-gradient-to-br from-slate-500 to-slate-600 text-white rounded-2xl p-6 shadow-lg">
-                        <p class="text-slate-100 text-sm mb-2">プラットフォーム手数料</p>
-                        <p class="text-3xl font-bold">¥${platformFees.toLocaleString()}</p>
-                    </div>
-                </div>
-
-                <!-- Payment History Table -->
-                <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-6">
-                    <h2 class="text-lg font-bold text-slate-800 mb-4">決済履歴一覧</h2>
-                    
-                    ${organizerPayments.length === 0 ? '<p class="text-slate-400 text-center py-8">決済履歴がありません。</p>' : `
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="border-b border-slate-200">
-                                    <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">取引日時</th>
-                                    <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">購入者</th>
-                                    <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">イベント名</th>
-                                    <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">チケット</th>
-                                    <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">枚数</th>
-                                    <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">売上</th>
-                                    <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">手数料</th>
-                                    <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">収益</th>
-                                    <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">決済</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${organizerPayments.map(p => `
-                                <tr class="border-b border-slate-100 hover:bg-slate-50">
-                                    <td class="py-4 px-4 text-sm text-slate-600">${new Date(p.transactionDate).toLocaleDateString('ja-JP', {month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'})}</td>
-                                    <td class="py-4 px-4 text-sm text-slate-600">${p.userName}</td>
-                                    <td class="py-4 px-4">
-                                        <div class="font-bold text-slate-800 text-sm">${p.eventTitle}</div>
-                                    </td>
-                                    <td class="py-4 px-4 text-sm text-slate-600">${p.ticketName}</td>
-                                    <td class="py-4 px-4 text-center text-sm font-bold text-slate-800">${p.quantity}枚</td>
-                                    <td class="py-4 px-4 text-right font-bold text-slate-800">¥${p.amount.toLocaleString()}</td>
-                                    <td class="py-4 px-4 text-right text-sm text-red-600">-¥${p.platformFee.toLocaleString()}</td>
-                                    <td class="py-4 px-4 text-right font-bold text-green-600">¥${p.organizerRevenue.toLocaleString()}</td>
-                                    <td class="py-4 px-4 text-center">
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
-                                            p.paymentMethod === 'credit_card' ? 'bg-blue-100 text-blue-700' : 
-                                            p.paymentMethod === 'konbini' ? 'bg-orange-100 text-orange-700' :
-                                            'bg-slate-100 text-slate-700'
-                                        }">
-                                            ${p.paymentMethod === 'credit_card' ? 'カード' : 
-                                              p.paymentMethod === 'konbini' ? 'コンビニ' : '現金'}
-                                        </span>
-                                    </td>
-                                </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    `}
-                </div>
-            `;
         }
 
         // New Aggregator Function for Operations (Sub-tabs: Participants, Seats)
@@ -3015,7 +2653,7 @@
             return `
                 <div class="flex justify-between items-center mb-6">
                     <h1 class="text-2xl font-bold text-slate-800">イベント管理</h1>
-                    <button onclick="router('organizer_event_edit', { id: 'new' })" class="flex items-center px-4 py-2 bg-primary text-white rounded-full hover:bg-blue-600 transition font-bold shadow-lg">
+                    <button onclick="openEventEditor()" class="flex items-center px-4 py-2 bg-primary text-white rounded-full hover:bg-blue-600 transition font-bold shadow-lg">
                         <span class="material-icons-outlined mr-2">add</span> 新規作成
                     </button>
                 </div>
@@ -3063,7 +2701,7 @@
                                         ${isFinished && !isCompleted ? 
                                             `<button onclick="store.completeEvent('${evt.event_id}'); renderOrganizer(document.getElementById('app'), 'events')" class="mr-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition" title="完了報告をして売上を確定する">完了報告</button>` : ''
                                         }
-                                        <button onclick="router('organizer_event_edit', { id: '${evt.event_id}' })" class="text-slate-400 hover:text-primary mr-2"><span class="material-icons-outlined">edit</span></button>
+                                        <button onclick="openEventEditor('${evt.event_id}')" class="text-slate-400 hover:text-primary mr-2"><span class="material-icons-outlined">edit</span></button>
                                         <button onclick="deleteEventConfirm('${evt.event_id}')" class="text-slate-400 hover:text-red-500"><span class="material-icons-outlined">delete</span></button>
                                     </td>
                                 </tr>
@@ -3074,327 +2712,6 @@
                     ${myEvents.length === 0 ? '<div class="p-8 text-center text-slate-400">イベントがまだありません。</div>' : ''}
                 </div>
             `;
-        }
-
-        function renderOrganizerEventEdit(container, eventId) {
-            console.log('renderOrganizerEventEdit called with eventId:', eventId);
-            const isNew = eventId === 'new';
-            const event = isNew ? null : store.events.find(e => e.event_id === eventId);
-            
-            if (!isNew && !event) {
-                container.innerHTML = '<div class="p-8 text-center"><p class="text-red-500">イベントが見つかりません</p></div>';
-                return;
-            }
-            
-            // 会場マスター取得
-            const venues = store.venues || [];
-            
-            container.innerHTML = `
-                <div class="min-h-screen bg-slate-50">
-                    <!-- Header -->
-                    <div class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-                        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                            <div class="flex items-center">
-                                <button onclick="renderOrganizer(document.getElementById('app'), 'events')" class="mr-4 text-slate-400 hover:text-slate-600">
-                                    <span class="material-icons-outlined">arrow_back</span>
-                                </button>
-                                <h1 class="text-2xl font-bold text-slate-800">${isNew ? '新規イベント作成' : 'イベント編集'}</h1>
-                                ${!isNew && event.approval_status ? `
-                                    <span class="ml-4 px-3 py-1 rounded-full text-xs font-bold ${
-                                        event.approval_status === 'approved' ? 'bg-green-100 text-green-700' :
-                                        event.approval_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-red-100 text-red-700'
-                                    }">
-                                        ${event.approval_status === 'approved' ? '承認済み' : 
-                                          event.approval_status === 'pending' ? '承認待ち' : '却下'}
-                                    </span>
-                                ` : ''}
-                            </div>
-                            <div class="flex space-x-2">
-                                <button onclick="previewEvent()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
-                                    <span class="material-icons-outlined text-sm align-middle">visibility</span> プレビュー
-                                </button>
-                                <button onclick="saveEvent('${eventId}')" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
-                                    <span class="material-icons-outlined text-sm align-middle">save</span> 保存
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Content -->
-                    <div class="max-w-7xl mx-auto px-4 py-8">
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <!-- Main Form -->
-                            <div class="lg:col-span-2 space-y-6">
-                                <!-- 基本情報 -->
-                                <div class="bg-white rounded-2xl shadow-card p-6">
-                                    <h2 class="text-lg font-bold text-slate-800 mb-4">基本情報</h2>
-                                    
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-bold text-slate-700 mb-2">イベント名 <span class="text-red-500">*</span></label>
-                                            <input type="text" id="event-title" value="${event?.title || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="例: Web3 Summit 2026">
-                                        </div>
-                                        
-                                        <div>
-                                            <label class="block text-sm font-bold text-slate-700 mb-2">カテゴリー <span class="text-red-500">*</span></label>
-                                            <select id="event-category" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
-                                                <option value="tech" ${event?.category === 'tech' ? 'selected' : ''}>テック</option>
-                                                <option value="business" ${event?.category === 'business' ? 'selected' : ''}>ビジネス</option>
-                                                <option value="music" ${event?.category === 'music' ? 'selected' : ''}>音楽</option>
-                                                <option value="art" ${event?.category === 'art' ? 'selected' : ''}>アート</option>
-                                                <option value="social" ${event?.category === 'social' ? 'selected' : ''}>交流会</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-sm font-bold text-slate-700 mb-2">開始日時 <span class="text-red-500">*</span></label>
-                                                <input type="datetime-local" id="event-start" value="${event ? new Date(event.start_datetime).toISOString().slice(0, 16) : ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-bold text-slate-700 mb-2">終了日時 <span class="text-red-500">*</span></label>
-                                                <input type="datetime-local" id="event-end" value="${event ? new Date(event.end_datetime).toISOString().slice(0, 16) : ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- イベント詳細 -->
-                                <div class="bg-white rounded-2xl shadow-card p-6">
-                                    <h2 class="text-lg font-bold text-slate-800 mb-4">イベント詳細</h2>
-                                    
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-bold text-slate-700 mb-2">説明文（AI生成可能）</label>
-                                            <div class="flex space-x-2 mb-2">
-                                                <button onclick="generateDescriptionWithAI()" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200">
-                                                    <span class="material-icons-outlined text-sm align-middle">auto_awesome</span> AIで生成
-                                                </button>
-                                                <button onclick="toggleDescriptionEditor()" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-sm hover:bg-slate-200">
-                                                    <span class="material-icons-outlined text-sm align-middle">edit_note</span> エディター切替
-                                                </button>
-                                            </div>
-                                            <textarea id="event-description" rows="8" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary font-mono text-sm" placeholder="イベントの詳細を入力してください。箇条書きやメモでOK！AIが整形します。">${event?.description || ''}</textarea>
-                                        </div>
-                                        
-                                        <div>
-                                            <label class="block text-sm font-bold text-slate-700 mb-2">カバー画像URL</label>
-                                            <input type="url" id="event-cover-image" value="${event?.cover_image_url || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="https://example.com/image.jpg">
-                                            ${event?.cover_image_url ? `<img src="${event.cover_image_url}" class="mt-2 w-full h-48 object-cover rounded-lg">` : ''}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- 会場設定 -->
-                                <div class="bg-white rounded-2xl shadow-card p-6">
-                                    <h2 class="text-lg font-bold text-slate-800 mb-4">会場設定</h2>
-                                    
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-bold text-slate-700 mb-2">会場タイプ <span class="text-red-500">*</span></label>
-                                            <select id="venue-type" onchange="updateVenueFields()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
-                                                <option value="custom">自由入力（会場名のみ）</option>
-                                                <option value="registered">指定会場（座席データあり）</option>
-                                                <option value="online">オンライン開催</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div id="venue-custom-fields" class="space-y-4">
-                                            <div>
-                                                <label class="block text-sm font-bold text-slate-700 mb-2">会場名</label>
-                                                <input type="text" id="venue-name-custom" value="${event?.venue_name || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="例: 渋谷ストリームホール">
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-bold text-slate-700 mb-2">住所</label>
-                                                <input type="text" id="venue-address-custom" value="${event?.venue_address || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="東京都渋谷区...">
-                                            </div>
-                                        </div>
-                                        
-                                        <div id="venue-registered-fields" class="hidden">
-                                            <label class="block text-sm font-bold text-slate-700 mb-2">登録済み会場を選択</label>
-                                            <select id="venue-select" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
-                                                <option value="">会場を選択...</option>
-                                                ${venues.map(v => `<option value="${v.id}">${v.name} (${v.layout ? v.layout.rows + 'x' + v.layout.cols + '席' : '座席なし'})</option>`).join('')}
-                                            </select>
-                                        </div>
-                                        
-                                        <div id="venue-online-fields" class="hidden">
-                                            <label class="block text-sm font-bold text-slate-700 mb-2">Zoom URL</label>
-                                            <input type="url" id="venue-zoom-url" value="${event?.zoom_url || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" placeholder="https://zoom.us/j/...">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- チケット設定 -->
-                                <div class="bg-white rounded-2xl shadow-card p-6">
-                                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between items-center">
-                                        <span>チケット設定</span>
-                                        <button onclick="addTicketType()" class="px-3 py-1 bg-primary text-white rounded-lg text-sm hover:bg-blue-600">
-                                            <span class="material-icons-outlined text-sm align-middle">add</span> チケット追加
-                                        </button>
-                                    </h2>
-                                    
-                                    <div id="ticket-list" class="space-y-4">
-                                        ${event && event.tickets ? event.tickets.map((ticket, idx) => `
-                                            <div class="border border-slate-200 rounded-lg p-4">
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
-                                                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.name}" placeholder="一般参加">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
-                                                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.price}" placeholder="0">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
-                                                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.capacity || 100}" placeholder="100">
-                                                    </div>
-                                                    <div class="flex items-end">
-                                                        <button onclick="removeTicketType(${idx})" class="text-red-500 hover:text-red-700">
-                                                            <span class="material-icons-outlined">delete</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `).join('') : `
-                                            <div class="border border-slate-200 rounded-lg p-4">
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
-                                                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="一般参加" placeholder="一般参加">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
-                                                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" value="3000" placeholder="0">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
-                                                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="100" placeholder="100">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `}
-                                    </div>
-                                </div>
-
-                                <!-- 販売制限 -->
-                                <div class="bg-white rounded-2xl shadow-card p-6">
-                                    <h2 class="text-lg font-bold text-slate-800 mb-4">販売制限</h2>
-                                    
-                                    <div class="space-y-4">
-                                        <div>
-                                            <label class="flex items-center">
-                                                <input type="radio" name="user-restriction" value="free" ${!event || event.user_restriction === 'free' ? 'checked' : ''} class="mr-2">
-                                                <span class="text-slate-700">フリーユーザーへの販売を許可</span>
-                                            </label>
-                                        </div>
-                                        <div>
-                                            <label class="flex items-center">
-                                                <input type="radio" name="user-restriction" value="verified" ${event?.user_restriction === 'verified' ? 'checked' : ''} class="mr-2">
-                                                <span class="text-slate-700">本人確認済みユーザーのみ販売可能</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                ${!isNew && event ? `
-                                <!-- 参加者と決済 -->
-                                <div class="bg-white rounded-2xl shadow-card p-6">
-                                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex justify-between items-center">
-                                        <span>参加者と決済</span>
-                                        <button onclick="showEventParticipants('${eventId}')" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200">
-                                            <span class="material-icons-outlined text-sm align-middle">people</span> 詳細を表示
-                                        </button>
-                                    </h2>
-                                    
-                                    <div class="grid grid-cols-3 gap-4">
-                                        <div class="text-center">
-                                            <p class="text-2xl font-bold text-slate-900">0</p>
-                                            <p class="text-xs text-slate-500">参加者数</p>
-                                        </div>
-                                        <div class="text-center">
-                                            <p class="text-2xl font-bold text-green-600">¥0</p>
-                                            <p class="text-xs text-slate-500">総売上</p>
-                                        </div>
-                                        <div class="text-center">
-                                            <p class="text-2xl font-bold text-blue-600">0</p>
-                                            <p class="text-xs text-slate-500">チケット販売数</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                ` : ''}
-                            </div>
-
-                            <!-- Sidebar -->
-                            <div class="space-y-6">
-                                <!-- ステータス -->
-                                <div class="bg-white rounded-2xl shadow-card p-6">
-                                    <h3 class="text-lg font-bold text-slate-800 mb-4">ステータス</h3>
-                                    
-                                    ${!isNew && event.approval_status === 'rejected' && event.rejection_reason ? `
-                                        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                                            <p class="text-sm font-bold text-red-700 mb-2">却下理由</p>
-                                            <p class="text-sm text-red-600">${event.rejection_reason}</p>
-                                        </div>
-                                    ` : ''}
-                                    
-                                    <div class="space-y-3 text-sm">
-                                        <div class="flex justify-between">
-                                            <span class="text-slate-500">公開状態</span>
-                                            <span class="font-bold text-slate-900">${isNew ? '下書き' : event.approval_status === 'approved' ? '公開中' : event.approval_status === 'pending' ? '承認待ち' : '下書き'}</span>
-                                        </div>
-                                        ${!isNew ? `
-                                            <div class="flex justify-between">
-                                                <span class="text-slate-500">作成日</span>
-                                                <span class="font-bold text-slate-900">${new Date(event.created_at || Date.now()).toLocaleDateString('ja-JP')}</span>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                </div>
-
-                                <!-- アクション -->
-                                <div class="bg-white rounded-2xl shadow-card p-6">
-                                    <h3 class="text-lg font-bold text-slate-800 mb-4">アクション</h3>
-                                    
-                                    <div class="space-y-2">
-                                        <button onclick="saveEvent('${eventId}')" class="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
-                                            下書き保存
-                                        </button>
-                                        <button onclick="submitForApproval('${eventId}')" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold">
-                                            承認申請を送信
-                                        </button>
-                                        <button onclick="renderOrganizer(document.getElementById('app'), 'events')" class="w-full px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
-                                            キャンセル
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- ヘルプ -->
-                                <div class="bg-blue-50 rounded-2xl p-6">
-                                    <h3 class="text-sm font-bold text-blue-900 mb-2">💡 ヒント</h3>
-                                    <ul class="text-xs text-blue-700 space-y-2">
-                                        <li>• AI生成を使うと、メモや箇条書きから詳細な説明文を自動作成できます</li>
-                                        <li>• 座席データ付き会場を選ぶと、指定席販売が可能になります</li>
-                                        <li>• 承認申請後、管理者が24時間以内に審査します</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // 会場タイプの初期設定
-            if (event) {
-                if (event.zoom_url) {
-                    document.getElementById('venue-type').value = 'online';
-                } else if (event.venue_id && venues.find(v => v.id === event.venue_id)) {
-                    document.getElementById('venue-type').value = 'registered';
-                }
-                updateVenueFields();
-            }
         }
 
         function renderOrganizerParticipants() {
@@ -3433,11 +2750,7 @@
                                     return `
                                         <tr class="hover:bg-slate-50 transition">
                                             <td class="p-4 font-mono text-xs text-slate-500">#${p.id}</td>
-                                            <td class="p-4">
-                                                <button onclick="showParticipantDetail('${p.id}')" class="font-bold text-blue-600 hover:text-blue-700 hover:underline text-left">
-                                                    ${p.userName}
-                                                </button>
-                                            </td>
+                                            <td class="p-4 font-bold text-slate-800">${p.userName}</td>
                                             <td class="p-4 max-w-xs truncate">${evt ? evt.title : 'Unknown Event'}</td>
                                             <td class="p-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold">${p.ticketName}</span></td>
                                             <td class="p-4 text-slate-500">${new Date(p.purchaseDate).toLocaleDateString()}</td>
@@ -3458,237 +2771,6 @@
                     ${myParts.length === 0 ? '<div class="p-12 text-center text-slate-400">参加者はまだいません。</div>' : ''}
                 </div>
             `;
-        }
-
-        function showParticipantDetail(participantId) {
-            const participant = store.participants.find(p => p.id === participantId);
-            if (!participant) {
-                showToast('参加者情報が見つかりません', 'error');
-                return;
-            }
-            
-            const event = store.events.find(e => e.event_id === participant.eventId);
-            const paymentRecord = store.paymentHistory.find(p => 
-                p.eventId === participant.eventId && p.userName === participant.userName
-            );
-            
-            const modal = document.getElementById('modal-container');
-            modal.innerHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-                        <div class="sticky top-0 bg-white border-b border-slate-200 p-6 flex justify-between items-center">
-                            <h2 class="text-2xl font-bold text-slate-800">参加者詳細</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-600">
-                                <span class="material-icons-outlined">close</span>
-                            </button>
-                        </div>
-
-                        <div class="p-6 space-y-6">
-                            <!-- 基本情報 -->
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">基本情報</h3>
-                                <div class="space-y-3">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">申込ID</span>
-                                        <span class="font-mono text-slate-900">#${participant.id}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">参加者名</span>
-                                        <span class="font-bold text-slate-900">${participant.userName}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">メールアドレス</span>
-                                        <span class="text-slate-900">user@example.com</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">電話番号</span>
-                                        <span class="text-slate-900">090-1234-5678</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- イベント情報 -->
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">イベント情報</h3>
-                                <div class="space-y-3">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">イベント名</span>
-                                        <span class="font-bold text-slate-900">${event?.title || '-'}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">開催日時</span>
-                                        <span class="text-slate-900">${event ? new Date(event.start_datetime).toLocaleString('ja-JP') : '-'}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">会場</span>
-                                        <span class="text-slate-900">${event?.venue_name || '-'}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- チケット情報 -->
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">チケット情報</h3>
-                                <div class="space-y-3">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">チケット種別</span>
-                                        <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">${participant.ticketName}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">購入日</span>
-                                        <span class="text-slate-900">${new Date(participant.purchaseDate).toLocaleString('ja-JP')}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">購入金額</span>
-                                        <span class="text-lg font-bold text-primary">¥${participant.amount?.toLocaleString() || '0'}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">ステータス</span>
-                                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold">
-                                            ${participant.status === 'paid' ? '決済済み' : '未決済'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 決済情報 -->
-                            ${paymentRecord ? `
-                                <div class="border border-slate-200 rounded-lg p-4">
-                                    <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">決済情報</h3>
-                                    <div class="space-y-3">
-                                        <div class="flex justify-between">
-                                            <span class="text-slate-600">決済ID</span>
-                                            <span class="font-mono text-xs text-slate-900">${paymentRecord.id}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-slate-600">決済方法</span>
-                                            <span class="text-slate-900">
-                                                ${paymentRecord.paymentMethod === 'credit_card' ? 'クレジットカード' :
-                                                  paymentRecord.paymentMethod === 'convenience_store' ? 'コンビニ決済' : '銀行振込'}
-                                            </span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-slate-600">決済日時</span>
-                                            <span class="text-slate-900">${new Date(paymentRecord.paymentDate).toLocaleString('ja-JP')}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ` : ''}
-
-                            <!-- アクション -->
-                            <div class="border-t border-slate-200 pt-6 flex space-x-3">
-                                <button onclick="editParticipant('${participantId}')" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                                    <span class="material-icons-outlined text-sm align-middle mr-1">edit</span>
-                                    編集
-                                </button>
-                                <button onclick="this.closest('.fixed').remove()" class="flex-1 px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
-                                    閉じる
-                                </button>
-                                <button onclick="cancelParticipant('${participant.id}', '${participant.eventId}', '${participant.ticketName}'); this.closest('.fixed').remove();" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold">
-                                    キャンセル
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function editParticipant(participantId) {
-            const participant = store.participants.find(p => p.id === participantId);
-            if (!participant) return;
-            
-            const modal = document.getElementById('modal-container');
-            modal.innerHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-                        <div class="sticky top-0 bg-white border-b border-slate-200 p-6 flex justify-between items-center">
-                            <h2 class="text-2xl font-bold text-slate-800">参加者情報を編集</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-600">
-                                <span class="material-icons-outlined">close</span>
-                            </button>
-                        </div>
-
-                        <form onsubmit="saveParticipantEdit(event, '${participantId}')" class="p-6 space-y-6">
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">基本情報</h3>
-                                <div class="space-y-3">
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">参加者名</label>
-                                        <input type="text" name="userName" value="${participant.userName}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" required>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
-                                        <input type="email" name="email" value="user@example.com" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">電話番号</label>
-                                        <input type="tel" name="phone" value="090-1234-5678" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">チケット情報</h3>
-                                <div class="space-y-3">
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット種別</label>
-                                        <input type="text" name="ticketName" value="${participant.ticketName}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" required>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">購入金額（円）</label>
-                                        <input type="number" name="amount" value="${participant.amount || 0}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" required>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">ステータス</label>
-                                        <select name="status" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
-                                            <option value="paid" ${participant.status === 'paid' ? 'selected' : ''}>決済済み</option>
-                                            <option value="pending" ${participant.status === 'pending' ? 'selected' : ''}>未決済</option>
-                                            <option value="cancelled" ${participant.status === 'cancelled' ? 'selected' : ''}>キャンセル</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="border-t border-slate-200 pt-6 flex space-x-3">
-                                <button type="button" onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
-                                    キャンセル
-                                </button>
-                                <button type="submit" class="flex-1 px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
-                                    保存
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-        }
-
-        function saveParticipantEdit(event, participantId) {
-            event.preventDefault();
-            const form = event.target;
-            
-            const updatedData = {
-                userName: form.userName.value,
-                email: form.email.value,
-                phone: form.phone.value,
-                ticketName: form.ticketName.value,
-                amount: parseInt(form.amount.value),
-                status: form.status.value
-            };
-            
-            const participants = store.participants.map(p => {
-                if (p.id === participantId) {
-                    return { ...p, ...updatedData };
-                }
-                return p;
-            });
-            
-            store.participants = participants;
-            
-            showToast('参加者情報を更新しました', 'success');
-            document.querySelector('.fixed').remove();
-            renderOrganizer(document.getElementById('app'), 'operations', 'participants');
         }
 
         function cancelParticipant(ptId, eventId, ticketName) {
@@ -4036,8 +3118,7 @@
             `;
         }
 
-        function saveEventOld(e, id) {
-            // 旧バージョン - 非推奨
+        function saveEvent(e, id) {
             e.preventDefault();
             const form = e.target;
             const formData = {
@@ -4047,9 +3128,9 @@
                 venue_name: form.venue_name.value,
                 price: parseInt(form.price.value),
                 description: form.description.value,
-                organizer_name: store.organizerProfile.name,
+                organizer_name: store.organizerProfile.name, // Link to current profile
                 organizer_rating: '5.0',
-                cover_image_url: IMGS[form.category.value] || IMGS.tech,
+                cover_image_url: IMGS[form.category.value] || IMGS.tech, // Auto select img for demo
                 tickets: [
                     { id: `tkt-${Date.now()}`, name: '一般参加', price: parseInt(form.price.value), desc: '標準チケット' }
                 ]
@@ -4124,9 +3205,6 @@
                                 </button>
 
                                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 ml-2">Business</p>
-                                <button onclick="renderAdmin(document.getElementById('app'), 'payment-history')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'payment-history' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
-                                    <span class="material-icons-outlined mr-3 text-sm">receipt_long</span> 決済履歴
-                                </button>
                                 <button onclick="renderAdmin(document.getElementById('app'), 'finance')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'finance' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">account_balance_wallet</span> 財務・振込
                                 </button>
@@ -4173,7 +3251,6 @@
             if (tab === 'users') return renderAdminUsers();
             if (tab === 'events') return renderAdminEvents();
             if (tab === 'venues') return renderAdminVenues();
-            if (tab === 'payment-history') return renderAdminPaymentHistory();
             if (tab === 'finance') return renderAdminFinance();
             if (tab === 'marketing') return renderAdminMarketing();
             if (tab === 'settings') return renderAdminSystem(); // Re-use System for Settings
@@ -4220,157 +3297,6 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            `;
-        }
-
-        function renderAdminPaymentHistory() {
-            const paymentHistory = store.paymentHistory;
-            const totalAmount = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
-            const todayPayments = paymentHistory.filter(p => {
-                const today = new Date().toISOString().split('T')[0];
-                return p.paymentDate.split('T')[0] === today;
-            });
-            const todayAmount = todayPayments.reduce((sum, p) => sum + p.amount, 0);
-            
-            return `
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold text-slate-800">決済履歴（全体）</h1>
-                    <div class="flex space-x-2">
-                        <button onclick="exportPaymentHistory()" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50">
-                            <span class="material-icons-outlined text-sm align-middle mr-1">download</span> CSV出力
-                        </button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div class="bg-white p-6 rounded-2xl shadow-card">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-slate-500 text-sm">総決済額</span>
-                            <span class="material-icons-outlined text-blue-500">payments</span>
-                        </div>
-                        <p class="text-3xl font-bold text-slate-900">¥${totalAmount.toLocaleString()}</p>
-                        <p class="text-xs text-slate-500 mt-1">累計</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-2xl shadow-card">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-slate-500 text-sm">本日の決済</span>
-                            <span class="material-icons-outlined text-green-500">trending_up</span>
-                        </div>
-                        <p class="text-3xl font-bold text-slate-900">¥${todayAmount.toLocaleString()}</p>
-                        <p class="text-xs text-slate-500 mt-1">${todayPayments.length}件</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-2xl shadow-card">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-slate-500 text-sm">総取引数</span>
-                            <span class="material-icons-outlined text-purple-500">receipt</span>
-                        </div>
-                        <p class="text-3xl font-bold text-slate-900">${paymentHistory.length}</p>
-                        <p class="text-xs text-slate-500 mt-1">すべての取引</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                    <div class="p-4 border-b border-slate-100">
-                        <div class="flex items-center space-x-4">
-                            <input type="text" placeholder="検索: イベント名、ユーザー名、決済ID..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm">
-                            <select class="px-4 py-2 border border-slate-300 rounded-lg text-sm">
-                                <option value="">すべてのステータス</option>
-                                <option value="success">成功</option>
-                                <option value="pending">保留中</option>
-                                <option value="failed">失敗</option>
-                            </select>
-                            <select class="px-4 py-2 border border-slate-300 rounded-lg text-sm">
-                                <option value="">すべての決済方法</option>
-                                <option value="credit_card">クレジットカード</option>
-                                <option value="convenience_store">コンビニ決済</option>
-                                <option value="bank_transfer">銀行振込</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
-                                <tr>
-                                    <th class="py-4 px-6">決済ID</th>
-                                    <th class="py-4 px-6">日時</th>
-                                    <th class="py-4 px-6">ユーザー</th>
-                                    <th class="py-4 px-6">イベント</th>
-                                    <th class="py-4 px-6">チケット種別</th>
-                                    <th class="py-4 px-6">決済方法</th>
-                                    <th class="py-4 px-6 text-right">金額</th>
-                                    <th class="py-4 px-6 text-center">ステータス</th>
-                                    <th class="py-4 px-6 text-center">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                ${paymentHistory.length === 0 ? `
-                                    <tr>
-                                        <td colspan="9" class="py-12 text-center text-slate-500">
-                                            <span class="material-icons-outlined text-6xl text-slate-300 mb-4">receipt_long</span>
-                                            <p>決済履歴はありません</p>
-                                        </td>
-                                    </tr>
-                                ` : paymentHistory.map(payment => `
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="py-4 px-6">
-                                            <span class="font-mono text-xs text-slate-600">${payment.id}</span>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <p class="text-sm text-slate-900">${new Date(payment.paymentDate).toLocaleDateString('ja-JP')}</p>
-                                            <p class="text-xs text-slate-500">${new Date(payment.paymentDate).toLocaleTimeString('ja-JP')}</p>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <p class="text-sm font-medium text-slate-900">${payment.userName || 'ゲスト'}</p>
-                                            <p class="text-xs text-slate-500">${payment.userEmail || '-'}</p>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <p class="text-sm text-slate-900">${payment.eventTitle}</p>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <span class="text-sm text-slate-700">${payment.ticketName}</span>
-                                            <span class="text-xs text-slate-500">× ${payment.quantity}</span>
-                                        </td>
-                                        <td class="py-4 px-6">
-                                            <span class="inline-flex items-center text-xs">
-                                                <span class="material-icons-outlined text-sm mr-1">${payment.paymentMethod === 'credit_card' ? 'credit_card' : payment.paymentMethod === 'convenience_store' ? 'store' : 'account_balance'}</span>
-                                                ${payment.paymentMethod === 'credit_card' ? 'カード' : payment.paymentMethod === 'convenience_store' ? 'コンビニ' : '銀行振込'}
-                                            </span>
-                                        </td>
-                                        <td class="py-4 px-6 text-right">
-                                            <span class="text-sm font-bold text-slate-900">¥${payment.amount.toLocaleString()}</span>
-                                        </td>
-                                        <td class="py-4 px-6 text-center">
-                                            <span class="inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                                                payment.status === 'success' ? 'bg-green-100 text-green-700' :
-                                                payment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-red-100 text-red-700'
-                                            }">
-                                                ${payment.status === 'success' ? '成功' : payment.status === 'pending' ? '保留' : '失敗'}
-                                            </span>
-                                        </td>
-                                        <td class="py-4 px-6 text-center">
-                                            <button onclick="showPaymentDetail('${payment.id}')" class="text-blue-600 hover:text-blue-700 text-sm">
-                                                <span class="material-icons-outlined text-sm">visibility</span>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="p-4 border-t border-slate-100 flex justify-between items-center">
-                        <p class="text-sm text-slate-500">${paymentHistory.length}件の決済履歴を表示中</p>
-                        <div class="flex space-x-2">
-                            <button class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50">前へ</button>
-                            <button class="px-3 py-1 bg-primary text-white rounded text-sm">1</button>
-                            <button class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50">次へ</button>
-                        </div>
-                    </div>
                 </div>
             `;
         }
@@ -4520,106 +3446,31 @@
         }
 
         function renderAdminEvents() {
-            const pendingEvents = store.events.filter(e => e.approval_status === 'pending');
-            const allEvents = store.events;
-            
-            return `
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold text-slate-800">イベント・コンテンツ管理</h1>
-                    <div class="flex space-x-2">
-                        <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-bold">
-                            ${pendingEvents.length}件 承認待ち
-                        </span>
-                    </div>
-                </div>
-
-                ${pendingEvents.length > 0 ? `
-                    <div class="mb-8">
-                        <h2 class="text-lg font-bold text-slate-800 mb-4">承認待ちイベント</h2>
-                        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-yellow-50 text-slate-500 text-xs uppercase">
-                                    <tr>
-                                        <th class="p-4">イベント名</th>
-                                        <th class="p-4">主催者</th>
-                                        <th class="p-4">開催日</th>
-                                        <th class="p-4">申請日時</th>
-                                        <th class="p-4 text-right">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
-                                    ${pendingEvents.map(evt => `
-                                        <tr class="hover:bg-slate-50">
-                                            <td class="p-4">
-                                                <p class="font-bold text-slate-800">${evt.title}</p>
-                                                <p class="text-xs text-slate-500">${evt.category}</p>
-                                            </td>
-                                            <td class="p-4 text-slate-500">${evt.organizer_name}</td>
-                                            <td class="p-4">${new Date(evt.start_datetime).toLocaleDateString('ja-JP')}</td>
-                                            <td class="p-4 text-xs text-slate-500">${evt.submitted_at ? new Date(evt.submitted_at).toLocaleString('ja-JP') : '-'}</td>
-                                            <td class="p-4 text-right space-x-2">
-                                                <button onclick="reviewEvent('${evt.event_id}')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">
-                                                    レビュー
-                                                </button>
-                                                <button onclick="approveEvent('${evt.event_id}')" class="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200">
-                                                    承認
-                                                </button>
-                                                <button onclick="rejectEvent('${evt.event_id}')" class="px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200">
-                                                    却下
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                ` : ''}
-
-                <div>
-                    <h2 class="text-lg font-bold text-slate-800 mb-4">全イベント</h2>
-                    <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
-                                <tr>
-                                    <th class="p-4">イベント名</th>
-                                    <th class="p-4">主催者</th>
-                                    <th class="p-4">承認ステータス</th>
-                                    <th class="p-4">公開ステータス</th>
-                                    <th class="p-4 text-right">操作</th>
+             return `
+                <h1 class="text-2xl font-bold text-slate-800 mb-6">イベント・コンテンツ管理</h1>
+                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                            <tr>
+                                <th class="p-4">イベント名</th>
+                                <th class="p-4">主催者</th>
+                                <th class="p-4">ステータス</th>
+                                <th class="p-4 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
+                            ${store.events.map(evt => `
+                                <tr class="hover:bg-slate-50">
+                                    <td class="p-4 font-bold text-slate-800">${evt.title}</td>
+                                    <td class="p-4 text-slate-500">${evt.organizer_name}</td>
+                                    <td class="p-4"><span class="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">${evt.status}</span></td>
+                                    <td class="p-4 text-right">
+                                        <button onclick="deleteEventConfirm('${evt.event_id}')" class="text-red-500 hover:underline text-xs">削除 (強制)</button>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
-                                ${allEvents.map(evt => `
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-4 font-bold text-slate-800">${evt.title}</td>
-                                        <td class="p-4 text-slate-500">${evt.organizer_name}</td>
-                                        <td class="p-4">
-                                            <span class="px-2 py-1 rounded-full text-xs font-bold ${
-                                                evt.approval_status === 'approved' ? 'bg-green-100 text-green-700' :
-                                                evt.approval_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                evt.approval_status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                                'bg-slate-100 text-slate-600'
-                                            }">
-                                                ${evt.approval_status === 'approved' ? '承認済み' : 
-                                                  evt.approval_status === 'pending' ? '承認待ち' : 
-                                                  evt.approval_status === 'rejected' ? '却下' : '下書き'}
-                                            </span>
-                                        </td>
-                                        <td class="p-4">
-                                            <span class="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">${evt.status || 'published'}</span>
-                                        </td>
-                                        <td class="p-4 text-right space-x-2">
-                                            ${evt.approval_status === 'pending' ? `
-                                                <button onclick="reviewEvent('${evt.event_id}')" class="text-blue-500 hover:underline text-xs">レビュー</button>
-                                            ` : ''}
-                                            <button onclick="deleteEventConfirm('${evt.event_id}')" class="text-red-500 hover:underline text-xs">削除</button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 </div>
             `;
         }
@@ -4736,99 +3587,44 @@
         // --- ADMIN ACTIONS ---
 
         function openVenueEditor(id = null) {
-            const venue = id ? store.venues.find(v => v.id === id) : { name: '', address: '', layout: { rows: 10, cols: 12 }, seats: [] };
+            const venue = id ? store.venues.find(v => v.id === id) : { name: '', address: '', layout: { rows: 10, cols: 12 } };
             const isEdit = !!id;
             
             const modal = document.getElementById('modal-content');
             document.getElementById('modal-container').classList.remove('hidden');
             
             modal.innerHTML = `
-                <div class="p-6 max-w-4xl max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
                     <h3 class="text-xl font-bold mb-6 text-slate-800">${isEdit ? '施設編集' : '施設登録'}</h3>
-                    <form onsubmit="saveVenue(event, '${id || ''}')" class="space-y-6">
-                        <!-- 基本情報 -->
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">施設名 <span class="text-red-500">*</span></label>
-                                <input type="text" name="name" value="${venue.name}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">住所 <span class="text-red-500">*</span></label>
-                                <input type="text" name="address" value="${venue.address}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required>
-                            </div>
+                    <form onsubmit="saveVenue(event, '${id || ''}')" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">施設名</label>
+                            <input type="text" name="name" value="${venue.name}" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary outline-none" required>
                         </div>
-
-                        <!-- 座席レイアウト設定 -->
-                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-sm font-bold text-slate-700">座席レイアウト設定</h4>
-                                <div class="flex space-x-2">
-                                    <button type="button" onclick="showSeatLayoutMethod('grid')" class="px-3 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-100" id="btn-grid-layout">
-                                        グリッド方式
-                                    </button>
-                                    <button type="button" onclick="showSeatLayoutMethod('csv')" class="px-3 py-1 bg-white border border-slate-300 rounded text-xs hover:bg-slate-100" id="btn-csv-layout">
-                                        CSV登録
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- グリッド方式 -->
-                            <div id="grid-layout-section" class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs text-slate-500 mb-1">行数 (Rows) A-Z</label>
-                                        <input type="number" name="rows" value="${venue.layout ? venue.layout.rows : 10}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" min="1" max="26">
-                                        <p class="text-xs text-slate-400 mt-1">最大26行（A-Z）</p>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs text-slate-500 mb-1">列数 (Cols) 1-n</label>
-                                        <input type="number" name="cols" value="${venue.layout ? venue.layout.cols : 12}" class="w-full px-4 py-2 border border-slate-300 rounded-lg" min="1" max="50">
-                                        <p class="text-xs text-slate-400 mt-1">最大50列</p>
-                                    </div>
-                                </div>
-                                <div class="bg-white p-4 rounded border border-slate-200">
-                                    <p class="text-xs font-bold text-slate-600 mb-2">座席自動生成</p>
-                                    <p class="text-xs text-slate-500">行数×列数の座席が自動生成されます。例: 10行×12列 = 120席</p>
-                                    <p class="text-xs text-slate-500 mt-1">座席番号: A-1, A-2, ..., B-1, B-2, ...</p>
-                                </div>
-                            </div>
-
-                            <!-- CSV登録方式 -->
-                            <div id="csv-layout-section" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">住所</label>
+                            <input type="text" name="address" value="${venue.address}" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary outline-none" required>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <p class="text-xs font-bold text-slate-500 mb-3">座席レイアウト設定</p>
+                            <div class="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">座席データCSVアップロード</label>
-                                    <input type="file" id="csv-upload" accept=".csv" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
-                                    <p class="text-xs text-slate-500 mt-2">CSVフォーマット: 座席番号,行,列,セクション,価格タイプ</p>
-                                    <p class="text-xs text-slate-500">例: A-1,A,1,VIPエリア,premium</p>
+                                    <label class="block text-xs text-slate-400 mb-1">行数 (Rows)</label>
+                                    <input type="number" name="rows" value="${venue.layout ? venue.layout.rows : 10}" class="w-full p-2 border border-slate-300 rounded" min="1" max="26">
                                 </div>
                                 <div>
-                                    <button type="button" onclick="downloadSeatTemplate()" class="text-blue-600 hover:text-blue-700 text-sm">
-                                        <span class="material-icons-outlined text-sm align-middle">download</span> サンプルCSVをダウンロード
-                                    </button>
-                                </div>
-                                <div id="csv-preview" class="hidden">
-                                    <p class="text-xs font-bold text-slate-600 mb-2">プレビュー</p>
-                                    <div class="bg-white border border-slate-200 rounded p-3 text-xs max-h-40 overflow-y-auto">
-                                        <div id="csv-preview-content"></div>
-                                    </div>
+                                    <label class="block text-xs text-slate-400 mb-1">列数 (Cols)</label>
+                                    <input type="number" name="cols" value="${venue.layout ? venue.layout.cols : 12}" class="w-full p-2 border border-slate-300 rounded" min="1" max="20">
                                 </div>
                             </div>
                         </div>
-
-                        <!-- ボタン -->
-                        <div class="flex justify-end space-x-3 pt-4">
-                            <button type="button" onclick="closeModal()" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">キャンセル</button>
-                            <button type="submit" class="px-6 py-2 bg-primary text-white font-bold rounded-lg shadow hover:bg-blue-600">保存</button>
+                        <div class="pt-4 flex justify-end space-x-3">
+                            <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded">キャンセル</button>
+                            <button type="submit" class="px-6 py-2 bg-primary text-white font-bold rounded shadow hover:bg-blue-600">保存</button>
                         </div>
                     </form>
                 </div>
             `;
-            
-            // CSV upload handler
-            const csvInput = document.getElementById('csv-upload');
-            if (csvInput) {
-                csvInput.addEventListener('change', handleCSVUpload);
-            }
         }
 
         function saveVenue(e, id) {
@@ -4841,32 +3637,8 @@
                 layout: {
                     rows: parseInt(form.rows.value),
                     cols: parseInt(form.cols.value)
-                },
-                seats: []
-            };
-            
-            // CSVアップロードされた座席データがあれば使用
-            if (window.uploadedSeats && window.uploadedSeats.length > 0) {
-                newVenue.seats = window.uploadedSeats;
-                delete window.uploadedSeats; // Clean up
-            } else {
-                // グリッド方式: 自動生成
-                const rows = newVenue.layout.rows;
-                const cols = newVenue.layout.cols;
-                for (let r = 0; r < rows; r++) {
-                    const rowLabel = String.fromCharCode(65 + r); // A, B, C, ...
-                    for (let c = 1; c <= cols; c++) {
-                        newVenue.seats.push({
-                            seatNumber: `${rowLabel}-${c}`,
-                            row: rowLabel,
-                            col: c,
-                            section: '',
-                            priceType: 'standard',
-                            status: 'available'
-                        });
-                    }
                 }
-            }
+            };
             
             let venues = store.venues;
             if (id) {
@@ -4887,95 +3659,6 @@
                 renderAdmin(document.getElementById('app'), 'venues');
                 showToast('施設を削除しました', 'delete');
             }
-        }
-
-        // --- 座席管理ヘルパー関数 ---
-        function showSeatLayoutMethod(method) {
-            const gridSection = document.getElementById('grid-layout-section');
-            const csvSection = document.getElementById('csv-layout-section');
-            const gridBtn = document.getElementById('btn-grid-layout');
-            const csvBtn = document.getElementById('btn-csv-layout');
-            
-            if (method === 'grid') {
-                gridSection.classList.remove('hidden');
-                csvSection.classList.add('hidden');
-                gridBtn.classList.add('bg-primary', 'text-white');
-                gridBtn.classList.remove('bg-white');
-                csvBtn.classList.remove('bg-primary', 'text-white');
-                csvBtn.classList.add('bg-white');
-            } else {
-                gridSection.classList.add('hidden');
-                csvSection.classList.remove('hidden');
-                csvBtn.classList.add('bg-primary', 'text-white');
-                csvBtn.classList.remove('bg-white');
-                gridBtn.classList.remove('bg-primary', 'text-white');
-                gridBtn.classList.add('bg-white');
-            }
-        }
-
-        function downloadSeatTemplate() {
-            const csvContent = `座席番号,行,列,セクション,価格タイプ,ステータス
-A-1,A,1,VIPエリア,premium,available
-A-2,A,2,VIPエリア,premium,available
-B-1,B,1,一般エリア,standard,available
-B-2,B,2,一般エリア,standard,available
-C-1,C,1,自由席エリア,free,available`;
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'seat_template.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function handleCSVUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const csvContent = e.target.result;
-                const lines = csvContent.split('\n');
-                const seats = [];
-                
-                // Skip header line
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (!line) continue;
-                    
-                    const parts = line.split(',');
-                    if (parts.length >= 3) {
-                        seats.push({
-                            seatNumber: parts[0],
-                            row: parts[1],
-                            col: parts[2],
-                            section: parts[3] || '',
-                            priceType: parts[4] || 'standard',
-                            status: parts[5] || 'available'
-                        });
-                    }
-                }
-                
-                // Preview
-                const preview = document.getElementById('csv-preview');
-                const previewContent = document.getElementById('csv-preview-content');
-                preview.classList.remove('hidden');
-                previewContent.innerHTML = `
-                    <p class="font-bold mb-2">${seats.length}席を読み込みました</p>
-                    <div class="space-y-1">
-                        ${seats.slice(0, 10).map(s => `<p>${s.seatNumber} - ${s.section || 'エリア未設定'} (${s.priceType})</p>`).join('')}
-                        ${seats.length > 10 ? `<p class="text-slate-400">... 他 ${seats.length - 10}席</p>` : ''}
-                    </div>
-                `;
-                
-                // Store the uploaded seats temporarily
-                window.uploadedSeats = seats;
-            };
-            reader.readAsText(file);
         }
 
         function saveSystemSettings() {
@@ -5157,332 +3840,6 @@ C-1,C,1,自由席エリア,free,available`;
             `;
         }
 
-        function updateVenueFields() {
-            const venueType = document.getElementById('venue-type').value;
-            document.getElementById('venue-custom-fields').classList.toggle('hidden', venueType !== 'custom');
-            document.getElementById('venue-registered-fields').classList.toggle('hidden', venueType !== 'registered');
-            document.getElementById('venue-online-fields').classList.toggle('hidden', venueType !== 'online');
-            
-            // 指定会場選択時に座席データを表示
-            if (venueType === 'registered') {
-                const venueSelect = document.getElementById('venue-select');
-                venueSelect.addEventListener('change', function() {
-                    const venueId = this.value;
-                    if (venueId) {
-                        const venue = store.venues.find(v => v.id === venueId);
-                        if (venue && venue.seats && venue.seats.length > 0) {
-                            showToast(`${venue.name}の座席データ（${venue.seats.length}席）を読み込みました`, 'info');
-                            // 座席データをイベントに紐付ける
-                            window.currentVenueSeats = venue.seats;
-                        } else {
-                            showToast('この会場には座席データがありません', 'warning');
-                            window.currentVenueSeats = null;
-                        }
-                    }
-                });
-            }
-        }
-
-        function addTicketType() {
-            const ticketList = document.getElementById('ticket-list');
-            const newTicket = document.createElement('div');
-            newTicket.className = 'border border-slate-200 rounded-lg p-4';
-            newTicket.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
-                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="VIP席">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
-                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="5000">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
-                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="50">
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="this.closest('.border').remove()" class="text-red-500 hover:text-red-700">
-                            <span class="material-icons-outlined">delete</span>
-                        </button>
-                    </div>
-                </div>
-            `;
-            ticketList.appendChild(newTicket);
-        }
-
-        function generateDescriptionWithAI() {
-            const description = document.getElementById('event-description').value;
-            if (!description.trim()) {
-                showToast('説明文を入力してください', 'error');
-                return;
-            }
-            
-            showToast('AI生成中...', 'info');
-            
-            // シンプルな整形処理（実際のAI APIは後で実装）
-            setTimeout(() => {
-                const lines = description.split('\n').filter(l => l.trim());
-                const formatted = `
-<div class="event-description">
-    <h3>イベント概要</h3>
-    <p>${lines[0] || ''}</p>
-    
-    <h3>詳細</h3>
-    <ul>
-        ${lines.slice(1).map(line => `<li>${line}</li>`).join('\n        ')}
-    </ul>
-    
-    <h3>こんな方におすすめ</h3>
-    <ul>
-        <li>業界の最新トレンドに興味がある方</li>
-        <li>ネットワーキングを広げたい方</li>
-        <li>新しい知識やスキルを習得したい方</li>
-    </ul>
-</div>
-                `.trim();
-                
-                document.getElementById('event-description').value = formatted;
-                showToast('AI生成が完了しました', 'success');
-            }, 1000);
-        }
-
-        function saveEvent(eventId) {
-            const isNew = eventId === 'new';
-            
-            // フォームデータ取得
-            const title = document.getElementById('event-title').value;
-            const category = document.getElementById('event-category').value;
-            const startDatetime = document.getElementById('event-start').value;
-            const endDatetime = document.getElementById('event-end').value;
-            const description = document.getElementById('event-description').value;
-            const coverImage = document.getElementById('event-cover-image').value;
-            const venueType = document.getElementById('venue-type').value;
-            const userRestriction = document.querySelector('input[name="user-restriction"]:checked').value;
-            
-            // バリデーション
-            if (!title || !startDatetime || !endDatetime) {
-                showToast('必須項目を入力してください', 'error');
-                return;
-            }
-            
-            // 会場情報取得
-            let venueData = {};
-            if (venueType === 'custom') {
-                venueData.venue_name = document.getElementById('venue-name-custom').value;
-                venueData.venue_address = document.getElementById('venue-address-custom').value;
-            } else if (venueType === 'registered') {
-                const venueId = document.getElementById('venue-select').value;
-                const venue = store.venues.find(v => v.id === venueId);
-                if (venue) {
-                    venueData.venue_id = venue.id;
-                    venueData.venue_name = venue.name;
-                    venueData.venue_address = venue.address;
-                    // 座席データを紐付け
-                    if (venue.seats && venue.seats.length > 0) {
-                        venueData.seats = venue.seats.map(seat => ({
-                            ...seat,
-                            event_status: 'available' // イベント固有のステータス
-                        }));
-                    }
-                }
-            } else if (venueType === 'online') {
-                venueData.venue_name = 'オンライン';
-                venueData.venue_address = 'Zoom Link';
-                venueData.zoom_url = document.getElementById('venue-zoom-url').value;
-            }
-            
-            // チケット情報取得
-            const ticketElements = document.querySelectorAll('#ticket-list > div');
-            const tickets = Array.from(ticketElements).map((el, idx) => ({
-                id: `ticket-${Date.now()}-${idx}`,
-                name: el.querySelector('.ticket-name').value,
-                price: parseInt(el.querySelector('.ticket-price').value) || 0,
-                capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,
-                available: parseInt(el.querySelector('.ticket-capacity').value) || 100
-            }));
-            
-            // イベントオブジェクト作成
-            const eventData = {
-                event_id: isNew ? `evt-${Date.now()}` : eventId,
-                title,
-                category,
-                start_datetime: new Date(startDatetime).toISOString(),
-                end_datetime: new Date(endDatetime).toISOString(),
-                description,
-                cover_image_url: coverImage || `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80`,
-                ...venueData,
-                tickets,
-                organizer_name: store.organizerProfile.name,
-                organizer_rating: 4.8,
-                user_restriction: userRestriction,
-                status: 'draft',
-                approval_status: 'draft',
-                created_at: isNew ? new Date().toISOString() : (store.events.find(e => e.event_id === eventId)?.created_at || new Date().toISOString()),
-                updated_at: new Date().toISOString()
-            };
-            
-            // 保存
-            if (isNew) {
-                store.addEvent(eventData);
-            } else {
-                store.updateEvent(eventData);
-            }
-            
-            showToast('イベントを保存しました', 'success');
-            
-            setTimeout(() => {
-                renderOrganizer(document.getElementById('app'), 'events');
-            }, 1000);
-        }
-
-        function submitForApproval(eventId) {
-            // まず保存
-            saveEvent(eventId);
-            
-            // 承認ステータスを更新
-            setTimeout(() => {
-                const event = store.events.find(e => e.event_id === (eventId === 'new' ? store.events[0].event_id : eventId));
-                if (event) {
-                    event.approval_status = 'pending';
-                    event.submitted_at = new Date().toISOString();
-                    store.updateEvent(event);
-                    
-                    showToast('承認申請を送信しました', 'success');
-                    
-                    setTimeout(() => {
-                        renderOrganizer(document.getElementById('app'), 'events');
-                    }, 1500);
-                }
-            }, 500);
-        }
-
-        function showEventParticipants(eventId) {
-            // 参加者詳細ページへ遷移（後で実装）
-            showToast('参加者詳細ページは準備中です', 'info');
-        }
-
-        function showTicketDetail(ticketId) {
-            const ticket = store.tickets.find(t => t.id === ticketId);
-            if (!ticket) return;
-
-            const event = store.events.find(e => e.event_id === ticket.eventId);
-            if (!event) return;
-
-            const modal = document.getElementById('modal-content');
-            document.getElementById('modal-container').classList.remove('hidden');
-            
-            modal.innerHTML = `
-                <div class="p-8">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xl font-bold text-slate-800">チケット詳細</h3>
-                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
-                            <span class="material-icons-outlined">close</span>
-                        </button>
-                    </div>
-                    
-                    <!-- Event Info -->
-                    <div class="bg-slate-50 rounded-xl p-4 mb-6">
-                        <div class="flex items-start">
-                            <img src="${event.cover_image_url}" class="w-20 h-20 rounded-lg object-cover mr-4">
-                            <div class="flex-1">
-                                <h4 class="font-bold text-slate-800 mb-1">${event.title}</h4>
-                                <p class="text-sm text-slate-600 mb-1">
-                                    <span class="material-icons-outlined text-xs align-middle mr-1">schedule</span>
-                                    ${new Date(event.start_datetime).toLocaleString('ja-JP', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                </p>
-                                <p class="text-sm text-slate-600">
-                                    <span class="material-icons-outlined text-xs align-middle mr-1">place</span>
-                                    ${event.venue_name}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Ticket Info -->
-                    <div class="space-y-4 mb-6">
-                        <div class="flex justify-between py-3 border-b border-slate-100">
-                            <span class="text-slate-600">チケット種類</span>
-                            <span class="font-bold text-slate-800">${ticket.ticketName}</span>
-                        </div>
-                        <div class="flex justify-between py-3 border-b border-slate-100">
-                            <span class="text-slate-600">枚数</span>
-                            <span class="font-bold text-slate-800">${ticket.count}枚</span>
-                        </div>
-                        ${ticket.seats && ticket.seats.length > 0 ? `
-                        <div class="flex justify-between py-3 border-b border-slate-100">
-                            <span class="text-slate-600">座席番号</span>
-                            <div class="text-right">
-                                ${ticket.seats.map(seat => `
-                                    <span class="inline-block bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-bold mr-1 mb-1">${seat}</span>
-                                `).join('')}
-                            </div>
-                        </div>
-                        ` : ''}
-                        <div class="flex justify-between py-3 border-b border-slate-100">
-                            <span class="text-slate-600">合計金額</span>
-                            <span class="font-bold text-lg text-slate-800">¥${(ticket.total || 0).toLocaleString()}</span>
-                        </div>
-                        <div class="flex justify-between py-3 border-b border-slate-100">
-                            <span class="text-slate-600">購入日時</span>
-                            <span class="text-slate-800">${new Date(ticket.purchaseDate).toLocaleString('ja-JP')}</span>
-                        </div>
-                        <div class="flex justify-between py-3 border-b border-slate-100">
-                            <span class="text-slate-600">チケットID</span>
-                            <span class="text-slate-600 font-mono text-xs">${ticket.id}</span>
-                        </div>
-                        <div class="flex justify-between py-3">
-                            <span class="text-slate-600">ステータス</span>
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                                ticket.status === 'valid' ? 'bg-green-100 text-green-700' : 
-                                ticket.status === 'used' ? 'bg-slate-100 text-slate-600' : 
-                                'bg-red-100 text-red-700'
-                            }">
-                                ${ticket.status === 'valid' ? '有効' : ticket.status === 'used' ? '使用済み' : 'キャンセル済み'}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- QR Code -->
-                    <div class="bg-slate-900 rounded-xl p-6 text-center mb-6">
-                        <img src="${ticket.qrCode}" class="w-48 h-48 mx-auto mb-3 bg-white p-2 rounded-lg">
-                        <p class="text-white text-sm">入場時にスタッフに提示してください</p>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="flex gap-3">
-                        <button onclick="openShareModal('${ticket.id}')" class="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition flex items-center justify-center">
-                            <span class="material-icons-outlined text-sm mr-2">ios_share</span>
-                            分配・譲渡
-                        </button>
-                        <button onclick="downloadTicketPDF('${ticket.id}')" class="flex-1 py-3 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
-                            <span class="material-icons-outlined text-sm mr-2">download</span>
-                            PDF保存
-                        </button>
-                    </div>
-
-                    <!-- Notes -->
-                    <div class="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                        <p class="text-xs text-amber-800">
-                            <span class="material-icons-outlined text-sm align-middle mr-1">info</span>
-                            チケットの譲渡・転売は主催者の規約に従ってください。不正利用が発覚した場合、入場をお断りすることがあります。
-                        </p>
-                    </div>
-                </div>
-            `;
-        }
-
-        function downloadTicketPDF(ticketId) {
-            showToast('PDF保存機能は開発中です', 'download');
-            closeModal();
-        }
-
         function shareTicket(method) {
             const checkboxes = document.querySelectorAll('input[name="share_item"]:checked');
             if (checkboxes.length === 0) {
@@ -5507,380 +3864,6 @@ C-1,C,1,自由席エリア,free,available`;
                 closeModal();
                 showToast('メーラーを起動しました (Demo)', 'mail');
             }
-        }
-
-        function reviewEvent(eventId) {
-            const event = store.events.find(e => e.event_id === eventId);
-            if (!event) {
-                showToast('イベントが見つかりません', 'error');
-                return;
-            }
-            
-            const modal = document.getElementById('modal-container');
-            modal.innerHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-                        <div class="sticky top-0 bg-white border-b border-slate-200 p-6 flex justify-between items-center">
-                            <h2 class="text-2xl font-bold text-slate-800">イベントレビュー</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-600">
-                                <span class="material-icons-outlined">close</span>
-                            </button>
-                        </div>
-
-                        <div class="p-6 space-y-6">
-                            <!-- イベント情報 -->
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <h3 class="text-sm font-bold text-slate-500 mb-2">イベント名</h3>
-                                        <p class="text-slate-900">${event.title}</p>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-sm font-bold text-slate-500 mb-2">カテゴリー</h3>
-                                        <p class="text-slate-900">${event.category}</p>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-sm font-bold text-slate-500 mb-2">主催者</h3>
-                                        <p class="text-slate-900">${event.organizer_name}</p>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-sm font-bold text-slate-500 mb-2">開催日時</h3>
-                                        <p class="text-slate-900">${new Date(event.start_datetime).toLocaleString('ja-JP')}</p>
-                                    </div>
-                                    <div class="col-span-2">
-                                        <h3 class="text-sm font-bold text-slate-500 mb-2">会場</h3>
-                                        <p class="text-slate-900">${event.venue_name}</p>
-                                        <p class="text-xs text-slate-500">${event.venue_address || ''}</p>
-                                    </div>
-                                    <div class="col-span-2">
-                                        <h3 class="text-sm font-bold text-slate-500 mb-2">説明文</h3>
-                                        <div class="text-slate-700 text-sm max-h-48 overflow-y-auto">
-                                            ${event.description}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- チケット情報 -->
-                            ${event.tickets ? `
-                                <div class="border border-slate-200 rounded-lg p-4">
-                                    <h3 class="text-sm font-bold text-slate-500 mb-3">チケット情報</h3>
-                                    <div class="space-y-2">
-                                        ${event.tickets.map(ticket => `
-                                            <div class="flex justify-between items-center bg-slate-50 p-3 rounded">
-                                                <div>
-                                                    <p class="font-bold text-slate-900">${ticket.name}</p>
-                                                    <p class="text-xs text-slate-500">販売数: ${ticket.capacity}枚</p>
-                                                </div>
-                                                <p class="text-lg font-bold text-primary">¥${ticket.price.toLocaleString()}</p>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-
-                            <!-- 販売制限 -->
-                            <div class="border border-slate-200 rounded-lg p-4">
-                                <h3 class="text-sm font-bold text-slate-500 mb-2">販売制限</h3>
-                                <p class="text-slate-900">
-                                    ${event.user_restriction === 'verified' ? 
-                                        '本人確認済みユーザーのみ販売可能' : 
-                                        'フリーユーザーへの販売を許可'}
-                                </p>
-                            </div>
-
-                            <!-- 承認アクション -->
-                            <div class="border-t border-slate-200 pt-6">
-                                <h3 class="text-lg font-bold text-slate-800 mb-4">審査</h3>
-                                
-                                <div class="flex space-x-4">
-                                    <button onclick="approveEvent('${event.event_id}')" class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold">
-                                        <span class="material-icons-outlined text-sm align-middle">check_circle</span> 承認
-                                    </button>
-                                    <button onclick="showRejectForm('${event.event_id}')" class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold">
-                                        <span class="material-icons-outlined text-sm align-middle">cancel</span> 却下
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function approveEvent(eventId) {
-            const event = store.events.find(e => e.event_id === eventId);
-            if (!event) {
-                showToast('イベントが見つかりません', 'error');
-                return;
-            }
-            
-            event.approval_status = 'approved';
-            event.approved_at = new Date().toISOString();
-            event.approved_by = 'スーパー管理者';
-            event.status = 'published';
-            store.updateEvent(event);
-            
-            showToast(`「${event.title}」を承認しました`, 'success');
-            
-            // モーダルを閉じる
-            const modal = document.getElementById('modal-container');
-            if (modal) modal.innerHTML = '';
-            
-            // 管理画面を再描画
-            setTimeout(() => {
-                renderAdmin(document.getElementById('app'), 'events');
-            }, 500);
-        }
-
-        function rejectEvent(eventId) {
-            showRejectForm(eventId);
-        }
-
-        function showRejectForm(eventId) {
-            const event = store.events.find(e => e.event_id === eventId);
-            if (!event) {
-                showToast('イベントが見つかりません', 'error');
-                return;
-            }
-            
-            const modal = document.getElementById('modal-container');
-            modal.innerHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full" onclick="event.stopPropagation()">
-                        <div class="p-6 border-b border-slate-200">
-                            <h2 class="text-2xl font-bold text-slate-800">イベント却下</h2>
-                            <p class="text-sm text-slate-500 mt-1">「${event.title}」</p>
-                        </div>
-
-                        <div class="p-6">
-                            <label class="block text-sm font-bold text-slate-700 mb-2">却下理由 <span class="text-red-500">*</span></label>
-                            <textarea id="rejection-reason" rows="6" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500" placeholder="主催者への却下理由を入力してください...
-
-例:
-- イベント内容が不明瞭です。詳細な説明を追加してください。
-- 会場情報が不足しています。正確な住所を記載してください。
-- チケット価格が高額すぎます。再検討をお願いします。"></textarea>
-                            
-                            <div class="flex justify-end space-x-2 mt-6">
-                                <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
-                                    キャンセル
-                                </button>
-                                <button onclick="submitRejection('${event.event_id}')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold">
-                                    却下を確定
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function submitRejection(eventId) {
-            const reason = document.getElementById('rejection-reason').value.trim();
-            
-            if (!reason) {
-                showToast('却下理由を入力してください', 'error');
-                return;
-            }
-            
-            const event = store.events.find(e => e.event_id === eventId);
-            if (!event) {
-                showToast('イベントが見つかりません', 'error');
-                return;
-            }
-            
-            event.approval_status = 'rejected';
-            event.rejected_at = new Date().toISOString();
-            event.rejected_by = 'スーパー管理者';
-            event.rejection_reason = reason;
-            event.status = 'draft';
-            store.updateEvent(event);
-            
-            showToast(`「${event.title}」を却下しました`, 'success');
-            
-            // モーダルを閉じる
-            const modal = document.getElementById('modal-container');
-            if (modal) modal.innerHTML = '';
-            
-            // 管理画面を再描画
-            setTimeout(() => {
-                renderAdmin(document.getElementById('app'), 'events');
-            }, 500);
-        }
-
-        function exportPaymentHistory(scope = 'all') {
-            const paymentHistory = scope === 'organizer' 
-                ? store.paymentHistory.filter(p => {
-                    const organizerEvents = store.events.filter(e => e.organizer_name === store.organizerProfile.name);
-                    const organizerEventIds = organizerEvents.map(e => e.event_id);
-                    return organizerEventIds.includes(p.eventId);
-                })
-                : store.paymentHistory;
-            
-            // CSVヘッダー
-            const csvRows = [
-                ['決済ID', '日時', 'ユーザー名', 'メールアドレス', 'イベント', 'チケット種別', '数量', '決済方法', '金額', 'ステータス']
-            ];
-            
-            // データ行
-            paymentHistory.forEach(payment => {
-                csvRows.push([
-                    payment.id,
-                    new Date(payment.paymentDate).toLocaleString('ja-JP'),
-                    payment.userName || 'ゲスト',
-                    payment.userEmail || '-',
-                    payment.eventTitle,
-                    payment.ticketName,
-                    payment.quantity,
-                    payment.paymentMethod === 'credit_card' ? 'クレジットカード' : 
-                        payment.paymentMethod === 'convenience_store' ? 'コンビニ決済' : '銀行振込',
-                    payment.amount,
-                    payment.status === 'success' ? '成功' : payment.status === 'pending' ? '保留' : '失敗'
-                ]);
-            });
-            
-            // CSV文字列に変換
-            const csvContent = csvRows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-            
-            // ダウンロード
-            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `payment_history_${new Date().toISOString().split('T')[0]}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showToast('CSV出力が完了しました', 'success');
-        }
-
-        function showPaymentDetail(paymentId) {
-            const payment = store.paymentHistory.find(p => p.id === paymentId);
-            if (!payment) {
-                showToast('決済情報が見つかりません', 'error');
-                return;
-            }
-            
-            const event = store.events.find(e => e.event_id === payment.eventId);
-            
-            const modal = document.getElementById('modal-container');
-            modal.innerHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <h2 class="text-2xl font-bold text-slate-800">決済詳細</h2>
-                                <p class="text-sm text-slate-500 mt-1">決済ID: ${payment.id}</p>
-                            </div>
-                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-600">
-                                <span class="material-icons-outlined">close</span>
-                            </button>
-                        </div>
-
-                        <div class="space-y-6">
-                            <!-- ステータス -->
-                            <div class="bg-${payment.status === 'success' ? 'green' : 'yellow'}-50 border border-${payment.status === 'success' ? 'green' : 'yellow'}-200 rounded-lg p-4">
-                                <div class="flex items-center">
-                                    <span class="material-icons-outlined text-${payment.status === 'success' ? 'green' : 'yellow'}-600 mr-2">
-                                        ${payment.status === 'success' ? 'check_circle' : 'pending'}
-                                    </span>
-                                    <span class="font-bold text-${payment.status === 'success' ? 'green' : 'yellow'}-800">
-                                        ${payment.status === 'success' ? '決済完了' : '保留中'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- イベント情報 -->
-                            <div class="border-b border-slate-200 pb-4">
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">イベント情報</h3>
-                                <div class="space-y-2">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">イベント名</span>
-                                        <span class="font-medium text-slate-900">${payment.eventTitle}</span>
-                                    </div>
-                                    ${event ? `
-                                        <div class="flex justify-between">
-                                            <span class="text-slate-600">開催日時</span>
-                                            <span class="font-medium text-slate-900">${new Date(event.start_datetime).toLocaleDateString('ja-JP')}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-slate-600">会場</span>
-                                            <span class="font-medium text-slate-900">${event.venue_name}</span>
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-
-                            <!-- チケット情報 -->
-                            <div class="border-b border-slate-200 pb-4">
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">チケット情報</h3>
-                                <div class="space-y-2">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">チケット種別</span>
-                                        <span class="font-medium text-slate-900">${payment.ticketName}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">購入枚数</span>
-                                        <span class="font-medium text-slate-900">${payment.quantity}枚</span>
-                                    </div>
-                                    ${payment.seats ? `
-                                        <div class="flex justify-between">
-                                            <span class="text-slate-600">座席番号</span>
-                                            <span class="font-medium text-slate-900">${payment.seats}</span>
-                                        </div>
-                                    ` : ''}
-                                </div>
-                            </div>
-
-                            <!-- 購入者情報 -->
-                            <div class="border-b border-slate-200 pb-4">
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">購入者情報</h3>
-                                <div class="space-y-2">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">お名前</span>
-                                        <span class="font-medium text-slate-900">${payment.userName || 'ゲスト'}</span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">メールアドレス</span>
-                                        <span class="font-medium text-slate-900">${payment.userEmail || '-'}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 決済情報 -->
-                            <div>
-                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">決済情報</h3>
-                                <div class="space-y-2">
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">決済方法</span>
-                                        <span class="font-medium text-slate-900">
-                                            ${payment.paymentMethod === 'credit_card' ? 'クレジットカード' : 
-                                              payment.paymentMethod === 'convenience_store' ? 'コンビニ決済' : '銀行振込'}
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between">
-                                        <span class="text-slate-600">決済日時</span>
-                                        <span class="font-medium text-slate-900">${new Date(payment.paymentDate).toLocaleString('ja-JP')}</span>
-                                    </div>
-                                    <div class="flex justify-between items-center pt-2 border-t border-slate-200">
-                                        <span class="text-lg font-bold text-slate-900">合計金額</span>
-                                        <span class="text-2xl font-bold text-primary">¥${payment.amount.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-6 flex justify-end">
-                            <button onclick="this.closest('.fixed').remove()" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-300">
-                                閉じる
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
         }
 
         function openKYCModal() {

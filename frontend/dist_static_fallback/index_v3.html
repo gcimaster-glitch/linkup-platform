@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkUp - 日本最大級のイベント・コミュニティプラットフォーム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet CSS & JS for Real Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563EB',
+                        secondary: '#1E40AF',
+                        accent: '#F59E0B',
+                        dark: '#0F172A',
+                        light: '#F8FAFC',
+                        surface: '#FFFFFF'
+                    },
+                    fontFamily: {
+                        sans: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        'float': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #F8FAFC; color: #1E293B; }
+        .hero-gradient { background: linear-gradient(135deg, #0F172A 0%, #1E40AF 100%); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
+        .modal-exit { opacity: 1; transform: scale(1); }
+        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: all 0.2s ease-in; }
+        
+        /* Map Pin Animation */
+        .map-pin { position: absolute; width: 32px; height: 32px; background: #EF4444; border-radius: 50% 50% 0 50%; transform: rotate(45deg); cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 2px solid white; z-index: 10; }
+        .map-pin:hover { transform: rotate(45deg) scale(1.2); z-index: 20; }
+        .map-pin::after { content: ''; position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        
+        /* Tooltip for map */
+        .pin-tooltip { position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background: white; padding: 8px 12px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 30; font-weight: bold; color: #1E293B; }
+        .pin-tooltip::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: white transparent transparent transparent; }
+        .map-pin:hover .pin-tooltip { opacity: 1; }
+
+        /* Floating Campaign Banner */
+        .campaign-banner { animation: float 6s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+
+    <!-- Header -->
+    <header class="fixed w-full z-50 bg-white/90 backdrop-blur-md shadow-sm transition-all duration-300" id="main-header">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center cursor-pointer" onclick="router('home')">
+                    <span class="material-icons-outlined text-3xl text-primary mr-2">link</span>
+                    <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">LinkUp</span>
+                </div>
+
+                <!-- Search (Desktop) -->
+                <div class="hidden md:flex flex-1 max-w-lg mx-8 relative">
+                    <input type="text" id="searchInput" placeholder="イベント、キーワード、会場を検索..." 
+                           oninput="renderEventListOnly(this.value)"
+                           class="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-full focus:ring-2 focus:ring-primary focus:bg-white transition-all shadow-inner text-sm">
+                    <span class="material-icons-outlined absolute left-3 top-2 text-slate-400">search</span>
+                </div>
+
+                <!-- Navigation -->
+                <nav class="flex items-center space-x-2 md:space-x-4">
+                    <button onclick="router('organizer')" class="hidden md:flex items-center px-4 py-2 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 transition shadow-sm text-sm font-medium">
+                         主催者管理
+                    </button>
+                    <button onclick="openCreateModal()" class="hidden md:flex items-center px-4 py-2 bg-primary text-white rounded-full hover:bg-blue-700 transition shadow-md hover:shadow-lg text-sm font-medium">
+                        <span class="material-icons-outlined text-sm mr-1">add</span> イベント作成
+                    </button>
+                    
+                    <div id="nav-auth-section" class="flex items-center">
+                        <!-- Injected by JS -->
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="app" class="pt-16 min-h-screen pb-20">
+        <!-- Views will be rendered here -->
+    </main>
+
+    <!-- Rich Footer -->
+    <footer class="bg-slate-900 text-white pt-12 pb-8 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div class="col-span-1 md:col-span-1">
+                    <div class="flex items-center mb-4">
+                        <span class="material-icons-outlined text-3xl text-blue-400 mr-2">link</span>
+                        <span class="text-2xl font-bold">LinkUp</span>
+                    </div>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        人と体験をつなぐ、<br>日本最大級のイベントプラットフォーム。<br>
+                        新しい発見がここにあります。
+                    </p>
+                    <div class="flex space-x-4 mt-6">
+                        <a href="#" class="text-slate-400 hover:text-white transition"><i class="fab fa-twitter"></i>(X)</a>
+                        <a href="#" class="text-slate-400 hover:text-white transition">Instagram</a>
+                        <a href="#" class="text-slate-400 hover:text-white transition">Note</a>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-4 text-blue-400">サービス</h3>
+                    <ul class="space-y-2 text-slate-300 text-sm">
+                        <li><a href="#" class="hover:text-blue-300 transition">イベントを探す</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition">イベントを作成</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition">コミュニティ機能</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition">LinkUp Premium</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-4 text-blue-400">サポート・企業</h3>
+                    <ul class="space-y-2 text-slate-300 text-sm">
+                        <li><a href="#" class="hover:text-blue-300 transition">ヘルプセンター</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition">運営会社</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition">利用規約</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition">プライバシーポリシー</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-4 text-blue-400">主催者向け</h3>
+                    <ul class="space-y-2 text-slate-300 text-sm">
+                        <li><a href="#" class="hover:text-blue-300 transition">主催者ガイド</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition">料金プラン</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition">成功事例</a></li>
+                        <li><a href="#" class="hover:text-blue-300 transition text-accent">法人お問い合わせ</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-slate-500 text-xs">© 2026 LinkUp Inc. All rights reserved.</p>
+                <div class="flex space-x-6 mt-4 md:mt-0 text-xs text-slate-500">
+                    <span>特定商取引法に基づく表記</span>
+                    <span>資金決済法に基づく表示</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div id="modal-container" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div id="modal-content" class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-20 right-5 transform transition-all duration-300 translate-x-full z-[110] bg-white border-l-4 border-primary shadow-2xl rounded-lg p-4 flex items-start max-w-sm">
+        <div class="flex-shrink-0">
+            <span class="material-icons-outlined text-green-500" id="toast-icon">check_circle</span>
+        </div>
+        <div class="ml-3 w-0 flex-1">
+            <p class="text-sm font-medium text-gray-900" id="toast-title">通知</p>
+            <p class="text-xs text-gray-500 mt-1" id="toast-message">メッセージ</p>
+        </div>
+    </div>
+
+    <!-- Script -->
+    <script>
+        // --- DATA & STORE ---
+        const IMGS = {
+            tech: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+            business: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+            art: "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+            music: "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+            social: "https://images.unsplash.com/photo-1528605248644-14dd04022da1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+            festival: "https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+            food: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+            startups: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
+        };
+
+        const MASTER_EVENTS = Array.from({ length: 30 }, (_, i) => {
+            const categories = ['tech', 'business', 'art', 'music', 'social'];
+            const cat = categories[i % categories.length];
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() + i + 1);
+            startDate.setHours(10 + (i % 8), 0, 0);
+            
+            const endDate = new Date(startDate);
+            endDate.setHours(startDate.getHours() + 3);
+
+            return {
+                event_id: `evt-${i}`,
+                title: `${cat.toUpperCase()} Summit Vol.${i}: 未来のイノベーションと創造性`,
+                category: cat,
+                start_datetime: startDate.toISOString(),
+                end_datetime: endDate.toISOString(),
+                venue_name: i % 3 === 0 ? 'オンライン' : (i % 3 === 1 ? '東京国際フォーラム' : '渋谷ストリームホール'),
+                venue_address: i % 3 === 0 ? 'Zoom Link' : '東京都千代田区丸の内3-5-1',
+                cover_image_url: IMGS[cat],
+                organizer_name: i % 2 === 0 ? 'LinkUp Official' : 'NextGen Creators',
+                organizer_rating: (4 + Math.random()).toFixed(1),
+                price: i % 5 === 0 ? 0 : (i + 1) * 1000,
+                description: `
+                    <div class="prose max-w-none text-slate-600">
+                        <p>このイベントは、${cat}業界の最前線で活躍する専門家を招き、最新のトレンドや事例について深く掘り下げるセッションです。</p>
+                        <h3 class="text-lg font-bold text-slate-800 mt-4 mb-2">ハイライト</h3>
+                        <ul class="list-disc pl-5 mb-4">
+                            <li>業界トップリーダーによる基調講演</li>
+                            <li>実践的なワークショップとQ&Aセッション</li>
+                            <li>参加者同士のネットワーキングパーティー</li>
+                        </ul>
+                        <p>初心者から上級者まで、どなたでもご参加いただけます。新たな知見と繋がりを得られるこの機会をお見逃しなく。</p>
+                    </div>
+                `,
+                tickets: [
+                    { id: `tkt-gen-${i}`, name: '一般参加チケット', price: i % 5 === 0 ? 0 : (i + 1) * 1000, desc: '全セッションへの参加権' },
+                    { id: `tkt-vip-${i}`, name: 'VIPチケット', price: (i % 5 === 0 ? 0 : (i + 1) * 1000) + 5000, desc: '優先席 + 懇親会参加 + アーカイブ動画' }
+                ],
+                reviews: [
+                    { user: 'Taro Y.', rating: 5, comment: '非常に有意義な時間でした！' },
+                    { user: 'Hanako S.', rating: 4, comment: 'コンテンツは素晴らしかったですが、少し会場が寒かったです。' }
+                ],
+                status: 'published'
+            };
+        });
+
+        const API_URL = "https://8787-i1wckx5o5mxykkf07it7c-2e77fc33.sandbox.novita.ai";
+
+        const store = {
+            get user() { return JSON.parse(localStorage.getItem('user')); },
+            set user(v) { localStorage.setItem('user', JSON.stringify(v)); },
+            get tickets() { return JSON.parse(localStorage.getItem('tickets')) || []; },
+            set tickets(v) { localStorage.setItem('tickets', JSON.stringify(v)); },
+            
+            // Events is now a mix of memory and local storage
+            _events: [],
+            get events() { 
+                return this._events.length > 0 ? this._events : (JSON.parse(localStorage.getItem('events')) || MASTER_EVENTS); 
+            },
+            set events(v) { 
+                this._events = v;
+                localStorage.setItem('events', JSON.stringify(v)); 
+            },
+            
+            get followedOrganizers() { return JSON.parse(localStorage.getItem('followedOrganizers')) || []; },
+            set followedOrganizers(v) { localStorage.setItem('followedOrganizers', JSON.stringify(v)); },
+            
+            cart: null, 
+            
+            async init() {
+                // 1. Load from LocalStorage first (Fast render)
+                if (localStorage.getItem('events')) {
+                    this._events = JSON.parse(localStorage.getItem('events'));
+                } else {
+                    this._events = MASTER_EVENTS;
+                }
+
+                // 2. Try Fetching from Real API
+                try {
+                    console.log('Fetching from Backend:', API_URL);
+                    const res = await fetch(`${API_URL}/api/events`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (Array.isArray(data) && data.length > 0) {
+                            // Merge/Update logic or just replace
+                            this.events = data; 
+                            showToast('最新のイベント情報を同期しました', 'cloud_sync');
+                            // Re-render home if we are on home
+                            const app = document.getElementById('app');
+                            if (app && app.innerHTML.includes('注目のイベント')) {
+                                renderHome(app);
+                            }
+                        }
+                    } else {
+                        console.warn('Backend unavailable, using offline data');
+                    }
+                } catch (e) {
+                    console.error('API Fetch Error:', e);
+                    // Silent fail to offline mode
+                }
+            }
+        };
+
+        store.init();
+
+        // --- ROUTER & VIEW RENDERERS ---
+        function router(view, params = {}) {
+            const app = document.getElementById('app');
+            window.scrollTo(0, 0);
+
+            if (view === 'home') renderHome(app);
+            else if (view === 'detail') renderDetail(app, params.id);
+            else if (view === 'dashboard') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboard(app);
+            }
+            else if (view === 'checkout_session') renderStripeMock(app);
+            else if (view === 'organizer_profile') renderOrganizerProfile(app, params.id);
+            else if (view === 'organizer') renderOrganizer(app);
+            else if (view === 'admin') renderAdmin(app);
+            
+            updateNav();
+        }
+
+        function renderHome(container) {
+            const heroSlides = [
+                { img: IMGS.festival, title: "SUMMER SONIC 2026", sub: "今年も熱い夏がやってくる。先行チケット発売中！", tag: "FESTIVAL" },
+                { img: IMGS.tech, title: "AI Developers Summit", sub: "生成AIの最前線を体感せよ。", tag: "CONFERENCE" },
+                { img: IMGS.startups, title: "Startup Weekend Tokyo", sub: "54時間で起業体験。", tag: "BUSINESS" },
+                { img: IMGS.food, title: "Gourmet Fes 2026", sub: "全国の美食が集結。", tag: "FOOD" },
+                { img: IMGS.art, title: "Design Week", sub: "クリエイティビティの祭典。", tag: "ART" }
+            ];
+            
+            const quickNav = [
+                { icon: 'today', label: '今日行く', color: 'bg-pink-100 text-pink-600', query: 'today' },
+                { icon: 'calendar_month', label: '週末', color: 'bg-purple-100 text-purple-600', query: 'weekend' },
+                { icon: 'local_fire_department', label: '人気', color: 'bg-orange-100 text-orange-600', query: 'popular' },
+                { icon: 'group', label: '交流会', color: 'bg-blue-100 text-blue-600', query: 'social' },
+                { icon: 'music_note', label: '音楽', color: 'bg-teal-100 text-teal-600', query: 'music' },
+                { icon: 'restaurant', label: 'グルメ', color: 'bg-yellow-100 text-yellow-600', query: 'food' },
+                { icon: 'school', label: '学び', color: 'bg-indigo-100 text-indigo-600', query: 'tech' },
+                { icon: 'sports_esports', label: 'ゲーム', color: 'bg-red-100 text-red-600', query: 'game' },
+            ];
+
+            let html = `
+                <div class="relative bg-dark h-[400px] md:h-[500px] overflow-hidden group">
+                    <img src="${heroSlides[0].img}" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition duration-1000" id="hero-img">
+                    <div class="absolute inset-0 bg-gradient-to-t from-dark/90 via-dark/40 to-transparent"></div>
+                    <div class="absolute bottom-0 left-0 w-full p-6 md:p-12 z-10">
+                        <div class="max-w-7xl mx-auto">
+                            <span class="inline-block px-3 py-1 mb-4 text-xs font-bold tracking-wider text-white bg-accent rounded-full" id="hero-tag">${heroSlides[0].tag}</span>
+                            <h1 class="text-4xl md:text-6xl font-bold text-white mb-2 tracking-tight" id="hero-title">${heroSlides[0].title}</h1>
+                            <p class="text-slate-300 text-lg md:text-xl mb-6 max-w-2xl" id="hero-sub">${heroSlides[0].sub}</p>
+                            <button class="bg-primary hover:bg-blue-600 text-white px-8 py-3 rounded-full font-bold shadow-lg transition transform hover:-translate-y-1">詳細を見る</button>
+                        </div>
+                    </div>
+                    <div class="absolute bottom-6 right-6 flex space-x-2">
+                        <div class="w-3 h-3 rounded-full bg-white"></div>
+                        <div class="w-3 h-3 rounded-full bg-white/30"></div>
+                        <div class="w-3 h-3 rounded-full bg-white/30"></div>
+                        <div class="w-3 h-3 rounded-full bg-white/30"></div>
+                        <div class="w-3 h-3 rounded-full bg-white/30"></div>
+                    </div>
+                </div>
+
+                <div class="max-w-7xl mx-auto px-4 -mt-8 relative z-20 mb-8">
+                     <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl shadow-float p-6 flex flex-col md:flex-row items-center justify-between text-white campaign-banner cursor-pointer hover:shadow-lg transition">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <span class="bg-white/20 p-3 rounded-full mr-4"><span class="material-icons-outlined">campaign</span></span>
+                            <div>
+                                <h3 class="font-bold text-lg">新規主催者応援キャンペーン！</h3>
+                                <p class="text-purple-100 text-sm">今ならイベント作成で¥5,000分の広告クーポンプレゼント</p>
+                            </div>
+                        </div>
+                        <button class="px-6 py-2 bg-white text-purple-700 font-bold rounded-full hover:bg-gray-100 transition">詳細をチェック</button>
+                     </div>
+                </div>
+
+                <div class="max-w-7xl mx-auto px-4 mb-12">
+                    <h2 class="text-xl font-bold text-slate-800 mb-4 flex items-center"><span class="material-icons-outlined mr-2 text-primary">explore</span>カテゴリーから探す</h2>
+                    <div class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
+                        ${quickNav.map(nav => `
+                            <div class="flex-shrink-0 flex flex-col items-center cursor-pointer group" onclick="renderEventListOnly('${nav.query}')">
+                                <div class="w-16 h-16 ${nav.color} rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition mb-2">
+                                    <span class="material-icons-outlined text-2xl">${nav.icon}</span>
+                                </div>
+                                <span class="text-xs font-medium text-slate-600">${nav.label}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div class="lg:col-span-3 space-y-8">
+                        <div class="bg-white p-5 rounded-2xl shadow-card">
+                            <h3 class="font-bold text-slate-800 mb-4 flex items-center">
+                                <span class="material-icons-outlined mr-2 text-primary">calendar_month</span>日付で絞り込む
+                            </h3>
+                            <div class="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide text-center text-sm">
+                                <div class="flex-shrink-0 px-3 py-2 bg-primary text-white rounded-lg shadow-md cursor-pointer" onclick="renderEventListOnly('today')">
+                                    <div class="text-xs opacity-75">今日</div>
+                                    <div class="font-bold text-lg">31</div>
+                                </div>
+                                <div class="flex-shrink-0 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 cursor-pointer" onclick="renderEventListOnly('tomorrow')">
+                                    <div class="text-xs opacity-75">明日</div>
+                                    <div class="font-bold text-lg">1</div>
+                                </div>
+                                <div class="flex-shrink-0 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 cursor-pointer" onclick="renderEventListOnly('weekend')">
+                                    <div class="text-xs opacity-75">土</div>
+                                    <div class="font-bold text-lg">2</div>
+                                </div>
+                                <div class="flex-shrink-0 px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 cursor-pointer">
+                                    <div class="text-xs opacity-75">日</div>
+                                    <div class="font-bold text-lg">3</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-card overflow-hidden relative group h-80 border border-slate-100 z-0">
+                             <div id="real-map" class="w-full h-full z-0"></div>
+                             <div class="absolute top-3 left-3 z-[400] bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-slate-700 shadow-sm flex items-center pointer-events-none">
+                                <span class="material-icons-outlined text-sm mr-1 text-primary">map</span> 近くのイベントを探す
+                             </div>
+                        </div>
+
+                        <div class="bg-gradient-to-br from-gray-800 to-black rounded-2xl p-5 text-white shadow-card">
+                            <p class="text-xs text-slate-400 mb-2">SPONSORED</p>
+                            <h4 class="font-bold text-lg mb-2">LinkUp Proプラン</h4>
+                            <p class="text-sm text-slate-300 mb-4">手数料0円でチケット販売。高度な分析ツールも使い放題。</p>
+                            <button class="w-full py-2 border border-white/30 rounded-lg hover:bg-white/10 transition text-sm">詳しく見る</button>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-9">
+                         <div class="flex justify-between items-end mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800">注目のイベント</h2>
+                            <div class="flex space-x-2">
+                                <button class="text-sm text-slate-500 hover:text-primary transition font-medium" onclick="renderEventListOnly('', 'recommend')">おすすめ順</button>
+                                <span class="text-slate-300">|</span>
+                                <button class="text-sm text-slate-500 hover:text-primary transition" onclick="renderEventListOnly('', 'newest')">新着順</button>
+                            </div>
+                        </div>
+
+                        <div id="event-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Injected by renderEventListOnly -->
+                        </div>
+                        
+                        <div class="mt-12 text-center">
+                            <button class="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-full font-bold hover:bg-slate-50 transition shadow-sm">もっと見る</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            
+            renderEventListOnly();
+            
+            setTimeout(() => {
+                if(document.getElementById('real-map')) {
+                    const map = L.map('real-map').setView([35.6895, 139.6917], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; OpenStreetMap contributors'
+                    }).addTo(map);
+
+                    store.events.forEach((evt, idx) => {
+                        const lat = 35.6895 + (Math.random() - 0.5) * 0.05;
+                        const lng = 139.6917 + (Math.random() - 0.5) * 0.05;
+                        
+                        const marker = L.marker([lat, lng]).addTo(map);
+                        marker.bindPopup(`
+                            <div class="p-2">
+                                <h4 class="font-bold text-sm mb-1">${evt.title}</h4>
+                                <p class="text-xs text-slate-500 mb-2">${new Date(evt.start_datetime).toLocaleDateString()}</p>
+                                <button onclick="router('detail', {id:'${evt.event_id}'})" class="bg-blue-600 text-white text-xs px-2 py-1 rounded">詳細を見る</button>
+                            </div>
+                        `);
+                    });
+                }
+            }, 500); 
+            
+            let slideIdx = 0;
+            const heroTitle = document.getElementById('hero-title');
+            const heroSub = document.getElementById('hero-sub');
+            const heroTag = document.getElementById('hero-tag');
+            const heroImg = document.getElementById('hero-img');
+            
+            setInterval(() => {
+                slideIdx = (slideIdx + 1) % heroSlides.length;
+                const slide = heroSlides[slideIdx];
+                if(heroImg) heroImg.src = slide.img;
+                if(heroTitle) heroTitle.innerText = slide.title;
+                if(heroSub) heroSub.innerText = slide.sub;
+                if(heroTag) heroTag.innerText = slide.tag;
+            }, 5000);
+        }
+
+        function renderEventListOnly(filter = '', sort = 'recommend') {
+            const container = document.getElementById('event-list-container');
+            if(!container) return;
+            
+            let events = store.events;
+            const kw = filter.toLowerCase();
+            
+            if (kw) {
+                events = events.filter(evt => 
+                    evt.title.toLowerCase().includes(kw) || 
+                    evt.venue_name.toLowerCase().includes(kw) || 
+                    evt.category.toLowerCase().includes(kw) ||
+                    (kw === 'today' && new Date(evt.start_datetime).getDate() === new Date().getDate()) ||
+                    (kw === 'popular' && parseFloat(evt.organizer_rating) > 4.5)
+                );
+            }
+            
+            if (sort === 'newest') {
+                events.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
+            } else {
+                events.sort((a, b) => 0.5 - Math.random());
+            }
+            
+            if (events.length === 0) {
+                container.innerHTML = `<div class="col-span-3 text-center py-12 text-slate-400">該当するイベントが見つかりませんでした。</div>`;
+                return;
+            }
+
+            container.innerHTML = events.map(evt => `
+                <div class="bg-white rounded-xl shadow-card overflow-hidden hover:shadow-xl transition duration-300 group cursor-pointer border border-slate-100 flex flex-col h-full" onclick="router('detail', {id: '${evt.event_id}'})">
+                    <div class="relative h-48 overflow-hidden">
+                        <img src="${evt.cover_image_url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                        <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-slate-700 shadow-sm uppercase tracking-wide">
+                            ${evt.category}
+                        </div>
+                        ${evt.price === 0 ? '<div class="absolute bottom-3 left-3 bg-accent text-white px-2 py-1 rounded text-xs font-bold shadow-sm">無料</div>' : ''}
+                    </div>
+                    <div class="p-5 flex-1 flex flex-col">
+                        <div class="text-xs text-primary font-bold mb-1 flex items-center">
+                            <span class="material-icons-outlined text-[14px] mr-1">schedule</span>
+                            ${new Date(evt.start_datetime).toLocaleDateString()}
+                        </div>
+                        <h3 class="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-snug group-hover:text-primary transition">${evt.title}</h3>
+                        <div class="text-slate-500 text-sm mb-4 flex items-start line-clamp-1">
+                            <span class="material-icons-outlined text-[16px] mr-1 mt-0.5">place</span>
+                            ${evt.venue_name}
+                        </div>
+                        <div class="mt-auto flex items-center justify-between pt-4 border-t border-slate-50">
+                            <div class="flex items-center cursor-pointer hover:bg-slate-50 p-1 -ml-1 rounded transition" onclick="event.stopPropagation(); router('organizer_profile', {id: '${evt.organizer_name}'})">
+                                <div class="w-6 h-6 rounded-full bg-slate-200 mr-2 overflow-hidden"><img src="https://i.pravatar.cc/150?u=${evt.organizer_name}" class="w-full h-full object-cover"></div>
+                                <span class="text-xs text-slate-500 truncate max-w-[100px] hover:text-primary hover:underline">${evt.organizer_name}</span>
+                            </div>
+                            <span class="font-bold text-slate-800 text-sm">¥${evt.price.toLocaleString()}~</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderDetail(container, id) {
+            const event = store.events.find(e => e.event_id === id);
+            if (!event) return renderHome(container); 
+            
+            const isFollowing = store.followedOrganizers.includes(event.organizer_name);
+            const recommendations = store.events.filter(e => e.event_id !== id).sort(() => 0.5 - Math.random()).slice(0, 3);
+
+            container.innerHTML = `
+                <div class="bg-white border-b border-slate-200">
+                    <div class="max-w-7xl mx-auto px-4 py-3 text-sm text-slate-500 flex items-center">
+                        <span class="cursor-pointer hover:text-primary" onclick="router('home')">ホーム</span>
+                        <span class="material-icons-outlined text-xs mx-2">chevron_right</span>
+                        <span class="cursor-pointer hover:text-primary" onclick="router('home')">${event.category}</span>
+                        <span class="material-icons-outlined text-xs mx-2">chevron_right</span>
+                        <span class="truncate max-w-xs">${event.title}</span>
+                    </div>
+                </div>
+
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 space-y-8">
+                            <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+                                <img src="${event.cover_image_url}" class="w-full h-64 md:h-96 object-cover">
+                                <div class="p-6 md:p-8">
+                                    <span class="inline-block px-3 py-1 mb-4 text-xs font-bold tracking-wider text-primary bg-blue-50 rounded-full uppercase">${event.category}</span>
+                                    <h1 class="text-3xl font-bold text-slate-900 mb-4 leading-tight">${event.title}</h1>
+                                    
+                                    <div class="flex items-center space-x-6 text-slate-600 mb-8 pb-8 border-b border-slate-100">
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mr-3">
+                                                <span class="material-icons-outlined">calendar_today</span>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs text-slate-400">日時</p>
+                                                <p class="font-bold text-sm">${new Date(event.start_datetime).toLocaleDateString()} ${new Date(event.start_datetime).getHours()}:00</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mr-3">
+                                                <span class="material-icons-outlined">place</span>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs text-slate-400">会場</p>
+                                                <p class="font-bold text-sm">${event.venue_name}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <h2 class="text-xl font-bold mb-4 flex items-center"><span class="w-1 h-6 bg-primary mr-3 rounded-full"></span>イベント詳細</h2>
+                                    <div class="text-slate-600 leading-relaxed space-y-4">
+                                        ${event.description}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-2xl shadow-card p-6 flex items-center justify-between border border-slate-100">
+                                <div class="flex items-center cursor-pointer" onclick="router('organizer_profile', {id: '${event.organizer_name}'})">
+                                    <img src="https://i.pravatar.cc/150?u=${event.organizer_name}" class="w-14 h-14 rounded-full mr-4 border-2 border-slate-100">
+                                    <div>
+                                        <p class="text-xs text-slate-400 mb-1">主催者</p>
+                                        <h3 class="font-bold text-lg hover:text-primary transition">${event.organizer_name}</h3>
+                                        <div class="flex items-center text-xs text-yellow-500">
+                                            <span class="material-icons-outlined text-sm">star</span>
+                                            <span class="ml-1 font-bold text-slate-700">${event.organizer_rating}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button onclick="toggleFollow('${event.organizer_name}')" class="px-6 py-2 rounded-full border transition font-bold flex items-center ${isFollowing ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-white text-primary border-primary hover:bg-blue-50'}">
+                                    ${isFollowing ? '<span class="material-icons-outlined text-sm mr-1">check</span>フォロー中' : '<span class="material-icons-outlined text-sm mr-1">person_add</span>フォロー'}
+                                </button>
+                            </div>
+                            
+                            <div class="mt-12">
+                                <h3 class="font-bold text-xl text-slate-800 mb-6">こちらもおすすめ</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    ${recommendations.map(rec => `
+                                        <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition cursor-pointer" onclick="router('detail', {id:'${rec.event_id}'})">
+                                            <img src="${rec.cover_image_url}" class="w-full h-32 object-cover">
+                                            <div class="p-3">
+                                                <h4 class="font-bold text-sm mb-1 truncate">${rec.title}</h4>
+                                                <p class="text-xs text-slate-500">${new Date(rec.start_datetime).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-1">
+                            <div class="bg-white rounded-2xl shadow-float p-6 sticky top-24 border border-blue-100">
+                                <h3 class="font-bold text-lg mb-6 flex items-center">
+                                    <span class="material-icons-outlined text-primary mr-2">confirmation_number</span>チケット選択
+                                </h3>
+                                
+                                <div class="space-y-4 mb-6">
+                                    ${event.tickets.map(tkt => `
+                                        <div class="border border-slate-200 rounded-xl p-4 hover:border-primary transition bg-slate-50 hover:bg-white cursor-pointer group" onclick="openCheckout('${event.event_id}', '${tkt.id}')">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <span class="font-bold text-slate-800 group-hover:text-primary">${tkt.name}</span>
+                                                <span class="font-bold text-lg text-slate-900">¥${tkt.price.toLocaleString()}</span>
+                                            </div>
+                                            <p class="text-xs text-slate-500 mb-3">${tkt.desc}</p>
+                                            <button class="w-full py-2 bg-white border border-primary text-primary rounded-lg text-sm font-bold group-hover:bg-primary group-hover:text-white transition">選択する</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+
+                                <p class="text-xs text-slate-400 text-center flex items-center justify-center">
+                                    <span class="material-icons-outlined text-sm mr-1">lock</span>
+                                    安全な決済処理
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderOrganizerProfile(container, organizerName) {
+            const orgEvents = store.events.filter(e => e.organizer_name === organizerName);
+            const isFollowing = store.followedOrganizers.includes(organizerName);
+            
+            container.innerHTML = `
+                <div class="bg-white min-h-screen">
+                    <div class="h-64 bg-gradient-to-r from-blue-600 to-indigo-700 relative overflow-hidden">
+                        <div class="absolute inset-0 bg-black/20"></div>
+                        <div class="absolute bottom-0 left-0 w-full p-8 md:p-12 flex items-end translate-y-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <img src="https://i.pravatar.cc/150?u=${organizerName}" class="w-32 h-32 rounded-full border-4 border-white shadow-xl mr-6">
+                            <div class="mb-4">
+                                <h1 class="text-3xl font-bold text-white mb-2 shadow-sm">${organizerName}</h1>
+                                <div class="flex items-center space-x-4">
+                                    <button onclick="toggleFollow('${organizerName}')" class="px-6 py-2 rounded-full font-bold shadow-lg transition flex items-center ${isFollowing ? 'bg-white text-slate-800' : 'bg-primary text-white hover:bg-blue-600'}">
+                                        ${isFollowing ? 'フォロー中' : 'フォローする'}
+                                    </button>
+                                    <div class="text-white/90 text-sm font-bold flex items-center">
+                                        <span class="material-icons-outlined mr-1">star</span> 4.8 (120 Reviews)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                            <div class="lg:col-span-2">
+                                <h2 class="text-xl font-bold text-slate-800 mb-6 border-b pb-2">開催予定のイベント</h2>
+                                ${orgEvents.length > 0 ? 
+                                    orgEvents.map(evt => `
+                                        <div class="flex bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition mb-4 cursor-pointer" onclick="router('detail', {id:'${evt.event_id}'})">
+                                            <img src="${evt.cover_image_url}" class="w-48 object-cover hidden sm:block">
+                                            <div class="p-6 flex-1">
+                                                <div class="text-xs text-primary font-bold mb-1">${new Date(evt.start_datetime).toLocaleDateString()}</div>
+                                                <h3 class="text-lg font-bold text-slate-800 mb-2">${evt.title}</h3>
+                                                <p class="text-sm text-slate-500 line-clamp-2">${evt.venue_name}</p>
+                                            </div>
+                                        </div>
+                                    `).join('') 
+                                    : '<p class="text-slate-400">現在公開中のイベントはありません。</p>'
+                                }
+                            </div>
+                            <div class="lg:col-span-1">
+                                <div class="bg-slate-50 p-6 rounded-2xl">
+                                    <h3 class="font-bold text-slate-800 mb-4">About</h3>
+                                    <p class="text-sm text-slate-600 leading-relaxed mb-6">
+                                        テクノロジーとクリエイティブの融合をテーマに、年間50以上のカンファレンスやミートアップを主催しています。
+                                        参加者同士のつながりを重視したコミュニティづくりを目指しています。
+                                    </p>
+                                    
+                                    <h3 class="font-bold text-slate-800 mb-4">Links</h3>
+                                    <div class="flex space-x-4 text-slate-400">
+                                        <span class="hover:text-primary cursor-pointer"><i class="fab fa-twitter"></i> Twitter</span>
+                                        <span class="hover:text-primary cursor-pointer">Website</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- AUTH & USER ACTIONS ---
+        function toggleFollow(organizerName) {
+            if(!store.user) { openAuthModal(); return; }
+            
+            let currentList = store.followedOrganizers;
+            if(!Array.isArray(currentList)) currentList = [];
+            
+            const idx = currentList.indexOf(organizerName);
+            let newList = [...currentList];
+            
+            if(idx >= 0) {
+                newList.splice(idx, 1);
+                showToast('フォロー解除しました', 'check_circle');
+            } else {
+                newList.push(organizerName);
+                showToast(`${organizerName}をフォローしました！`, 'favorite');
+            }
+            store.followedOrganizers = newList;
+            
+            // Re-render handled by updateUI or user action, simply refreshing current view logic
+            const btn = document.querySelector(`button[onclick="toggleFollow('${organizerName}')"]`);
+            if(btn) {
+                const isFollowing = newList.includes(organizerName);
+                if(isFollowing) {
+                    btn.className = "px-6 py-2 rounded-full border transition font-bold flex items-center bg-slate-100 text-slate-600 border-slate-200";
+                    btn.innerHTML = '<span class="material-icons-outlined text-sm mr-1">check</span>フォロー中';
+                } else {
+                    btn.className = "px-6 py-2 rounded-full border transition font-bold flex items-center bg-white text-primary border-primary hover:bg-blue-50";
+                    btn.innerHTML = '<span class="material-icons-outlined text-sm mr-1">person_add</span>フォロー';
+                }
+            }
+        }
+
+        function openAuthModal() {
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="flex flex-col md:flex-row h-[500px]">
+                    <div class="hidden md:block w-1/2 bg-cover bg-center relative" style="background-image: url('${IMGS.music}')">
+                        <div class="absolute inset-0 bg-primary/80 flex items-center justify-center p-8 text-white">
+                            <div>
+                                <h2 class="text-3xl font-bold mb-4">Welcome Back</h2>
+                                <p>日本最大級のイベントコミュニティへようこそ。</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 p-8 flex flex-col justify-center relative">
+                        <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                        <h3 class="text-2xl font-bold text-slate-800 mb-6">ログイン / 新規登録</h3>
+                        <div class="space-y-3">
+                            <button onclick="login('google')" class="w-full py-3 border border-slate-300 rounded-lg flex items-center justify-center hover:bg-slate-50 transition font-bold text-slate-600">
+                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3">
+                                Googleで続ける
+                            </button>
+                            <button onclick="login('line')" class="w-full py-3 bg-[#06C755] text-white rounded-lg flex items-center justify-center hover:opacity-90 transition font-bold">
+                                LINEで続ける
+                            </button>
+                            <button onclick="login('email')" class="w-full py-3 bg-slate-800 text-white rounded-lg flex items-center justify-center hover:bg-slate-900 transition font-bold">
+                                メールアドレスで入力
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-6 text-center">
+                            利用規約 と プライバシーポリシー に同意したことになります。
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function login(provider) {
+            // Mock Login
+            store.user = { 
+                id: 'u-demo-001', 
+                name: 'LinkUp User', 
+                email: 'user@example.com',
+                icon: `https://ui-avatars.com/api/?name=LinkUp+User&background=2563EB&color=fff`,
+                kycStatus: 'unverified'
+            };
+            closeModal();
+            updateNav();
+            showToast('ログインしました', 'login');
+        }
+
+        function logout() {
+            store.user = null;
+            updateNav();
+            router('home');
+            showToast('ログアウトしました', 'logout');
+        }
+
+        function updateNav() {
+            const nav = document.getElementById('nav-auth-section');
+            if (store.user) {
+                nav.innerHTML = `
+                    <div class="flex items-center space-x-3 ml-4">
+                        <span class="cursor-pointer" onclick="router('dashboard')">
+                            <img src="${store.user.icon}" class="w-9 h-9 rounded-full border-2 border-slate-200 hover:border-primary transition">
+                        </span>
+                        <button onclick="logout()" class="text-slate-400 hover:text-red-500 transition" title="ログアウト">
+                            <span class="material-icons-outlined">logout</span>
+                        </button>
+                    </div>
+                `;
+            } else {
+                nav.innerHTML = `
+                    <button onclick="openAuthModal()" class="text-sm font-bold text-slate-600 hover:text-primary transition px-4">ログイン</button>
+                    <button onclick="openAuthModal()" class="text-sm font-bold bg-slate-900 text-white px-5 py-2 rounded-full hover:bg-slate-700 transition shadow-lg">新規登録</button>
+                `;
+            }
+        }
+
+        // --- CHECKOUT FLOW ---
+        function openCheckout(eventId, ticketId) {
+            if (!store.user) { openAuthModal(); return; }
+            
+            const event = store.events.find(e => e.event_id === eventId);
+            const ticket = event.tickets.find(t => t.id === ticketId);
+            
+            store.cart = { event, ticket, count: 1 };
+            // Redirect to Full Page Checkout Mock
+            router('checkout_session');
+        }
+
+        // --- STRIPE MOCK PAGE ---
+        function renderStripeMock(container) {
+            const { event, ticket, count } = store.cart;
+            const total = ticket.price * count;
+            
+            container.innerHTML = `
+                <div class="min-h-screen bg-white flex flex-col md:flex-row">
+                    <!-- Left: Summary -->
+                    <div class="w-full md:w-1/2 bg-slate-50 p-8 md:p-12 border-r border-slate-200">
+                        <div class="max-w-md mx-auto">
+                            <div class="flex items-center mb-8 text-slate-500 cursor-pointer" onclick="router('detail', {id:'${event.event_id}'})">
+                                <span class="material-icons-outlined mr-2">arrow_back</span> キャンセル
+                            </div>
+                            
+                            <div class="mb-8">
+                                <span class="text-slate-500 text-sm">支払い金額</span>
+                                <div class="text-4xl font-bold text-slate-900 mt-2">¥${total.toLocaleString()}</div>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="flex items-start">
+                                    <img src="${event.cover_image_url}" class="w-16 h-16 rounded bg-slate-200 object-cover mr-4">
+                                    <div>
+                                        <h3 class="font-bold text-slate-800">${event.title}</h3>
+                                        <p class="text-sm text-slate-500">${ticket.name} x ${count}枚</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-12 pt-8 border-t border-slate-200 text-xs text-slate-400">
+                                Powered by <strong class="text-slate-600">Stripe</strong>
+                                <div class="flex space-x-2 mt-2">
+                                    <span class="bg-slate-200 px-2 py-1 rounded">TEST MODE</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Payment Form -->
+                    <div class="w-full md:w-1/2 p-8 md:p-12 bg-white flex items-center justify-center">
+                        <div class="max-w-md w-full">
+                            <h2 class="text-xl font-bold mb-6 text-slate-800">カード情報の入力</h2>
+                            
+                            <form onsubmit="event.preventDefault(); processStripePayment();" class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">メールアドレス</label>
+                                    <input type="email" value="${store.user.email}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition" required>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">カード情報</label>
+                                    <div class="border border-slate-300 rounded-lg overflow-hidden">
+                                        <input type="text" placeholder="カード番号" class="w-full p-3 border-b border-slate-300 outline-none" value="4242 4242 4242 4242" readonly>
+                                        <div class="flex">
+                                            <input type="text" placeholder="MM / YY" class="w-1/2 p-3 border-r border-slate-300 outline-none" value="12 / 34" readonly>
+                                            <input type="text" placeholder="CVC" class="w-1/2 p-3 outline-none" value="123" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">カード名義</label>
+                                    <input type="text" value="${store.user.name}" class="w-full p-3 border border-slate-300 rounded-lg outline-none" required>
+                                </div>
+
+                                <button type="submit" id="pay-btn" class="w-full py-4 bg-primary text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition flex justify-center items-center mt-6">
+                                    <span class="material-icons-outlined mr-2">lock</span> 支払う
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function processStripePayment() {
+            const btn = document.getElementById('pay-btn');
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 処理中...`;
+            btn.disabled = true;
+
+            setTimeout(() => {
+                confirmPurchase(); 
+            }, 2000);
+        }
+
+        function updateCheckoutModal() {
+            const { event, ticket, count } = store.cart;
+            const total = ticket.price * count;
+            
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">チケット購入</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><span class="material-icons-outlined">close</span></button>
+                    </div>
+                    
+                    <div class="bg-slate-50 p-4 rounded-xl mb-6 flex items-start">
+                        <img src="${event.cover_image_url}" class="w-16 h-16 rounded-lg object-cover mr-4">
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-800 line-clamp-1">${event.title}</h4>
+                            <p class="text-xs text-slate-500 mt-1">${new Date(event.start_datetime).toLocaleDateString()} @ ${event.venue_name}</p>
+                            <p class="text-sm font-bold text-primary mt-1">${ticket.name}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mb-8 border-b border-slate-100 pb-6">
+                        <span class="text-sm font-bold text-slate-600">枚数</span>
+                        <div class="flex items-center space-x-4">
+                            <button onclick="updateCart(-1)" class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300 font-bold">-</button>
+                            <span class="text-lg font-bold w-4 text-center">${count}</span>
+                            <button onclick="updateCart(1)" class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center hover:bg-slate-300 font-bold">+</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-end mb-8">
+                        <span class="text-sm text-slate-500">合計金額</span>
+                        <span class="text-3xl font-bold text-slate-900">¥${total.toLocaleString()}</span>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-3 rounded-lg flex items-center mb-6 text-xs text-blue-800">
+                        <span class="material-icons-outlined text-sm mr-2">verified_user</span>
+                        この取引は256-bit SSLで暗号化されています。
+                    </div>
+
+                    <button onclick="confirmPurchase()" class="w-full py-4 bg-primary text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition transform flex justify-center items-center">
+                        <span class="material-icons-outlined mr-2">payment</span> 決済して購入する
+                    </button>
+                </div>
+            `;
+        }
+
+        function updateCart(delta) {
+            if (!store.cart) return;
+            const newCount = store.cart.count + delta;
+            if (newCount > 0 && newCount <= 10) {
+                store.cart.count = newCount;
+                updateCheckoutModal();
+            }
+        }
+
+        function confirmPurchase() {
+            const { event, ticket, count } = store.cart;
+            
+            // Generate Ticket Data
+            const newTicket = {
+                id: `TKT-${Date.now()}`,
+                eventId: event.event_id,
+                ticketId: ticket.id,
+                title: event.title,
+                ticketName: ticket.name,
+                count: count,
+                price: ticket.price,
+                total: ticket.price * count,
+                purchaseDate: new Date().toISOString(),
+                qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=LINKUP-TKT-${Date.now()}`
+            };
+            
+            // Save
+            const currentTickets = store.tickets;
+            currentTickets.unshift(newTicket);
+            store.tickets = currentTickets;
+            
+            store.cart = null;
+            closeModal();
+            
+            // Success Animation
+            showToast('チケットの発行が完了しました！', 'confirmation_number');
+            setTimeout(() => {
+                router('dashboard');
+            }, 1000);
+        }
+
+        // --- DASHBOARDS ---
+        function renderDashboard(container) {
+            const myTickets = store.tickets;
+            
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto px-4 py-8">
+                    <h1 class="text-2xl font-bold text-slate-800 mb-2">マイページ</h1>
+                    <p class="text-slate-500 text-sm mb-8">ようこそ、${store.user.name}さん</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex items-center">
+                            <div class="w-12 h-12 rounded-full bg-blue-100 text-primary flex items-center justify-center mr-4">
+                                <span class="material-icons-outlined">confirmation_number</span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">所有チケット</p>
+                                <p class="text-xl font-bold">${myTickets.length}枚</p>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex items-center">
+                            <div class="w-12 h-12 rounded-full bg-pink-100 text-pink-500 flex items-center justify-center mr-4">
+                                <span class="material-icons-outlined">favorite</span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">フォロー中</p>
+                                <p class="text-xl font-bold">${store.followedOrganizers.length}人</p>
+                            </div>
+                        </div>
+                         <div class="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex items-center">
+                            <div class="w-12 h-12 rounded-full bg-green-100 text-green-500 flex items-center justify-center mr-4">
+                                <span class="material-icons-outlined">verified</span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">本人確認</p>
+                                <p class="text-xl font-bold text-slate-800 cursor-pointer hover:text-primary transition" onclick="openKYCModal()">
+                                    ${store.user.kycStatus === 'verified' ? '完了' : (store.user.kycStatus === 'pending' ? '審査中' : '未完了')}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 class="text-xl font-bold text-slate-800 mb-4">チケット一覧</h2>
+                    <div class="space-y-4">
+                        ${myTickets.length === 0 ? '<p class="text-slate-400 text-center py-8">まだチケットを持っていません。</p>' : 
+                          myTickets.map(t => `
+                            <div class="bg-white rounded-2xl shadow-card overflow-hidden border border-slate-100 flex flex-col md:flex-row">
+                                <div class="bg-slate-900 p-6 flex flex-col items-center justify-center text-white min-w-[140px]">
+                                    <span class="text-xs opacity-70 mb-1">ADMIT ONE</span>
+                                    <span class="text-2xl font-bold">${t.count}枚</span>
+                                </div>
+                                <div class="p-6 flex-1">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h3 class="font-bold text-lg text-slate-800">${t.title}</h3>
+                                            <p class="text-sm text-primary font-bold">${t.ticketName}</p>
+                                        </div>
+                                        <button onclick="showQR('${t.qrCode}')" class="text-slate-400 hover:text-slate-600"><span class="material-icons-outlined text-3xl">qr_code_2</span></button>
+                                    </div>
+                                    <p class="text-xs text-slate-400">購入日: ${new Date(t.purchaseDate).toLocaleDateString()}</p>
+                                    <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                                        <button class="text-sm text-primary font-bold hover:underline">詳細を表示</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- ORGANIZER DASHBOARD (FULL) ---
+        function renderOrganizer(container) {
+            container.innerHTML = `
+                <div class="min-h-screen bg-slate-50 flex">
+                    <!-- Sidebar -->
+                    <div class="w-64 bg-slate-900 text-white p-6 hidden lg:block">
+                        <div class="flex items-center mb-8">
+                            <span class="material-icons-outlined text-3xl text-blue-400 mr-2">link</span>
+                            <span class="text-xl font-bold">Organizer</span>
+                        </div>
+                        <nav class="space-y-2">
+                            <a href="#" class="block py-2 px-4 bg-blue-900/50 text-blue-300 rounded-lg font-bold">ダッシュボード</a>
+                            <a href="#" class="block py-2 px-4 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">イベント管理</a>
+                            <a href="#" class="block py-2 px-4 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">参加者リスト</a>
+                            <a href="#" class="block py-2 px-4 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">売上管理</a>
+                            <a href="#" class="block py-2 px-4 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">設定</a>
+                        </nav>
+                    </div>
+                    
+                    <!-- Main Content -->
+                    <div class="flex-1 p-8 overflow-y-auto">
+                        <div class="flex justify-between items-center mb-8">
+                            <h1 class="text-2xl font-bold text-slate-800">ダッシュボード</h1>
+                            <button class="flex items-center px-4 py-2 bg-white border border-slate-200 rounded-full text-sm text-slate-600 hover:bg-slate-50">
+                                <span class="material-icons-outlined text-sm mr-2">today</span> 今月
+                            </button>
+                        </div>
+                        
+                        <!-- Stats Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
+                                <p class="text-xs text-slate-400 font-bold mb-1">総売上</p>
+                                <p class="text-2xl font-bold text-slate-800">¥4,250,000</p>
+                                <p class="text-xs text-green-500 flex items-center mt-2"><span class="material-icons-outlined text-sm">trending_up</span> +12.5%</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
+                                <p class="text-xs text-slate-400 font-bold mb-1">チケット販売数</p>
+                                <p class="text-2xl font-bold text-slate-800">842枚</p>
+                                <p class="text-xs text-green-500 flex items-center mt-2"><span class="material-icons-outlined text-sm">trending_up</span> +8.2%</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
+                                <p class="text-xs text-slate-400 font-bold mb-1">ページ閲覧数</p>
+                                <p class="text-2xl font-bold text-slate-800">12,405 PV</p>
+                                <p class="text-xs text-slate-400 flex items-center mt-2"><span class="material-icons-outlined text-sm">remove</span> 0.0%</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
+                                <p class="text-xs text-slate-400 font-bold mb-1">フォロワー</p>
+                                <p class="text-2xl font-bold text-slate-800">1,204人</p>
+                                <p class="text-xs text-green-500 flex items-center mt-2"><span class="material-icons-outlined text-sm">person_add</span> +24人</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Chart -->
+                        <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100 mb-8">
+                            <h3 class="font-bold text-slate-800 mb-4">売上推移</h3>
+                            <canvas id="salesChart" height="80"></canvas>
+                        </div>
+                        
+                        <!-- Recent Events Table -->
+                        <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+                            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                                <h3 class="font-bold text-slate-800">最近のイベント</h3>
+                                <button class="text-sm text-primary font-bold">すべて見る</button>
+                            </div>
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
+                                    <tr>
+                                        <th class="p-4">イベント名</th>
+                                        <th class="p-4">開催日</th>
+                                        <th class="p-4">販売状況</th>
+                                        <th class="p-4">ステータス</th>
+                                        <th class="p-4">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-sm text-slate-700">
+                                    ${store.events.slice(0, 5).map(evt => `
+                                        <tr class="border-b border-slate-50 hover:bg-slate-50 transition">
+                                            <td class="p-4 font-bold max-w-xs truncate">${evt.title}</td>
+                                            <td class="p-4">${new Date(evt.start_datetime).toLocaleDateString()}</td>
+                                            <td class="p-4">
+                                                <div class="flex items-center">
+                                                    <div class="w-24 h-2 bg-slate-200 rounded-full mr-2 overflow-hidden">
+                                                        <div class="bg-primary h-full" style="width: ${Math.random() * 100}%"></div>
+                                                    </div>
+                                                    <span class="text-xs text-slate-500">${Math.floor(Math.random()*100)}/100</span>
+                                                </div>
+                                            </td>
+                                            <td class="p-4"><span class="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">公開中</span></td>
+                                            <td class="p-4 text-slate-400">
+                                                <button class="hover:text-primary"><span class="material-icons-outlined text-lg">edit</span></button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Init Chart
+            setTimeout(() => {
+                const ctx = document.getElementById('salesChart');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                            datasets: [{
+                                label: '売上 (万円)',
+                                data: [65, 59, 80, 81, 56, 95],
+                                borderColor: '#2563EB',
+                                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                }
+            }, 100);
+        }
+
+        function renderAdmin(container) {
+            container.innerHTML = `
+                <div class="min-h-screen bg-slate-100 p-8">
+                    <h1 class="text-2xl font-bold text-slate-800 mb-6">管理者コンソール</h1>
+                    <div class="bg-white rounded-2xl shadow-card p-6">
+                        <h2 class="text-lg font-bold mb-4">ユーザー管理</h2>
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-slate-500 text-sm border-b">
+                                    <th class="pb-2">ID</th>
+                                    <th class="pb-2">Name</th>
+                                    <th class="pb-2">Email</th>
+                                    <th class="pb-2">KYC Status</th>
+                                    <th class="pb-2">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b text-sm">
+                                    <td class="py-3">u-demo-001</td>
+                                    <td>${store.user ? store.user.name : 'Guest'}</td>
+                                    <td>${store.user ? store.user.email : '-'}</td>
+                                    <td>
+                                        <span class="px-2 py-1 rounded text-xs font-bold 
+                                            ${store.user && store.user.kycStatus === 'verified' ? 'bg-green-100 text-green-600' : 
+                                              (store.user && store.user.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500')}">
+                                            ${store.user ? (store.user.kycStatus || 'Unverified') : '-'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="text-blue-500 hover:underline" onclick="approveKYC()">Approve</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function approveKYC() {
+            if(store.user) {
+                const u = store.user;
+                u.kycStatus = 'verified';
+                store.user = u;
+                renderAdmin(document.getElementById('app'));
+                showToast('ユーザーのKYCを承認しました', 'verified');
+            }
+        }
+
+        // --- UTILS ---
+        function closeModal() {
+            document.getElementById('modal-container').classList.add('hidden');
+        }
+
+        function showToast(msg, iconName) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = "通知";
+            document.getElementById('toast-message').innerText = msg;
+            document.getElementById('toast-icon').innerText = iconName;
+            
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        function showQR(url) {
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            modal.innerHTML = `
+                <div class="p-8 text-center">
+                    <h3 class="font-bold text-xl mb-4">チケットQRコード</h3>
+                    <img src="${url}" class="mx-auto w-48 h-48 mb-4">
+                    <p class="text-xs text-slate-400">入場時にこの画面をスタッフに提示してください。</p>
+                    <button onclick="closeModal()" class="mt-6 text-slate-500 hover:text-slate-800">閉じる</button>
+                </div>
+            `;
+        }
+        
+        function openKYCModal() {
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8">
+                    <h3 class="text-xl font-bold mb-4 text-slate-800">本人確認書類の提出</h3>
+                    <p class="text-sm text-slate-500 mb-6">安全な取引のために、運転免許証またはマイナンバーカードの画像をアップロードしてください。</p>
+                    
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:bg-slate-50 transition" onclick="document.getElementById('kyc-input').click()">
+                        <span class="material-icons-outlined text-4xl text-slate-400 mb-2">cloud_upload</span>
+                        <p class="text-sm font-bold text-slate-600">クリックして画像をアップロード</p>
+                        <p class="text-xs text-slate-400 mt-1">またはドラッグ＆ドロップ</p>
+                        <input type="file" id="kyc-input" class="hidden" onchange="previewKYC(this)">
+                    </div>
+                    
+                    <div id="kyc-preview" class="hidden mt-4">
+                        <p class="text-xs font-bold text-slate-500 mb-2">プレビュー:</p>
+                        <img id="kyc-img" class="w-full h-48 object-cover rounded-lg border border-slate-200">
+                    </div>
+
+                    <button onclick="submitKYC()" class="w-full mt-6 py-3 bg-primary text-white font-bold rounded-lg shadow hover:bg-blue-700 transition" id="kyc-submit" disabled>提出する</button>
+                </div>
+            `;
+        }
+
+        function previewKYC(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('kyc-img').src = e.target.result;
+                    document.getElementById('kyc-preview').classList.remove('hidden');
+                    document.getElementById('kyc-submit').disabled = false;
+                    document.getElementById('kyc-submit').classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function submitKYC() {
+            const btn = document.getElementById('kyc-submit');
+            btn.innerHTML = '送信中...';
+            
+            setTimeout(() => {
+                const u = store.user;
+                u.kycStatus = 'pending';
+                store.user = u;
+                closeModal();
+                showToast('本人確認書類を提出しました。審査をお待ちください。', 'verified_user');
+                router('dashboard');
+            }, 1500);
+        }
+
+        function openCreateModal() {
+             // Mock Create Event
+             showToast('この機能はデモ版では制限されています', 'info');
+        }
+
+        // --- INIT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            updateNav();
+            router('home');
+        });
+
+    </script>
+</body>
+</html>

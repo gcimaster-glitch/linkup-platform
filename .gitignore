@@ -9,12 +9,14 @@ yarn-error.log*
 # Build outputs
 dist/
 dist_static/
-dist_static_fallback/
 build/
 out/
 .next/
 .nuxt/
 .cache/
+
+# Allow dist_static_fallback (production static files)
+!frontend/dist_static_fallback/
 
 # Cloudflare Workers
 .wrangler/

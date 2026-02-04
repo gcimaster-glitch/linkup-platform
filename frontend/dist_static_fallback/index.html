@@ -453,6 +453,38 @@
                 return JSON.parse(localStorage.getItem('participants'));
             },
 
+            // Payment History (決済履歴)
+            get paymentHistory() {
+                // Generate from tickets if not exists
+                if (!localStorage.getItem('paymentHistory')) {
+                    const history = this.tickets.map(ticket => ({
+                        id: `pay-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        ticketId: ticket.id,
+                        userId: this.user ? this.user.email : 'demo@example.com',
+                        userName: this.user ? this.user.name : 'Demo User',
+                        eventId: ticket.eventId,
+                        eventTitle: ticket.title,
+                        ticketName: ticket.ticketName,
+                        amount: ticket.total || 0,
+                        quantity: ticket.count,
+                        paymentMethod: 'credit_card',
+                        paymentStatus: 'completed',
+                        transactionDate: ticket.purchaseDate,
+                        platformFee: Math.round((ticket.total || 0) * 0.05),
+                        organizerRevenue: Math.round((ticket.total || 0) * 0.95)
+                    }));
+                    localStorage.setItem('paymentHistory', JSON.stringify(history));
+                }
+                return JSON.parse(localStorage.getItem('paymentHistory')) || [];
+            },
+            set paymentHistory(v) { localStorage.setItem('paymentHistory', JSON.stringify(v)); },
+
+            addPaymentRecord(record) {
+                const history = this.paymentHistory;
+                history.push(record);
+                this.paymentHistory = history;
+            },
+
             // System Settings (Admin Config)
             get systemSettings() {
                 return JSON.parse(localStorage.getItem('systemSettings')) || {
@@ -2267,6 +2299,28 @@
                 qrCode: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=LINKUP-TKT-${Date.now()}`
             };
             
+            // 決済履歴を生成
+            const paymentRecord = {
+                id: `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                eventId: event.event_id,
+                eventTitle: event.title,
+                ticketName: ticket.name,
+                quantity: count,
+                amount: ticket.price * count,
+                paymentMethod: 'credit_card', // デモでは固定
+                paymentDate: new Date().toISOString(),
+                status: 'success',
+                userName: store.user?.name || 'ゲスト',
+                userEmail: store.user?.email || '-',
+                seats: newTicket.seats || null
+            };
+            
+            // 決済履歴を保存
+            const currentPaymentHistory = localStorage.getItem('paymentHistory');
+            const paymentHistory = currentPaymentHistory ? JSON.parse(currentPaymentHistory) : [];
+            paymentHistory.unshift(paymentRecord);
+            localStorage.setItem('paymentHistory', JSON.stringify(paymentHistory));
+            
             // Save
             const currentTickets = store.tickets;
             currentTickets.unshift(newTicket);
@@ -2283,14 +2337,30 @@
         }
 
         // --- DASHBOARDS ---
-        function renderDashboard(container) {
+        function renderDashboard(container, activeTab = 'tickets') {
             const myTickets = store.tickets;
+            const paymentHistory = store.paymentHistory.filter(p => p.userId === (store.user ? store.user.email : 'demo@example.com'));
             
             container.innerHTML = `
                 <div class="max-w-4xl mx-auto px-4 py-8">
                     <h1 class="text-2xl font-bold text-slate-800 mb-2">マイページ</h1>
                     <p class="text-slate-500 text-sm mb-8">ようこそ、${store.user.name}さん</p>
 
+                    <!-- タブメニュー -->
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
+                        <div class="flex border-b border-slate-200">
+                            <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="px-6 py-3 text-sm font-bold ${activeTab === 'tickets' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">confirmation_number</span>
+                                チケット一覧
+                            </button>
+                            <button onclick="renderDashboard(document.getElementById('app'), 'payments')" class="px-6 py-3 text-sm font-bold ${activeTab === 'payments' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">receipt</span>
+                                決済履歴
+                            </button>
+                        </div>
+                    </div>
+
+                    ${activeTab === 'tickets' ? `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div class="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex items-center">
                             <div class="w-12 h-12 rounded-full bg-blue-100 text-primary flex items-center justify-center mr-4">
@@ -2353,6 +2423,71 @@
                             </div>
                         `).join('')}
                     </div>
+                    ` : ''}
+
+                    ${activeTab === 'payments' ? `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-xl font-bold text-slate-800">決済履歴</h2>
+                            <div class="text-sm text-slate-500">
+                                合計: <span class="font-bold text-slate-800">¥${paymentHistory.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        ${paymentHistory.length === 0 ? '<p class="text-slate-400 text-center py-8">決済履歴がありません。</p>' : `
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b border-slate-200">
+                                        <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">取引日時</th>
+                                        <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">イベント名</th>
+                                        <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">チケット</th>
+                                        <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">枚数</th>
+                                        <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">金額</th>
+                                        <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">決済方法</th>
+                                        <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">ステータス</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${paymentHistory.map(p => `
+                                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                        <td class="py-4 px-4 text-sm text-slate-600">${new Date(p.transactionDate).toLocaleDateString('ja-JP', {year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'})}</td>
+                                        <td class="py-4 px-4">
+                                            <div class="font-bold text-slate-800 text-sm">${p.eventTitle}</div>
+                                        </td>
+                                        <td class="py-4 px-4 text-sm text-slate-600">${p.ticketName}</td>
+                                        <td class="py-4 px-4 text-center text-sm font-bold text-slate-800">${p.quantity}枚</td>
+                                        <td class="py-4 px-4 text-right font-bold text-slate-800">¥${p.amount.toLocaleString()}</td>
+                                        <td class="py-4 px-4 text-center">
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                                p.paymentMethod === 'credit_card' ? 'bg-blue-100 text-blue-700' : 
+                                                p.paymentMethod === 'konbini' ? 'bg-orange-100 text-orange-700' :
+                                                p.paymentMethod === 'point' ? 'bg-purple-100 text-purple-700' : 
+                                                'bg-slate-100 text-slate-700'
+                                            }">
+                                                ${p.paymentMethod === 'credit_card' ? 'カード' : 
+                                                  p.paymentMethod === 'konbini' ? 'コンビニ' : 
+                                                  p.paymentMethod === 'point' ? 'ポイント' : '現金'}
+                                            </span>
+                                        </td>
+                                        <td class="py-4 px-4 text-center">
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                                p.paymentStatus === 'completed' ? 'bg-green-100 text-green-700' : 
+                                                p.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
+                                                'bg-red-100 text-red-700'
+                                            }">
+                                                ${p.paymentStatus === 'completed' ? '完了' : 
+                                                  p.paymentStatus === 'pending' ? '処理中' : 'キャンセル'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        `}
+                    </div>
+                    ` : ''}
                 </div>
             `;
         }
@@ -2393,6 +2528,9 @@
                                 </button>
                                 <button onclick="renderOrganizer(document.getElementById('app'), 'marketing')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'marketing' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">campaign</span> マーケティング
+                                </button>
+                                <button onclick="renderOrganizer(document.getElementById('app'), 'payment-history')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'payment-history' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">receipt_long</span> 決済履歴
                                 </button>
                                 <button onclick="renderOrganizer(document.getElementById('app'), 'finance')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'finance' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">account_balance</span> 売上・振込
@@ -2525,9 +2663,232 @@
             if (tab === 'events') return renderOrganizerEvents();
             if (tab === 'operations') return renderOrganizerOperations();
             if (tab === 'marketing') return renderOrganizerMarketing();
-            if (tab === 'finance') return renderOrganizerSales(); // Re-use Sales for Finance tab
-            if (tab === 'settings') return renderOrganizerProfileSettings(); // Re-use Profile for Settings tab
+            if (tab === 'payment-history') return renderOrganizerPaymentHistory();
+            if (tab === 'finance') return renderOrganizerFinance();
+            if (tab === 'settings') return renderOrganizerProfileSettings();
             return '';
+        }
+
+        function renderOrganizerPaymentHistory() {
+            const organizerName = store.organizerProfile.name;
+            // 主催者のイベントIDを取得
+            const organizerEvents = store.events.filter(e => e.organizer_name === organizerName);
+            const organizerEventIds = organizerEvents.map(e => e.event_id);
+            
+            // 主催者のイベントに関する決済履歴のみ取得
+            const paymentHistory = store.paymentHistory.filter(p => 
+                organizerEventIds.includes(p.eventId)
+            );
+            
+            const totalAmount = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
+            const todayPayments = paymentHistory.filter(p => {
+                const today = new Date().toISOString().split('T')[0];
+                return p.paymentDate.split('T')[0] === today;
+            });
+            const todayAmount = todayPayments.reduce((sum, p) => sum + p.amount, 0);
+            
+            return `
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold text-slate-800">決済履歴（自分のイベント）</h1>
+                    <div class="flex space-x-2">
+                        <button onclick="exportPaymentHistory('organizer')" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50">
+                            <span class="material-icons-outlined text-sm align-middle mr-1">download</span> CSV出力
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-slate-500 text-sm">総売上</span>
+                            <span class="material-icons-outlined text-blue-500">payments</span>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-900">¥${totalAmount.toLocaleString()}</p>
+                        <p class="text-xs text-slate-500 mt-1">累計</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-slate-500 text-sm">本日の売上</span>
+                            <span class="material-icons-outlined text-green-500">trending_up</span>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-900">¥${todayAmount.toLocaleString()}</p>
+                        <p class="text-xs text-slate-500 mt-1">${todayPayments.length}件</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-slate-500 text-sm">チケット販売数</span>
+                            <span class="material-icons-outlined text-purple-500">confirmation_number</span>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-900">${paymentHistory.reduce((sum, p) => sum + p.quantity, 0)}</p>
+                        <p class="text-xs text-slate-500 mt-1">${paymentHistory.length}件の取引</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+                    <div class="p-4 border-b border-slate-100">
+                        <div class="flex items-center space-x-4">
+                            <input type="text" placeholder="検索: イベント名、ユーザー名..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm">
+                            <select class="px-4 py-2 border border-slate-300 rounded-lg text-sm">
+                                <option value="">すべてのイベント</option>
+                                ${organizerEvents.map(e => `<option value="${e.event_id}">${e.title}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
+                                <tr>
+                                    <th class="py-4 px-6">決済ID</th>
+                                    <th class="py-4 px-6">日時</th>
+                                    <th class="py-4 px-6">購入者</th>
+                                    <th class="py-4 px-6">イベント</th>
+                                    <th class="py-4 px-6">チケット種別</th>
+                                    <th class="py-4 px-6">決済方法</th>
+                                    <th class="py-4 px-6 text-right">金額</th>
+                                    <th class="py-4 px-6 text-center">ステータス</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${paymentHistory.length === 0 ? `
+                                    <tr>
+                                        <td colspan="8" class="py-12 text-center text-slate-500">
+                                            <span class="material-icons-outlined text-6xl text-slate-300 mb-4">receipt_long</span>
+                                            <p>決済履歴はありません</p>
+                                        </td>
+                                    </tr>
+                                ` : paymentHistory.map(payment => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="py-4 px-6">
+                                            <span class="font-mono text-xs text-slate-600">${payment.id.substring(0, 16)}...</span>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <p class="text-sm text-slate-900">${new Date(payment.paymentDate).toLocaleDateString('ja-JP')}</p>
+                                            <p class="text-xs text-slate-500">${new Date(payment.paymentDate).toLocaleTimeString('ja-JP')}</p>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <p class="text-sm font-medium text-slate-900">${payment.userName || 'ゲスト'}</p>
+                                            <p class="text-xs text-slate-500">${payment.userEmail || '-'}</p>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <p class="text-sm text-slate-900">${payment.eventTitle}</p>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <span class="text-sm text-slate-700">${payment.ticketName}</span>
+                                            <span class="text-xs text-slate-500">× ${payment.quantity}</span>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <span class="inline-flex items-center text-xs">
+                                                <span class="material-icons-outlined text-sm mr-1">${payment.paymentMethod === 'credit_card' ? 'credit_card' : payment.paymentMethod === 'convenience_store' ? 'store' : 'account_balance'}</span>
+                                                ${payment.paymentMethod === 'credit_card' ? 'カード' : payment.paymentMethod === 'convenience_store' ? 'コンビニ' : '銀行振込'}
+                                            </span>
+                                        </td>
+                                        <td class="py-4 px-6 text-right">
+                                            <span class="text-sm font-bold text-slate-900">¥${payment.amount.toLocaleString()}</span>
+                                        </td>
+                                        <td class="py-4 px-6 text-center">
+                                            <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                                ${payment.status === 'success' ? '成功' : '保留'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-4 border-t border-slate-100 flex justify-between items-center">
+                        <p class="text-sm text-slate-500">${paymentHistory.length}件の決済履歴を表示中</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderOrganizerFinance() {
+            const organizerName = store.organizerProfile.name;
+            const organizerPayments = store.paymentHistory.filter(p => {
+                const event = store.events.find(e => e.event_id === p.eventId);
+                return event && event.organizer_name === organizerName;
+            });
+
+            const totalRevenue = organizerPayments.reduce((sum, p) => sum + p.organizerRevenue, 0);
+            const totalSales = organizerPayments.reduce((sum, p) => sum + p.amount, 0);
+            const platformFees = organizerPayments.reduce((sum, p) => sum + p.platformFee, 0);
+
+            return `
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold text-slate-800">売上・決済履歴</h1>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-6 shadow-lg">
+                        <p class="text-blue-100 text-sm mb-2">総売上</p>
+                        <p class="text-3xl font-bold">¥${totalSales.toLocaleString()}</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl p-6 shadow-lg">
+                        <p class="text-green-100 text-sm mb-2">手取り収益</p>
+                        <p class="text-3xl font-bold">¥${totalRevenue.toLocaleString()}</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-slate-500 to-slate-600 text-white rounded-2xl p-6 shadow-lg">
+                        <p class="text-slate-100 text-sm mb-2">プラットフォーム手数料</p>
+                        <p class="text-3xl font-bold">¥${platformFees.toLocaleString()}</p>
+                    </div>
+                </div>
+
+                <!-- Payment History Table -->
+                <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-6">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4">決済履歴一覧</h2>
+                    
+                    ${organizerPayments.length === 0 ? '<p class="text-slate-400 text-center py-8">決済履歴がありません。</p>' : `
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-slate-200">
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">取引日時</th>
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">購入者</th>
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">イベント名</th>
+                                    <th class="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">チケット</th>
+                                    <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">枚数</th>
+                                    <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">売上</th>
+                                    <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">手数料</th>
+                                    <th class="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">収益</th>
+                                    <th class="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">決済</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${organizerPayments.map(p => `
+                                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <td class="py-4 px-4 text-sm text-slate-600">${new Date(p.transactionDate).toLocaleDateString('ja-JP', {month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'})}</td>
+                                    <td class="py-4 px-4 text-sm text-slate-600">${p.userName}</td>
+                                    <td class="py-4 px-4">
+                                        <div class="font-bold text-slate-800 text-sm">${p.eventTitle}</div>
+                                    </td>
+                                    <td class="py-4 px-4 text-sm text-slate-600">${p.ticketName}</td>
+                                    <td class="py-4 px-4 text-center text-sm font-bold text-slate-800">${p.quantity}枚</td>
+                                    <td class="py-4 px-4 text-right font-bold text-slate-800">¥${p.amount.toLocaleString()}</td>
+                                    <td class="py-4 px-4 text-right text-sm text-red-600">-¥${p.platformFee.toLocaleString()}</td>
+                                    <td class="py-4 px-4 text-right font-bold text-green-600">¥${p.organizerRevenue.toLocaleString()}</td>
+                                    <td class="py-4 px-4 text-center">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${
+                                            p.paymentMethod === 'credit_card' ? 'bg-blue-100 text-blue-700' : 
+                                            p.paymentMethod === 'konbini' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-slate-100 text-slate-700'
+                                        }">
+                                            ${p.paymentMethod === 'credit_card' ? 'カード' : 
+                                              p.paymentMethod === 'konbini' ? 'コンビニ' : '現金'}
+                                        </span>
+                                    </td>
+                                </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    `}
+                </div>
+            `;
         }
 
         // New Aggregator Function for Operations (Sub-tabs: Participants, Seats)
@@ -3205,6 +3566,9 @@
                                 </button>
 
                                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 ml-2">Business</p>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'payment-history')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'payment-history' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">receipt_long</span> 決済履歴
+                                </button>
                                 <button onclick="renderAdmin(document.getElementById('app'), 'finance')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'finance' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">account_balance_wallet</span> 財務・振込
                                 </button>
@@ -3251,6 +3615,7 @@
             if (tab === 'users') return renderAdminUsers();
             if (tab === 'events') return renderAdminEvents();
             if (tab === 'venues') return renderAdminVenues();
+            if (tab === 'payment-history') return renderAdminPaymentHistory();
             if (tab === 'finance') return renderAdminFinance();
             if (tab === 'marketing') return renderAdminMarketing();
             if (tab === 'settings') return renderAdminSystem(); // Re-use System for Settings
@@ -3297,6 +3662,157 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            `;
+        }
+
+        function renderAdminPaymentHistory() {
+            const paymentHistory = store.paymentHistory;
+            const totalAmount = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
+            const todayPayments = paymentHistory.filter(p => {
+                const today = new Date().toISOString().split('T')[0];
+                return p.paymentDate.split('T')[0] === today;
+            });
+            const todayAmount = todayPayments.reduce((sum, p) => sum + p.amount, 0);
+            
+            return `
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-2xl font-bold text-slate-800">決済履歴（全体）</h1>
+                    <div class="flex space-x-2">
+                        <button onclick="exportPaymentHistory()" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm hover:bg-slate-50">
+                            <span class="material-icons-outlined text-sm align-middle mr-1">download</span> CSV出力
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-slate-500 text-sm">総決済額</span>
+                            <span class="material-icons-outlined text-blue-500">payments</span>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-900">¥${totalAmount.toLocaleString()}</p>
+                        <p class="text-xs text-slate-500 mt-1">累計</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-slate-500 text-sm">本日の決済</span>
+                            <span class="material-icons-outlined text-green-500">trending_up</span>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-900">¥${todayAmount.toLocaleString()}</p>
+                        <p class="text-xs text-slate-500 mt-1">${todayPayments.length}件</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-card">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-slate-500 text-sm">総取引数</span>
+                            <span class="material-icons-outlined text-purple-500">receipt</span>
+                        </div>
+                        <p class="text-3xl font-bold text-slate-900">${paymentHistory.length}</p>
+                        <p class="text-xs text-slate-500 mt-1">すべての取引</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+                    <div class="p-4 border-b border-slate-100">
+                        <div class="flex items-center space-x-4">
+                            <input type="text" placeholder="検索: イベント名、ユーザー名、決済ID..." class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm">
+                            <select class="px-4 py-2 border border-slate-300 rounded-lg text-sm">
+                                <option value="">すべてのステータス</option>
+                                <option value="success">成功</option>
+                                <option value="pending">保留中</option>
+                                <option value="failed">失敗</option>
+                            </select>
+                            <select class="px-4 py-2 border border-slate-300 rounded-lg text-sm">
+                                <option value="">すべての決済方法</option>
+                                <option value="credit_card">クレジットカード</option>
+                                <option value="convenience_store">コンビニ決済</option>
+                                <option value="bank_transfer">銀行振込</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
+                                <tr>
+                                    <th class="py-4 px-6">決済ID</th>
+                                    <th class="py-4 px-6">日時</th>
+                                    <th class="py-4 px-6">ユーザー</th>
+                                    <th class="py-4 px-6">イベント</th>
+                                    <th class="py-4 px-6">チケット種別</th>
+                                    <th class="py-4 px-6">決済方法</th>
+                                    <th class="py-4 px-6 text-right">金額</th>
+                                    <th class="py-4 px-6 text-center">ステータス</th>
+                                    <th class="py-4 px-6 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${paymentHistory.length === 0 ? `
+                                    <tr>
+                                        <td colspan="9" class="py-12 text-center text-slate-500">
+                                            <span class="material-icons-outlined text-6xl text-slate-300 mb-4">receipt_long</span>
+                                            <p>決済履歴はありません</p>
+                                        </td>
+                                    </tr>
+                                ` : paymentHistory.map(payment => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="py-4 px-6">
+                                            <span class="font-mono text-xs text-slate-600">${payment.id}</span>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <p class="text-sm text-slate-900">${new Date(payment.paymentDate).toLocaleDateString('ja-JP')}</p>
+                                            <p class="text-xs text-slate-500">${new Date(payment.paymentDate).toLocaleTimeString('ja-JP')}</p>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <p class="text-sm font-medium text-slate-900">${payment.userName || 'ゲスト'}</p>
+                                            <p class="text-xs text-slate-500">${payment.userEmail || '-'}</p>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <p class="text-sm text-slate-900">${payment.eventTitle}</p>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <span class="text-sm text-slate-700">${payment.ticketName}</span>
+                                            <span class="text-xs text-slate-500">× ${payment.quantity}</span>
+                                        </td>
+                                        <td class="py-4 px-6">
+                                            <span class="inline-flex items-center text-xs">
+                                                <span class="material-icons-outlined text-sm mr-1">${payment.paymentMethod === 'credit_card' ? 'credit_card' : payment.paymentMethod === 'convenience_store' ? 'store' : 'account_balance'}</span>
+                                                ${payment.paymentMethod === 'credit_card' ? 'カード' : payment.paymentMethod === 'convenience_store' ? 'コンビニ' : '銀行振込'}
+                                            </span>
+                                        </td>
+                                        <td class="py-4 px-6 text-right">
+                                            <span class="text-sm font-bold text-slate-900">¥${payment.amount.toLocaleString()}</span>
+                                        </td>
+                                        <td class="py-4 px-6 text-center">
+                                            <span class="inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                                                payment.status === 'success' ? 'bg-green-100 text-green-700' :
+                                                payment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-red-100 text-red-700'
+                                            }">
+                                                ${payment.status === 'success' ? '成功' : payment.status === 'pending' ? '保留' : '失敗'}
+                                            </span>
+                                        </td>
+                                        <td class="py-4 px-6 text-center">
+                                            <button onclick="showPaymentDetail('${payment.id}')" class="text-blue-600 hover:text-blue-700 text-sm">
+                                                <span class="material-icons-outlined text-sm">visibility</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="p-4 border-t border-slate-100 flex justify-between items-center">
+                        <p class="text-sm text-slate-500">${paymentHistory.length}件の決済履歴を表示中</p>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50">前へ</button>
+                            <button class="px-3 py-1 bg-primary text-white rounded text-sm">1</button>
+                            <button class="px-3 py-1 border border-slate-300 rounded text-sm hover:bg-slate-50">次へ</button>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -3985,6 +4501,180 @@
                 closeModal();
                 showToast('メーラーを起動しました (Demo)', 'mail');
             }
+        }
+
+        function exportPaymentHistory(scope = 'all') {
+            const paymentHistory = scope === 'organizer' 
+                ? store.paymentHistory.filter(p => {
+                    const organizerEvents = store.events.filter(e => e.organizer_name === store.organizerProfile.name);
+                    const organizerEventIds = organizerEvents.map(e => e.event_id);
+                    return organizerEventIds.includes(p.eventId);
+                })
+                : store.paymentHistory;
+            
+            // CSVヘッダー
+            const csvRows = [
+                ['決済ID', '日時', 'ユーザー名', 'メールアドレス', 'イベント', 'チケット種別', '数量', '決済方法', '金額', 'ステータス']
+            ];
+            
+            // データ行
+            paymentHistory.forEach(payment => {
+                csvRows.push([
+                    payment.id,
+                    new Date(payment.paymentDate).toLocaleString('ja-JP'),
+                    payment.userName || 'ゲスト',
+                    payment.userEmail || '-',
+                    payment.eventTitle,
+                    payment.ticketName,
+                    payment.quantity,
+                    payment.paymentMethod === 'credit_card' ? 'クレジットカード' : 
+                        payment.paymentMethod === 'convenience_store' ? 'コンビニ決済' : '銀行振込',
+                    payment.amount,
+                    payment.status === 'success' ? '成功' : payment.status === 'pending' ? '保留' : '失敗'
+                ]);
+            });
+            
+            // CSV文字列に変換
+            const csvContent = csvRows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+            
+            // ダウンロード
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `payment_history_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('CSV出力が完了しました', 'success');
+        }
+
+        function showPaymentDetail(paymentId) {
+            const payment = store.paymentHistory.find(p => p.id === paymentId);
+            if (!payment) {
+                showToast('決済情報が見つかりません', 'error');
+                return;
+            }
+            
+            const event = store.events.find(e => e.event_id === payment.eventId);
+            
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-800">決済詳細</h2>
+                                <p class="text-sm text-slate-500 mt-1">決済ID: ${payment.id}</p>
+                            </div>
+                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-600">
+                                <span class="material-icons-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <div class="space-y-6">
+                            <!-- ステータス -->
+                            <div class="bg-${payment.status === 'success' ? 'green' : 'yellow'}-50 border border-${payment.status === 'success' ? 'green' : 'yellow'}-200 rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <span class="material-icons-outlined text-${payment.status === 'success' ? 'green' : 'yellow'}-600 mr-2">
+                                        ${payment.status === 'success' ? 'check_circle' : 'pending'}
+                                    </span>
+                                    <span class="font-bold text-${payment.status === 'success' ? 'green' : 'yellow'}-800">
+                                        ${payment.status === 'success' ? '決済完了' : '保留中'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- イベント情報 -->
+                            <div class="border-b border-slate-200 pb-4">
+                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">イベント情報</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600">イベント名</span>
+                                        <span class="font-medium text-slate-900">${payment.eventTitle}</span>
+                                    </div>
+                                    ${event ? `
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-600">開催日時</span>
+                                            <span class="font-medium text-slate-900">${new Date(event.start_datetime).toLocaleDateString('ja-JP')}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-600">会場</span>
+                                            <span class="font-medium text-slate-900">${event.venue_name}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <!-- チケット情報 -->
+                            <div class="border-b border-slate-200 pb-4">
+                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">チケット情報</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600">チケット種別</span>
+                                        <span class="font-medium text-slate-900">${payment.ticketName}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600">購入枚数</span>
+                                        <span class="font-medium text-slate-900">${payment.quantity}枚</span>
+                                    </div>
+                                    ${payment.seats ? `
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-600">座席番号</span>
+                                            <span class="font-medium text-slate-900">${payment.seats}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+
+                            <!-- 購入者情報 -->
+                            <div class="border-b border-slate-200 pb-4">
+                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">購入者情報</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600">お名前</span>
+                                        <span class="font-medium text-slate-900">${payment.userName || 'ゲスト'}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600">メールアドレス</span>
+                                        <span class="font-medium text-slate-900">${payment.userEmail || '-'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 決済情報 -->
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">決済情報</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600">決済方法</span>
+                                        <span class="font-medium text-slate-900">
+                                            ${payment.paymentMethod === 'credit_card' ? 'クレジットカード' : 
+                                              payment.paymentMethod === 'convenience_store' ? 'コンビニ決済' : '銀行振込'}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600">決済日時</span>
+                                        <span class="font-medium text-slate-900">${new Date(payment.paymentDate).toLocaleString('ja-JP')}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                                        <span class="text-lg font-bold text-slate-900">合計金額</span>
+                                        <span class="text-2xl font-bold text-primary">¥${payment.amount.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex justify-end">
+                            <button onclick="this.closest('.fixed').remove()" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg hover:bg-slate-300">
+                                閉じる
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function openKYCModal() {

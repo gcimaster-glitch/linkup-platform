@@ -6862,50 +6862,62 @@ async function handleQRScan(qrData, eventId, scanner) {
         }
         
         const ticketId = parts[0];
-        
-        // チケット確認（ローカルストア）
-        const ticket = store.tickets.find(t => t.id === ticketId);
-        if (!ticket) {
-            showToast('チケットが見つかりません', 'error');
-            scanner.resume();
-            return;
-        }
-        
-        if (ticket.eventId !== eventId) {
-            showToast('このチケットは別のイベントのものです', 'error');
-            scanner.resume();
-            return;
-        }
+        const timestamp = parts[1];
         
         // バックエンドAPIでチェックイン実行
         try {
             if (typeof API !== 'undefined' && API.Checkin) {
-                await API.Checkin.scan(qrData, eventId);
-                showToast(`✅ チェックイン完了！\n${ticket.title}`, 'success');
+                const result = await API.Checkin.scan(qrData, eventId);
+                showToast(`✅ チェックイン完了！\nチケット: ${result.ticket_name || ticketId}`, 'success');
+                
+                // 統計更新
+                showQRScanner(eventId);
             } else {
-                // フォールバック: LocalStorage
+                // フォールバック: LocalStorageで簡易チェックイン
                 const checkins = JSON.parse(localStorage.getItem('checkins')) || {};
                 if (!checkins[eventId]) checkins[eventId] = [];
                 
+                // チケットIDの簡易検証（フォーマットチェックのみ）
+                if (!ticketId.startsWith('TKT-')) {
+                    showToast('無効なチケットIDです', 'error');
+                    scanner.resume();
+                    return;
+                }
+                
                 // 重複チェック
-                if (checkins[eventId].includes(ticketId)) {
+                const checkinRecord = `${ticketId}:${timestamp}`;
+                if (checkins[eventId].some(c => c.startsWith(ticketId))) {
                     showToast('このチケットは既にチェックイン済みです', 'warning');
                     scanner.resume();
                     return;
                 }
                 
-                checkins[eventId].push(ticketId);
+                checkins[eventId].push(checkinRecord);
                 localStorage.setItem('checkins', JSON.stringify(checkins));
                 showToast('チェックイン完了！（ローカルモード）', 'success');
+                
+                // 統計更新
+                showQRScanner(eventId);
             }
-            
-            // 統計更新
-            showQRScanner(eventId);
             
         } catch (apiError) {
             console.error('API checkin error:', apiError);
-            showToast('チェックイン処理に失敗しました', 'error');
-            scanner.resume();
+            
+            // APIエラー時のフォールバック
+            const checkins = JSON.parse(localStorage.getItem('checkins')) || {};
+            if (!checkins[eventId]) checkins[eventId] = [];
+            
+            const checkinRecord = `${ticketId}:${timestamp}`;
+            if (checkins[eventId].some(c => c.startsWith(ticketId))) {
+                showToast('このチケットは既にチェックイン済みです', 'warning');
+                scanner.resume();
+                return;
+            }
+            
+            checkins[eventId].push(checkinRecord);
+            localStorage.setItem('checkins', JSON.stringify(checkins));
+            showToast('チェックイン完了！（オフラインモード）', 'success');
+            showQRScanner(eventId);
         }
         
     } catch (error) {

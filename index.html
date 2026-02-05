@@ -4762,7 +4762,29 @@
                                     <span class="material-icons-outlined mr-3 text-sm">confirmation_number</span> チケット販売履歴
                                 </button>
                                 
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 ml-2">Monitoring & Logs</p>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'access-logs')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'access-logs' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">visibility</span> アクセスログ
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'server-status')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'server-status' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">dns</span> サーバーステータス
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'error-logs')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'error-logs' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">error</span> エラーログ
+                                </button>
+                                
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 ml-2">Security & Compliance</p>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'ekyc')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'ekyc' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">verified_user</span> eKYC管理
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'admin-staff')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'admin-staff' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">shield</span> 管理者スタッフ
+                                </button>
+                                
                                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 ml-2">System</p>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'ai-settings')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'ai-settings' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">auto_awesome</span> AI設定
+                                </button>
                                 <button onclick="renderAdmin(document.getElementById('app'), 'settings')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'settings' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">settings</span> システム設定
                                 </button>
@@ -4805,7 +4827,14 @@
             if (tab === 'payment-history') return renderAdminPaymentHistory();
             if (tab === 'finance') return renderAdminFinance();
             if (tab === 'marketing') return renderAdminMarketing();
-            if (tab === 'settings') return renderAdminSystem(); // Re-use System for Settings
+            // Phase 2: Monitoring & Logs
+            if (tab === 'access-logs') return renderAdminAccessLogs();
+            if (tab === 'server-status') return renderAdminServerStatus();
+            if (tab === 'error-logs') return renderAdminErrorLogs();
+            if (tab === 'ekyc') return renderAdminEKYC();
+            if (tab === 'admin-staff') return renderAdminStaff();
+            if (tab === 'ai-settings') return renderAdminAISettings();
+            if (tab === 'settings') return renderAdminSystem();
             return '';
         }
 
@@ -5781,6 +5810,879 @@
                 showToast('返金処理を開始しました', 'success');
                 closeModal();
             }
+        }
+
+        // ========================================
+        // 📊 第2段階: システム監視・ログ・セキュリティ
+        // ========================================
+        
+        // アクセスログ管理
+        function renderAdminAccessLogs() {
+            // モックデータ（本番ではバックエンドAPIから取得）
+            const accessLogs = generateMockAccessLogs();
+            const filters = adminFilters.accessLogs || { timeRange: '24h', method: 'all', status: 'all', search: '' };
+            
+            let filteredLogs = [...accessLogs];
+            
+            // フィルタ適用
+            if (filters.method !== 'all') {
+                filteredLogs = filteredLogs.filter(log => log.method === filters.method);
+            }
+            if (filters.status !== 'all') {
+                filteredLogs = filteredLogs.filter(log => {
+                    const status = parseInt(log.status);
+                    if (filters.status === '2xx') return status >= 200 && status < 300;
+                    if (filters.status === '4xx') return status >= 400 && status < 500;
+                    if (filters.status === '5xx') return status >= 500;
+                    return true;
+                });
+            }
+            if (filters.search) {
+                const search = filters.search.toLowerCase();
+                filteredLogs = filteredLogs.filter(log => 
+                    log.path.toLowerCase().includes(search) ||
+                    log.ip.includes(search) ||
+                    log.userAgent?.toLowerCase().includes(search)
+                );
+            }
+            
+            // 統計
+            const totalRequests = filteredLogs.length;
+            const successRequests = filteredLogs.filter(l => parseInt(l.status) >= 200 && parseInt(l.status) < 300).length;
+            const errorRequests = filteredLogs.filter(l => parseInt(l.status) >= 500).length;
+            const avgResponseTime = filteredLogs.reduce((sum, l) => sum + l.responseTime, 0) / totalRequests || 0;
+            
+            return `
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">アクセスログ</h1>
+                            <p class="text-sm text-slate-500 mt-1">リアルタイムアクセス監視とログ解析</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="refreshAccessLogs()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">refresh</span>
+                                更新
+                            </button>
+                            <button onclick="exportAccessLogsCSV()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">download</span>
+                                CSV出力
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 統計カード -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <p class="text-xs text-slate-500 font-bold mb-1">総リクエスト数</p>
+                            <p class="text-3xl font-bold text-slate-800">${totalRequests.toLocaleString()}</p>
+                        </div>
+                        <div class="bg-green-50 p-6 rounded-xl shadow-card border border-green-100">
+                            <p class="text-xs text-green-700 font-bold mb-1">成功 (2xx)</p>
+                            <p class="text-3xl font-bold text-green-800">${successRequests.toLocaleString()}</p>
+                        </div>
+                        <div class="bg-red-50 p-6 rounded-xl shadow-card border border-red-100">
+                            <p class="text-xs text-red-700 font-bold mb-1">エラー (5xx)</p>
+                            <p class="text-3xl font-bold text-red-800">${errorRequests.toLocaleString()}</p>
+                        </div>
+                        <div class="bg-blue-50 p-6 rounded-xl shadow-card border border-blue-100">
+                            <p class="text-xs text-blue-700 font-bold mb-1">平均応答時間</p>
+                            <p class="text-3xl font-bold text-blue-800">${avgResponseTime.toFixed(0)}ms</p>
+                        </div>
+                    </div>
+                    
+                    <!-- フィルタバー -->
+                    <div class="bg-white p-4 rounded-xl shadow-card">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">時間範囲</label>
+                                <select onchange="updateAccessLogFilter('timeRange', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="1h" ${filters.timeRange === '1h' ? 'selected' : ''}>過去1時間</option>
+                                    <option value="24h" ${filters.timeRange === '24h' ? 'selected' : ''}>過去24時間</option>
+                                    <option value="7d" ${filters.timeRange === '7d' ? 'selected' : ''}>過去7日間</option>
+                                    <option value="30d" ${filters.timeRange === '30d' ? 'selected' : ''}>過去30日間</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">HTTPメソッド</label>
+                                <select onchange="updateAccessLogFilter('method', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    <option value="GET" ${filters.method === 'GET' ? 'selected' : ''}>GET</option>
+                                    <option value="POST" ${filters.method === 'POST' ? 'selected' : ''}>POST</option>
+                                    <option value="PUT" ${filters.method === 'PUT' ? 'selected' : ''}>PUT</option>
+                                    <option value="DELETE" ${filters.method === 'DELETE' ? 'selected' : ''}>DELETE</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">ステータスコード</label>
+                                <select onchange="updateAccessLogFilter('status', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    <option value="2xx" ${filters.status === '2xx' ? 'selected' : ''}>2xx (成功)</option>
+                                    <option value="4xx" ${filters.status === '4xx' ? 'selected' : ''}>4xx (クライアントエラー)</option>
+                                    <option value="5xx" ${filters.status === '5xx' ? 'selected' : ''}>5xx (サーバーエラー)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">検索</label>
+                                <input type="text" placeholder="パス、IP、User-Agent..." value="${filters.search}" oninput="updateAccessLogFilter('search', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ログテーブル -->
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 text-slate-600 uppercase border-b">
+                                    <tr>
+                                        <th class="p-3">タイムスタンプ</th>
+                                        <th class="p-3">メソッド</th>
+                                        <th class="p-3">パス</th>
+                                        <th class="p-3">ステータス</th>
+                                        <th class="p-3">IPアドレス</th>
+                                        <th class="p-3">応答時間</th>
+                                        <th class="p-3">User-Agent</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    ${filteredLogs.length === 0 ? `
+                                        <tr><td colspan="7" class="p-8 text-center text-slate-400">ログが見つかりませんでした</td></tr>
+                                    ` : filteredLogs.map(log => `
+                                        <tr class="hover:bg-slate-50">
+                                            <td class="p-3 text-slate-600">${new Date(log.timestamp).toLocaleString('ja-JP')}</td>
+                                            <td class="p-3">
+                                                <span class="px-2 py-1 rounded text-xs font-bold ${
+                                                    log.method === 'GET' ? 'bg-blue-100 text-blue-700' :
+                                                    log.method === 'POST' ? 'bg-green-100 text-green-700' :
+                                                    log.method === 'PUT' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-red-100 text-red-700'
+                                                }">${log.method}</span>
+                                            </td>
+                                            <td class="p-3 font-mono text-slate-800">${log.path}</td>
+                                            <td class="p-3">
+                                                <span class="px-2 py-1 rounded text-xs font-bold ${
+                                                    parseInt(log.status) < 300 ? 'bg-green-100 text-green-700' :
+                                                    parseInt(log.status) < 400 ? 'bg-blue-100 text-blue-700' :
+                                                    parseInt(log.status) < 500 ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-red-100 text-red-700'
+                                                }">${log.status}</span>
+                                            </td>
+                                            <td class="p-3 font-mono text-slate-600">${log.ip}</td>
+                                            <td class="p-3 text-slate-600">${log.responseTime}ms</td>
+                                            <td class="p-3 text-slate-500 truncate max-w-xs">${log.userAgent?.substring(0, 50) || 'N/A'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // サーバーステータス監視
+        function renderAdminServerStatus() {
+            const serverMetrics = generateMockServerMetrics();
+            
+            return `
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">サーバーステータス</h1>
+                            <p class="text-sm text-slate-500 mt-1">リアルタイムシステム監視</p>
+                        </div>
+                        <button onclick="renderAdmin(document.getElementById('app'), 'server-status')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                            <span class="material-icons-outlined text-sm mr-2">refresh</span>
+                            更新
+                        </button>
+                    </div>
+                    
+                    <!-- ステータスカード -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <div class="flex items-center justify-between mb-4">
+                                <p class="text-sm font-bold text-slate-700">システムステータス</p>
+                                <span class="w-3 h-3 rounded-full ${serverMetrics.status === 'healthy' ? 'bg-green-500' : 'bg-red-500'} animate-pulse"></span>
+                            </div>
+                            <p class="text-2xl font-bold ${serverMetrics.status === 'healthy' ? 'text-green-600' : 'text-red-600'}">${serverMetrics.status === 'healthy' ? '正常' : '異常'}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <p class="text-sm font-bold text-slate-700 mb-2">稼働時間</p>
+                            <p class="text-2xl font-bold text-slate-800">${serverMetrics.uptime}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <p class="text-sm font-bold text-slate-700 mb-2">リクエスト/分</p>
+                            <p class="text-2xl font-bold text-slate-800">${serverMetrics.requestsPerMin}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- リソース使用状況 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">CPU使用率</h3>
+                            <div class="relative pt-1">
+                                <div class="flex mb-2 items-center justify-between">
+                                    <div>
+                                        <span class="text-xs font-semibold inline-block text-blue-600">${serverMetrics.cpu}%</span>
+                                    </div>
+                                </div>
+                                <div class="overflow-hidden h-4 mb-4 text-xs flex rounded bg-slate-200">
+                                    <div style="width:${serverMetrics.cpu}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${serverMetrics.cpu > 80 ? 'bg-red-500' : serverMetrics.cpu > 60 ? 'bg-yellow-500' : 'bg-blue-500'}"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">メモリ使用率</h3>
+                            <div class="relative pt-1">
+                                <div class="flex mb-2 items-center justify-between">
+                                    <div>
+                                        <span class="text-xs font-semibold inline-block text-purple-600">${serverMetrics.memory}%</span>
+                                    </div>
+                                </div>
+                                <div class="overflow-hidden h-4 mb-4 text-xs flex rounded bg-slate-200">
+                                    <div style="width:${serverMetrics.memory}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${serverMetrics.memory > 80 ? 'bg-red-500' : serverMetrics.memory > 60 ? 'bg-yellow-500' : 'bg-purple-500'}"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- サービスステータス -->
+                    <div class="bg-white rounded-xl shadow-card p-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">サービスステータス</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${serverMetrics.services.map(service => `
+                                <div class="flex items-center justify-between p-4 border border-slate-200 rounded-lg">
+                                    <div class="flex items-center">
+                                        <span class="w-2 h-2 rounded-full ${service.status === 'running' ? 'bg-green-500' : 'bg-red-500'} mr-3"></span>
+                                        <div>
+                                            <p class="font-bold text-slate-800">${service.name}</p>
+                                            <p class="text-xs text-slate-500">${service.description}</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-3 py-1 rounded-full text-xs font-bold ${service.status === 'running' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                        ${service.status === 'running' ? '稼働中' : '停止'}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- データベース統計 -->
+                    <div class="bg-white rounded-xl shadow-card p-6">
+                        <h3 class="text-lg font-bold text-slate-800 mb-4">データベース統計</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="text-center p-4 bg-slate-50 rounded-lg">
+                                <p class="text-xs text-slate-500 mb-1">接続数</p>
+                                <p class="text-2xl font-bold text-slate-800">${serverMetrics.database.connections}</p>
+                            </div>
+                            <div class="text-center p-4 bg-slate-50 rounded-lg">
+                                <p class="text-xs text-slate-500 mb-1">クエリ/秒</p>
+                                <p class="text-2xl font-bold text-slate-800">${serverMetrics.database.queriesPerSec}</p>
+                            </div>
+                            <div class="text-center p-4 bg-slate-50 rounded-lg">
+                                <p class="text-xs text-slate-500 mb-1">平均レスポンス</p>
+                                <p class="text-2xl font-bold text-slate-800">${serverMetrics.database.avgResponseTime}ms</p>
+                            </div>
+                            <div class="text-center p-4 bg-slate-50 rounded-lg">
+                                <p class="text-xs text-slate-500 mb-1">ストレージ使用量</p>
+                                <p class="text-2xl font-bold text-slate-800">${serverMetrics.database.storageUsed}GB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // モックデータ生成関数
+        function generateMockAccessLogs() {
+            const methods = ['GET', 'POST', 'PUT', 'DELETE'];
+            const paths = ['/api/events', '/api/users', '/api/tickets', '/api/orders', '/api/checkin/scan', '/'];
+            const statuses = ['200', '201', '400', '401', '404', '500'];
+            const logs = [];
+            
+            for (let i = 0; i < 50; i++) {
+                logs.push({
+                    timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+                    method: methods[Math.floor(Math.random() * methods.length)],
+                    path: paths[Math.floor(Math.random() * paths.length)],
+                    status: statuses[Math.floor(Math.random() * statuses.length)],
+                    ip: `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+                    responseTime: Math.floor(Math.random() * 500) + 10,
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                });
+            }
+            
+            return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+
+        function generateMockServerMetrics() {
+            return {
+                status: 'healthy',
+                uptime: '15日 3時間',
+                requestsPerMin: Math.floor(Math.random() * 1000) + 500,
+                cpu: Math.floor(Math.random() * 40) + 20,
+                memory: Math.floor(Math.random() * 50) + 30,
+                services: [
+                    { name: 'Frontend', description: 'Cloudflare Pages', status: 'running' },
+                    { name: 'Backend API', description: 'Cloudflare Workers', status: 'running' },
+                    { name: 'Database', description: 'D1 Database', status: 'running' },
+                    { name: 'Storage', description: 'R2 Storage', status: 'running' }
+                ],
+                database: {
+                    connections: Math.floor(Math.random() * 50) + 10,
+                    queriesPerSec: Math.floor(Math.random() * 100) + 50,
+                    avgResponseTime: Math.floor(Math.random() * 50) + 10,
+                    storageUsed: (Math.random() * 10 + 5).toFixed(2)
+                }
+            };
+        }
+
+        // フィルタ更新
+        function updateAccessLogFilter(key, value) {
+            if (!adminFilters.accessLogs) adminFilters.accessLogs = {};
+            adminFilters.accessLogs[key] = value;
+            renderAdmin(document.getElementById('app'), 'access-logs');
+        }
+
+        function refreshAccessLogs() {
+            showToast('アクセスログを更新しました', 'success');
+            renderAdmin(document.getElementById('app'), 'access-logs');
+        }
+
+        function exportAccessLogsCSV() {
+            showToast('CSV出力機能は実装予定です', 'info');
+        }
+
+        // エラーログ管理
+        function renderAdminErrorLogs() {
+            const errorLogs = generateMockErrorLogs();
+            const filters = adminFilters.errorLogs || { severity: 'all', timeRange: '24h', search: '' };
+            
+            let filteredLogs = [...errorLogs];
+            
+            if (filters.severity !== 'all') {
+                filteredLogs = filteredLogs.filter(log => log.severity === filters.severity);
+            }
+            if (filters.search) {
+                const search = filters.search.toLowerCase();
+                filteredLogs = filteredLogs.filter(log => 
+                    log.message.toLowerCase().includes(search) ||
+                    log.stack?.toLowerCase().includes(search)
+                );
+            }
+            
+            const criticalCount = filteredLogs.filter(l => l.severity === 'critical').length;
+            const errorCount = filteredLogs.filter(l => l.severity === 'error').length;
+            const warningCount = filteredLogs.filter(l => l.severity === 'warning').length;
+            
+            return `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">エラーログ</h1>
+                            <p class="text-sm text-slate-500 mt-1">システムエラーとサーバーエラーの監視</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="renderAdmin(document.getElementById('app'), 'error-logs')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">refresh</span>
+                                更新
+                            </button>
+                            <button onclick="clearAllErrorLogs()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">delete_sweep</span>
+                                全削除
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-red-50 p-6 rounded-xl shadow-card border border-red-100">
+                            <p class="text-xs text-red-700 font-bold mb-1">重大 (Critical)</p>
+                            <p class="text-3xl font-bold text-red-800">${criticalCount}</p>
+                        </div>
+                        <div class="bg-orange-50 p-6 rounded-xl shadow-card border border-orange-100">
+                            <p class="text-xs text-orange-700 font-bold mb-1">エラー (Error)</p>
+                            <p class="text-3xl font-bold text-orange-800">${errorCount}</p>
+                        </div>
+                        <div class="bg-yellow-50 p-6 rounded-xl shadow-card border border-yellow-100">
+                            <p class="text-xs text-yellow-700 font-bold mb-1">警告 (Warning)</p>
+                            <p class="text-3xl font-bold text-yellow-800">${warningCount}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-xl shadow-card">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">重要度</label>
+                                <select onchange="updateErrorLogFilter('severity', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    <option value="critical" ${filters.severity === 'critical' ? 'selected' : ''}>Critical</option>
+                                    <option value="error" ${filters.severity === 'error' ? 'selected' : ''}>Error</option>
+                                    <option value="warning" ${filters.severity === 'warning' ? 'selected' : ''}>Warning</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">時間範囲</label>
+                                <select onchange="updateErrorLogFilter('timeRange', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="1h" ${filters.timeRange === '1h' ? 'selected' : ''}>過去1時間</option>
+                                    <option value="24h" ${filters.timeRange === '24h' ? 'selected' : ''}>過去24時間</option>
+                                    <option value="7d" ${filters.timeRange === '7d' ? 'selected' : ''}>過去7日間</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">検索</label>
+                                <input type="text" placeholder="エラーメッセージ..." value="${filters.search}" oninput="updateErrorLogFilter('search', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        ${filteredLogs.length === 0 ? `
+                            <div class="bg-white p-12 rounded-xl shadow-card text-center text-slate-400">
+                                <span class="material-icons-outlined text-6xl mb-4 text-slate-300">check_circle</span>
+                                <p>エラーはありません</p>
+                            </div>
+                        ` : filteredLogs.map(log => `
+                            <div class="bg-white rounded-xl shadow-card overflow-hidden border-l-4 ${
+                                log.severity === 'critical' ? 'border-red-500' :
+                                log.severity === 'error' ? 'border-orange-500' :
+                                'border-yellow-500'
+                            }">
+                                <div class="p-4">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="px-2 py-1 rounded text-xs font-bold ${
+                                                log.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                                                log.severity === 'error' ? 'bg-orange-100 text-orange-700' :
+                                                'bg-yellow-100 text-yellow-700'
+                                            }">${log.severity.toUpperCase()}</span>
+                                            <span class="text-xs text-slate-500">${new Date(log.timestamp).toLocaleString('ja-JP')}</span>
+                                        </div>
+                                        <button onclick="dismissError('${log.id}')" class="text-slate-400 hover:text-slate-600">
+                                            <span class="material-icons-outlined text-sm">close</span>
+                                        </button>
+                                    </div>
+                                    <p class="font-bold text-slate-800 mb-2">${log.message}</p>
+                                    ${log.stack ? `
+                                        <details class="mt-2">
+                                            <summary class="text-xs text-blue-600 cursor-pointer hover:underline">スタックトレースを表示</summary>
+                                            <pre class="mt-2 p-3 bg-slate-50 rounded text-xs overflow-x-auto">${log.stack}</pre>
+                                        </details>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // eKYC管理
+        function renderAdminEKYC() {
+            const ekycRequests = generateMockEKYCRequests();
+            const filters = adminFilters.ekyc || { status: 'all', search: '' };
+            
+            let filteredRequests = [...ekycRequests];
+            
+            if (filters.status !== 'all') {
+                filteredRequests = filteredRequests.filter(req => req.status === filters.status);
+            }
+            if (filters.search) {
+                const search = filters.search.toLowerCase();
+                filteredRequests = filteredRequests.filter(req => 
+                    req.userName.toLowerCase().includes(search) ||
+                    req.email.toLowerCase().includes(search) ||
+                    req.documentId?.toLowerCase().includes(search)
+                );
+            }
+            
+            const pendingCount = filteredRequests.filter(r => r.status === 'pending').length;
+            const approvedCount = filteredRequests.filter(r => r.status === 'approved').length;
+            const rejectedCount = filteredRequests.filter(r => r.status === 'rejected').length;
+            
+            return `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">eKYC管理</h1>
+                            <p class="text-sm text-slate-500 mt-1">本人確認申請の審査と管理</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-yellow-50 p-6 rounded-xl shadow-card border border-yellow-100">
+                            <p class="text-xs text-yellow-700 font-bold mb-1">審査待ち</p>
+                            <p class="text-3xl font-bold text-yellow-800">${pendingCount}</p>
+                        </div>
+                        <div class="bg-green-50 p-6 rounded-xl shadow-card border border-green-100">
+                            <p class="text-xs text-green-700 font-bold mb-1">承認済</p>
+                            <p class="text-3xl font-bold text-green-800">${approvedCount}</p>
+                        </div>
+                        <div class="bg-red-50 p-6 rounded-xl shadow-card border border-red-100">
+                            <p class="text-xs text-red-700 font-bold mb-1">却下</p>
+                            <p class="text-3xl font-bold text-red-800">${rejectedCount}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-xl shadow-card">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">ステータス</label>
+                                <select onchange="updateEKYCFilter('status', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    <option value="pending" ${filters.status === 'pending' ? 'selected' : ''}>審査待ち</option>
+                                    <option value="approved" ${filters.status === 'approved' ? 'selected' : ''}>承認済</option>
+                                    <option value="rejected" ${filters.status === 'rejected' ? 'selected' : ''}>却下</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">検索</label>
+                                <input type="text" placeholder="ユーザー名、メールアドレス..." value="${filters.search}" oninput="updateEKYCFilter('search', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-600 uppercase border-b text-xs">
+                                <tr>
+                                    <th class="p-4">ユーザー</th>
+                                    <th class="p-4">本人確認書類</th>
+                                    <th class="p-4">申請日時</th>
+                                    <th class="p-4">ステータス</th>
+                                    <th class="p-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${filteredRequests.length === 0 ? `
+                                    <tr><td colspan="5" class="p-8 text-center text-slate-400">申請が見つかりませんでした</td></tr>
+                                ` : filteredRequests.map(req => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-4">
+                                            <p class="font-bold text-slate-800">${req.userName}</p>
+                                            <p class="text-xs text-slate-500">${req.email}</p>
+                                        </td>
+                                        <td class="p-4">
+                                            <p class="text-slate-700">${req.documentType}</p>
+                                            <p class="text-xs text-slate-500 font-mono">${req.documentId || 'N/A'}</p>
+                                        </td>
+                                        <td class="p-4 text-slate-600 text-xs">${new Date(req.submittedAt).toLocaleString('ja-JP')}</td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                                req.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                                req.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                'bg-red-100 text-red-700'
+                                            }">
+                                                ${req.status === 'approved' ? '承認済' : req.status === 'pending' ? '審査待ち' : '却下'}
+                                            </span>
+                                        </td>
+                                        <td class="p-4 text-right space-x-2">
+                                            ${req.status === 'pending' ? `
+                                                <button onclick="reviewEKYC('${req.id}')" class="text-blue-600 hover:underline text-xs">審査</button>
+                                            ` : ''}
+                                            <button onclick="viewEKYCDetail('${req.id}')" class="text-slate-600 hover:underline text-xs">詳細</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 管理者スタッフ管理
+        function renderAdminStaff() {
+            const staffMembers = generateMockAdminStaff();
+            
+            return `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">管理者スタッフ</h1>
+                            <p class="text-sm text-slate-500 mt-1">管理画面へのアクセス権限管理</p>
+                        </div>
+                        <button onclick="inviteAdminStaff()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 flex items-center">
+                            <span class="material-icons-outlined text-sm mr-2">person_add</span>
+                            スタッフ招待
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <p class="text-xs text-slate-500 font-bold mb-1">総スタッフ数</p>
+                            <p class="text-3xl font-bold text-slate-800">${staffMembers.length}</p>
+                        </div>
+                        <div class="bg-green-50 p-6 rounded-xl shadow-card border border-green-100">
+                            <p class="text-xs text-green-700 font-bold mb-1">アクティブ</p>
+                            <p class="text-3xl font-bold text-green-800">${staffMembers.filter(s => s.status === 'active').length}</p>
+                        </div>
+                        <div class="bg-slate-50 p-6 rounded-xl shadow-card border border-slate-100">
+                            <p class="text-xs text-slate-500 font-bold mb-1">停止中</p>
+                            <p class="text-3xl font-bold text-slate-700">${staffMembers.filter(s => s.status === 'inactive').length}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-600 uppercase border-b text-xs">
+                                <tr>
+                                    <th class="p-4">スタッフ</th>
+                                    <th class="p-4">ロール</th>
+                                    <th class="p-4">最終ログイン</th>
+                                    <th class="p-4">ステータス</th>
+                                    <th class="p-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${staffMembers.map(staff => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-4">
+                                            <div class="flex items-center">
+                                                <div class="w-10 h-10 rounded-full ${staff.role === 'super_admin' ? 'bg-red-500' : staff.role === 'admin' ? 'bg-blue-500' : 'bg-slate-400'} flex items-center justify-center text-white font-bold mr-3">
+                                                    ${staff.name.substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p class="font-bold text-slate-800">${staff.name}</p>
+                                                    <p class="text-xs text-slate-500">${staff.email}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded text-xs font-bold ${
+                                                staff.role === 'super_admin' ? 'bg-red-100 text-red-700' :
+                                                staff.role === 'admin' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-slate-100 text-slate-600'
+                                            }">
+                                                ${staff.role === 'super_admin' ? 'スーパー管理者' : staff.role === 'admin' ? '管理者' : 'サポート'}
+                                            </span>
+                                        </td>
+                                        <td class="p-4 text-slate-600 text-xs">${staff.lastLogin ? new Date(staff.lastLogin).toLocaleString('ja-JP') : 'N/A'}</td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                                staff.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                                            }">
+                                                ${staff.status === 'active' ? 'アクティブ' : '停止中'}
+                                            </span>
+                                        </td>
+                                        <td class="p-4 text-right space-x-2">
+                                            ${staff.role !== 'super_admin' ? `
+                                                <button onclick="editAdminStaff('${staff.id}')" class="text-blue-600 hover:underline text-xs">編集</button>
+                                                <button onclick="toggleAdminStaffStatus('${staff.id}')" class="text-slate-600 hover:underline text-xs">${staff.status === 'active' ? '停止' : '有効化'}</button>
+                                                <button onclick="deleteAdminStaff('${staff.id}')" class="text-red-600 hover:underline text-xs">削除</button>
+                                            ` : '<span class="text-xs text-slate-400">保護中</span>'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // AI設定管理
+        function renderAdminAISettings() {
+            const aiSettings = store.adminSettings || { aiEnabled: true, aiFeatures: { eventGen: true, profileGen: true, supportChat: true } };
+            
+            return `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">AI設定</h1>
+                            <p class="text-sm text-slate-500 mt-1">AI機能の有効化と設定</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl shadow-card p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 class="text-lg font-bold flex items-center">
+                                    <span class="material-icons-outlined mr-2 text-purple-500">auto_awesome</span>AI機能
+                                </h2>
+                                <p class="text-xs text-slate-500 mt-1">プラットフォーム全体のAI機能を管理</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="ai-toggle-main" class="sr-only peer" ${aiSettings.aiEnabled ? 'checked' : ''} onchange="toggleAI(this.checked)">
+                                <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+                        
+                        <div class="${aiSettings.aiEnabled ? '' : 'opacity-50 pointer-events-none'} space-y-6 transition duration-300">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-700 mb-3 border-b pb-2">機能の有効化</h3>
+                                <div class="space-y-4">
+                                    <label class="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition cursor-pointer">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="material-icons-outlined text-purple-500">event</span>
+                                            <div>
+                                                <p class="font-bold text-slate-800">イベント作成アシスト</p>
+                                                <p class="text-xs text-slate-500">AIがイベント説明文を自動生成</p>
+                                            </div>
+                                        </div>
+                                        <input type="checkbox" id="feat-event-gen" class="rounded text-purple-600 focus:ring-purple-500" ${aiSettings.aiFeatures?.eventGen ? 'checked' : ''} onchange="updateAIFeature('eventGen', this.checked)">
+                                    </label>
+                                    
+                                    <label class="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition cursor-pointer">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="material-icons-outlined text-purple-500">person</span>
+                                            <div>
+                                                <p class="font-bold text-slate-800">プロフィール作成アシスト</p>
+                                                <p class="text-xs text-slate-500">AIがプロフィール文を自動生成</p>
+                                            </div>
+                                        </div>
+                                        <input type="checkbox" id="feat-profile-gen" class="rounded text-purple-600 focus:ring-purple-500" ${aiSettings.aiFeatures?.profileGen ? 'checked' : ''} onchange="updateAIFeature('profileGen', this.checked)">
+                                    </label>
+                                    
+                                    <label class="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition cursor-pointer">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="material-icons-outlined text-purple-500">chat</span>
+                                            <div>
+                                                <p class="font-bold text-slate-800">AIサポートチャット</p>
+                                                <p class="text-xs text-slate-500">24時間対応のAIサポートボット</p>
+                                            </div>
+                                        </div>
+                                        <input type="checkbox" id="feat-support-chat" class="rounded text-purple-600 focus:ring-purple-500" ${aiSettings.aiFeatures?.supportChat ? 'checked' : ''} onchange="updateAIFeature('supportChat', this.checked)">
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-700 mb-3 border-b pb-2">使用状況</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="p-4 bg-slate-50 rounded-lg">
+                                        <p class="text-xs text-slate-500 mb-1">今月のAI生成回数</p>
+                                        <p class="text-2xl font-bold text-slate-800">${Math.floor(Math.random() * 1000) + 500}</p>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 rounded-lg">
+                                        <p class="text-xs text-slate-500 mb-1">チャット利用回数</p>
+                                        <p class="text-2xl font-bold text-slate-800">${Math.floor(Math.random() * 500) + 200}</p>
+                                    </div>
+                                    <div class="p-4 bg-slate-50 rounded-lg">
+                                        <p class="text-xs text-slate-500 mb-1">API使用率</p>
+                                        <p class="text-2xl font-bold text-slate-800">${Math.floor(Math.random() * 40) + 30}%</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // モックデータ生成
+        function generateMockErrorLogs() {
+            const severities = ['critical', 'error', 'warning'];
+            const messages = [
+                'Database connection timeout',
+                'Failed to fetch event data',
+                'Authentication token expired',
+                'Payment processing failed',
+                'QR code generation error',
+                'Email delivery failed'
+            ];
+            
+            const logs = [];
+            for (let i = 0; i < 10; i++) {
+                const severity = severities[Math.floor(Math.random() * severities.length)];
+                logs.push({
+                    id: `err-${Date.now()}-${i}`,
+                    timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+                    severity,
+                    message: messages[Math.floor(Math.random() * messages.length)],
+                    stack: severity === 'critical' ? 'Error: Connection failed\n  at Database.connect (db.js:45)\n  at async EventService.getEvents (events.js:12)' : null
+                });
+            }
+            return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+
+        function generateMockEKYCRequests() {
+            const statuses = ['pending', 'approved', 'rejected'];
+            const docTypes = ['運転免許証', 'マイナンバーカード', 'パスポート'];
+            
+            const requests = [];
+            for (let i = 0; i < 15; i++) {
+                requests.push({
+                    id: `ekyc-${Date.now()}-${i}`,
+                    userName: `ユーザー ${i + 1}`,
+                    email: `user${i + 1}@example.com`,
+                    documentType: docTypes[Math.floor(Math.random() * docTypes.length)],
+                    documentId: `DOC${Math.floor(Math.random() * 1000000)}`,
+                    submittedAt: new Date(Date.now() - Math.random() * 7 * 86400000).toISOString(),
+                    status: statuses[Math.floor(Math.random() * statuses.length)]
+                });
+            }
+            return requests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+        }
+
+        function generateMockAdminStaff() {
+            return [
+                { id: 'admin-001', name: 'Super Admin', email: 'admin@linkup.com', role: 'super_admin', status: 'active', lastLogin: new Date().toISOString() },
+                { id: 'admin-002', name: '山田 太郎', email: 'yamada@linkup.com', role: 'admin', status: 'active', lastLogin: new Date(Date.now() - 3600000).toISOString() },
+                { id: 'admin-003', name: '佐藤 花子', email: 'sato@linkup.com', role: 'admin', status: 'active', lastLogin: new Date(Date.now() - 86400000).toISOString() },
+                { id: 'admin-004', name: '鈴木 次郎', email: 'suzuki@linkup.com', role: 'support', status: 'inactive', lastLogin: null }
+            ];
+        }
+
+        // フィルタ更新関数
+        function updateErrorLogFilter(key, value) {
+            if (!adminFilters.errorLogs) adminFilters.errorLogs = {};
+            adminFilters.errorLogs[key] = value;
+            renderAdmin(document.getElementById('app'), 'error-logs');
+        }
+
+        function updateEKYCFilter(key, value) {
+            if (!adminFilters.ekyc) adminFilters.ekyc = {};
+            adminFilters.ekyc[key] = value;
+            renderAdmin(document.getElementById('app'), 'ekyc');
+        }
+
+        function clearAllErrorLogs() {
+            if (confirm('すべてのエラーログを削除しますか？')) {
+                showToast('エラーログを削除しました', 'success');
+                renderAdmin(document.getElementById('app'), 'error-logs');
+            }
+        }
+
+        function dismissError(errorId) {
+            showToast('エラーを却下しました', 'success');
+            renderAdmin(document.getElementById('app'), 'error-logs');
+        }
+
+        function reviewEKYC(id) {
+            showToast('eKYC審査機能は実装予定です', 'info');
+        }
+
+        function viewEKYCDetail(id) {
+            showToast('eKYC詳細表示機能は実装予定です', 'info');
+        }
+
+        function inviteAdminStaff() {
+            showToast('スタッフ招待機能は実装予定です', 'info');
+        }
+
+        function editAdminStaff(id) {
+            showToast('スタッフ編集機能は実装予定です', 'info');
+        }
+
+        function toggleAdminStaffStatus(id) {
+            showToast('ステータスを変更しました', 'success');
+            renderAdmin(document.getElementById('app'), 'admin-staff');
+        }
+
+        function deleteAdminStaff(id) {
+            if (confirm('このスタッフを削除しますか？')) {
+                showToast('スタッフを削除しました', 'success');
+                renderAdmin(document.getElementById('app'), 'admin-staff');
+            }
+        }
+
+        function updateAIFeature(feature, enabled) {
+            if (!store.adminSettings.aiFeatures) store.adminSettings.aiFeatures = {};
+            store.adminSettings.aiFeatures[feature] = enabled;
+            showToast(`${feature}を${enabled ? '有効化' : '無効化'}しました`, 'success');
         }
 
         function renderAdminSystem() {

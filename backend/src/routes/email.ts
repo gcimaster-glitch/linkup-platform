@@ -125,3 +125,117 @@ emailRoutes.post('/send-ticket', async (c) => {
     return c.json({ success: false, error: error.message }, 400);
   }
 });
+
+// Check-in Notification Endpoint
+emailRoutes.post('/send-checkin', async (c) => {
+  const { to, userName, eventName, ticketName, checkedInAt, isOrganizer } = await c.req.json();
+  const apiKey = c.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    console.warn('Resend API Key missing. Skipping email.');
+    return c.json({ success: false, error: 'Resend API Key not configured' }, 200);
+  }
+
+  const resend = new Resend(apiKey);
+
+  // メール内容を参加者用と主催者用で分ける
+  const subject = isOrganizer 
+    ? `【LinkUp】チェックイン通知: ${eventName}`
+    : `【LinkUp】イベント入場完了: ${eventName}`;
+
+  const htmlContent = isOrganizer
+    ? `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>チェックイン通知</title>
+        <style>
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+          .header { background-color: #10B981; padding: 32px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: bold; }
+          .content { padding: 32px; color: #334155; }
+          .info-box { background-color: #F0FDF4; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #BBF7D0; }
+          .footer { background-color: #F1F5F9; padding: 24px; text-align: center; color: #94A3B8; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>チェックイン完了</h1>
+          </div>
+          <div class="content">
+            <p>こんにちは、主催者様</p>
+            <p>イベント「<strong>${eventName}</strong>」に参加者がチェックインしました。</p>
+            
+            <div class="info-box">
+              <p><strong>参加者名:</strong> ${userName}</p>
+              <p><strong>チケット種別:</strong> ${ticketName}</p>
+              <p><strong>チェックイン時刻:</strong> ${new Date(checkedInAt).toLocaleString('ja-JP')}</p>
+            </div>
+
+            <p>最新の参加者状況は管理画面からご確認いただけます。</p>
+          </div>
+          <div class="footer">
+            <p>© 2026 LinkUp Inc. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+    : `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>イベント入場完了</title>
+        <style>
+          body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; margin-top: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+          .header { background-color: #10B981; padding: 32px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: bold; }
+          .content { padding: 32px; color: #334155; }
+          .info-box { background-color: #F0FDF4; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #BBF7D0; }
+          .footer { background-color: #F1F5F9; padding: 24px; text-align: center; color: #94A3B8; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>ようこそ！</h1>
+          </div>
+          <div class="content">
+            <p>こんにちは、${userName}様</p>
+            <p>イベント「<strong>${eventName}</strong>」への入場が完了しました。<br>イベントをお楽しみください！</p>
+            
+            <div class="info-box">
+              <p><strong>イベント名:</strong> ${eventName}</p>
+              <p><strong>チケット種別:</strong> ${ticketName}</p>
+              <p><strong>入場時刻:</strong> ${new Date(checkedInAt).toLocaleString('ja-JP')}</p>
+            </div>
+
+            <p>素敵な時間をお過ごしください。</p>
+          </div>
+          <div class="footer">
+            <p>© 2026 LinkUp Inc. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+  try {
+    const data = await resend.emails.send({
+      from: 'LinkUp <events@link-up.live>',
+      to: to,
+      subject: subject,
+      html: htmlContent,
+    });
+
+    return c.json({ success: true, data });
+  } catch (error) {
+    console.error('Check-in email send error:', error);
+    return c.json({ success: false, error: error.message }, 400);
+  }
+});

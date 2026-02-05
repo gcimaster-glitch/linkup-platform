@@ -266,6 +266,50 @@ checkinRoutes.post('/scan', authMiddleware, zValidator('json', qrScanSchema), as
       .bind(event_id)
       .run();
 
+    // メール通知を送信（非同期、エラーは無視）
+    const checkedInAt = new Date().toISOString();
+    try {
+      // 参加者へのメール通知
+      if (ticket.attendee_email) {
+        await fetch(`${c.env.API_BASE_URL || 'https://api.link-up.live'}/api/email/send-checkin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: ticket.attendee_email,
+            userName: ticket.attendee_name || ticket.attendee_display_name,
+            eventName: ticket.event_title,
+            ticketName: 'チケット',
+            checkedInAt,
+            isOrganizer: false,
+          }),
+        }).catch(e => console.error('Failed to send attendee email:', e));
+      }
+
+      // 主催者へのメール通知
+      const organizer: any = await db
+        .prepare('SELECT email FROM users WHERE user_id = ?')
+        .bind(ticket.organizer_id)
+        .first();
+      
+      if (organizer?.email) {
+        await fetch(`${c.env.API_BASE_URL || 'https://api.link-up.live'}/api/email/send-checkin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: organizer.email,
+            userName: ticket.attendee_name || ticket.attendee_display_name,
+            eventName: ticket.event_title,
+            ticketName: 'チケット',
+            checkedInAt,
+            isOrganizer: true,
+          }),
+        }).catch(e => console.error('Failed to send organizer email:', e));
+      }
+    } catch (emailError) {
+      console.error('Email notification error:', emailError);
+      // メール送信失敗してもチェックインは成功とする
+    }
+
     return c.json({
       success: true,
       message: 'Check-in successful!',
@@ -274,7 +318,7 @@ checkinRoutes.post('/scan', authMiddleware, zValidator('json', qrScanSchema), as
         attendee_name: ticket.attendee_name || ticket.attendee_display_name,
         attendee_email: ticket.attendee_email,
         event_title: ticket.event_title,
-        checked_in_at: new Date().toISOString(),
+        checked_in_at: checkedInAt,
       },
     });
   } catch (error) {

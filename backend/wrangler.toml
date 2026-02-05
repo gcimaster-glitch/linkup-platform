@@ -13,10 +13,11 @@ binding = "DB"
 database_name = "linkup-db"
 database_id = "8f2745e9-0943-45ef-8a5e-4b15f494d023"
 
-# R2 Bucket Binding
-# [[r2_buckets]]
-# binding = "R2"
-# bucket_name = "linkup-storage"
+# R2 Bucket Binding (画像・ファイルストレージ)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "linkup-storage"
+# Note: Create R2 bucket with: wrangler r2 bucket create linkup-storage
 
 # KV Namespace (セッション・QRキャッシュ用)
 # [[kv_namespaces]]

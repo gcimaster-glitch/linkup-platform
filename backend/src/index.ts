@@ -9,10 +9,12 @@ import { campaignRoutes } from './routes/campaigns';
 import { seoRoutes } from './routes/seo';
 import { emailRoutes } from './routes/email';
 import { adminRoutes } from './routes/admin';
+import { uploadRoutes } from './routes/upload';
 
 export type Bindings = {
   DB: D1Database;
   AI: any;
+  R2?: R2Bucket;
   JWT_SECRET: string;
   RESEND_API_KEY: string;
   ENVIRONMENT: string;
@@ -42,6 +44,7 @@ app.route('/api/organizer', organizerRoutes);
 app.route('/api/email', emailRoutes);
 app.route('/api/campaigns', campaignRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/upload', uploadRoutes);
 
 // SEO Routes (sitemap.xml, og-image)
 // Mounted at root so /sitemap.xml works directly

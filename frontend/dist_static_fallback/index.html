@@ -6493,18 +6493,29 @@ ${[...new Set(store.events.map(e => e.organizer_name))].map(organizer => `    <u
 // QRコード生成
 async function generateTicketQR(ticketId) {
     const qrData = `LINKUP:${ticketId}:${Date.now()}`;
-    const canvas = document.createElement('canvas');
     
     try {
-        await QRCode.toCanvas(canvas, qrData, {
+        // Check if QRCode library is loaded
+        if (typeof QRCode === 'undefined') {
+            console.error('QRCode library not loaded');
+            return null;
+        }
+        
+        // Generate QR code as Data URL
+        const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
             width: 300,
             margin: 2,
-            errorCorrectionLevel: 'H'
+            errorCorrectionLevel: 'H',
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
         });
         
-        return canvas.toDataURL();
+        return qrCodeDataUrl;
     } catch (error) {
         console.error('QR generation error:', error);
+        showToast('QRコード生成エラー: ' + error.message, 'error');
         return null;
     }
 }
@@ -6512,60 +6523,103 @@ async function generateTicketQR(ticketId) {
 // QRコード表示モーダル
 async function showTicketQR(ticketId) {
     const ticket = store.tickets.find(t => t.id === ticketId);
-    if (!ticket) return;
-    
-    const event = store.events.find(e => e.event_id === ticket.eventId);
-    if (!event) return;
-    
-    // QRコード生成
-    const qrCodeUrl = await generateTicketQR(ticketId);
-    if (!qrCodeUrl) {
-        showToast('QRコードの生成に失敗しました', 'error');
+    if (!ticket) {
+        showToast('チケットが見つかりません', 'error');
         return;
     }
     
+    const event = store.events.find(e => e.event_id === ticket.eventId);
+    if (!event) {
+        showToast('イベント情報が見つかりません', 'error');
+        return;
+    }
+    
+    // Show loading
     const modal = document.getElementById('modal-content');
     document.getElementById('modal-container').classList.remove('hidden');
-    
     modal.innerHTML = `
         <div class="p-8 text-center">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-bold text-slate-800">入場用QRコード</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
-                    <span class="material-icons-outlined">close</span>
-                </button>
-            </div>
-            
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 mb-6">
-                <img src="${qrCodeUrl}" class="mx-auto mb-4 rounded-xl shadow-lg bg-white p-4" style="width: 300px; height: 300px;">
-                <p class="text-sm text-slate-600 mb-2">イベント会場でこのQRコードを提示してください</p>
-                <p class="text-xs text-slate-500">チケットID: ${ticketId}</p>
-            </div>
-            
-            <div class="bg-slate-50 rounded-xl p-4 text-left mb-6">
-                <h4 class="font-bold text-slate-800 mb-3">イベント情報</h4>
-                <div class="space-y-2 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-slate-600">イベント名</span>
-                        <span class="font-semibold">${event.title}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-600">開催日時</span>
-                        <span class="font-semibold">${new Date(event.start_datetime).toLocaleString('ja-JP')}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-600">会場</span>
-                        <span class="font-semibold">${event.venue_name}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <button onclick="downloadQR('${qrCodeUrl}', '${ticketId}')" class="px-6 py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-700 transition">
-                <span class="material-icons-outlined text-sm align-middle mr-2">download</span>
-                QRコードをダウンロード
-            </button>
+            <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+            <p class="text-slate-600">QRコードを生成中...</p>
         </div>
     `;
+    
+    try {
+        // Generate QR code with backend API
+        let qrCodeUrl;
+        
+        if (typeof API !== 'undefined' && API.Checkin) {
+            try {
+                const response = await API.Checkin.generate(ticketId);
+                qrCodeUrl = response.qr_code_url || await generateTicketQR(ticketId);
+            } catch (apiError) {
+                console.warn('API QR generation failed, using local:', apiError);
+                qrCodeUrl = await generateTicketQR(ticketId);
+            }
+        } else {
+            qrCodeUrl = await generateTicketQR(ticketId);
+        }
+        
+        if (!qrCodeUrl) {
+            showToast('QRコードの生成に失敗しました', 'error');
+            closeModal();
+            return;
+        }
+        
+        modal.innerHTML = `
+            <div class="p-8 text-center">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-slate-800">入場用QRコード</h3>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                        <span class="material-icons-outlined">close</span>
+                    </button>
+                </div>
+                
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 mb-6">
+                    <img src="${qrCodeUrl}" class="mx-auto mb-4 rounded-xl shadow-lg bg-white p-4" style="width: 300px; height: 300px;">
+                    <p class="text-sm text-slate-600 mb-2">イベント会場でこのQRコードを提示してください</p>
+                    <p class="text-xs text-slate-500">チケットID: ${ticketId}</p>
+                </div>
+                
+                <div class="bg-slate-50 rounded-xl p-4 text-left mb-6">
+                    <h4 class="font-bold text-slate-800 mb-3">イベント情報</h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-slate-600">イベント名</span>
+                            <span class="font-semibold">${event.title}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-600">開催日時</span>
+                            <span class="font-semibold">${new Date(event.start_datetime).toLocaleString('ja-JP')}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-600">会場</span>
+                            <span class="font-semibold">${event.venue_name}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button onclick="downloadQR('${qrCodeUrl}', '${ticketId}')" class="px-6 py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-700 transition">
+                    <span class="material-icons-outlined text-sm align-middle mr-2">download</span>
+                    QRコードをダウンロード
+                </button>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Show QR error:', error);
+        modal.innerHTML = `
+            <div class="p-8 text-center">
+                <div class="mb-4">
+                    <span class="material-icons-outlined text-red-500 text-6xl">error</span>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-4">QRコード生成エラー</h3>
+                <p class="text-slate-600 mb-6">${error.message || 'QRコードを生成できませんでした'}</p>
+                <button onclick="closeModal()" class="px-6 py-3 bg-slate-200 text-slate-800 rounded-lg font-bold hover:bg-slate-300 transition">
+                    閉じる
+                </button>
+            </div>
+        `;
+    }
 }
 
 // QRコードダウンロード

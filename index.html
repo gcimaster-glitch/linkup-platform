@@ -2656,7 +2656,209 @@
         }
 
         // --- DASHBOARDS ---
-        function renderDashboard(container, activeTab = 'tickets') {
+        
+        // Helper function to render dashboard tab content
+        function renderUserDashboardTab(activeTab) {
+            const myTickets = store.tickets;
+            const paymentHistory = store.paymentHistory.filter(p => p.userId === (store.user ? store.user.email : 'demo@example.com'));
+            
+            // Initialize mock inbox data if not exists
+            if (!store.userInbox) {
+                store.userInbox = [
+                    { id: 'msg-001', from: '管理者', fromType: 'admin', subject: 'プラットフォームからのお知らせ', preview: 'LinkUpをご利用いただきありがとうございます...', date: '2024-02-01', read: false },
+                    { id: 'msg-002', from: 'イベント主催者A', fromType: 'organizer', subject: '新イベントのご案内', preview: '新しいイベントを公開しました...', date: '2024-01-28', read: true },
+                    { id: 'msg-003', from: '管理者', fromType: 'admin', subject: 'チケット購入確認', preview: 'チケットの購入が完了しました...', date: '2024-01-25', read: true }
+                ];
+            }
+            
+            // Initialize user interests if not exists
+            if (!store.userInterests) {
+                store.userInterests = {
+                    categories: ['Tech', 'Music', 'Art'],
+                    tags: ['AI', 'Web Development', 'Classical Music']
+                };
+            }
+            
+            switch(activeTab) {
+                case 'overview':
+                    return `
+                        <!-- Statistics Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-card p-6 text-white">
+                                <div class="flex justify-between items-start mb-4">
+                                    <span class="material-icons-outlined text-4xl opacity-80">confirmation_number</span>
+                                    <span class="px-2 py-1 bg-white/20 rounded text-xs font-bold">所有</span>
+                                </div>
+                                <p class="text-3xl font-bold mb-1">${myTickets.length}枚</p>
+                                <p class="text-sm opacity-80">チケット</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl shadow-card p-6 text-white">
+                                <div class="flex justify-between items-start mb-4">
+                                    <span class="material-icons-outlined text-4xl opacity-80">favorite</span>
+                                    <span class="px-2 py-1 bg-white/20 rounded text-xs font-bold">お気に入り</span>
+                                </div>
+                                <p class="text-3xl font-bold mb-1">${store.followedOrganizers.length}</p>
+                                <p class="text-sm opacity-80">主催者</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-card p-6 text-white">
+                                <div class="flex justify-between items-start mb-4">
+                                    <span class="material-icons-outlined text-4xl opacity-80">event</span>
+                                    <span class="px-2 py-1 bg-white/20 rounded text-xs font-bold">予定</span>
+                                </div>
+                                <p class="text-3xl font-bold mb-1">3</p>
+                                <p class="text-sm opacity-80">参加予定</p>
+                            </div>
+                            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-card p-6 text-white">
+                                <div class="flex justify-between items-start mb-4">
+                                    <span class="material-icons-outlined text-4xl opacity-80">verified</span>
+                                    <span class="px-2 py-1 bg-white/20 rounded text-xs font-bold">認証</span>
+                                </div>
+                                <p class="text-3xl font-bold mb-1">${store.user.kycStatus === 'verified' ? '完了' : '未完了'}</p>
+                                <p class="text-sm opacity-80">本人確認</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="bg-white rounded-2xl shadow-card p-6 mb-8">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">クイックアクション</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <button onclick="router('home')" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
+                                    <span class="material-icons-outlined text-primary text-3xl mb-2">search</span>
+                                    <p class="text-sm font-bold text-slate-700">イベント探索</p>
+                                </button>
+                                <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
+                                    <span class="material-icons-outlined text-primary text-3xl mb-2">confirmation_number</span>
+                                    <p class="text-sm font-bold text-slate-700">チケット確認</p>
+                                </button>
+                                <button onclick="openKYCModal()" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
+                                    <span class="material-icons-outlined text-primary text-3xl mb-2">verified_user</span>
+                                    <p class="text-sm font-bold text-slate-700">本人確認</p>
+                                </button>
+                                <button onclick="openUserSupportChat()" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
+                                    <span class="material-icons-outlined text-primary text-3xl mb-2">support_agent</span>
+                                    <p class="text-sm font-bold text-slate-700">サポート</p>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Activity -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4">最近のチケット</h3>
+                                ${myTickets.slice(0, 3).length > 0 ? myTickets.slice(0, 3).map(t => `
+                                    <div class="flex items-center space-x-3 mb-3 pb-3 border-b border-slate-100 last:border-0">
+                                        <span class="material-icons-outlined text-primary">confirmation_number</span>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-bold text-slate-800">${t.title}</p>
+                                            <p class="text-xs text-slate-500">${new Date(t.purchaseDate).toLocaleDateString()}</p>
+                                        </div>
+                                        <button onclick="showTicketDetail('${t.id}')" class="text-primary text-xs hover:underline">詳細</button>
+                                    </div>
+                                `).join('') : '<p class="text-slate-400 text-sm">チケットがありません</p>'}
+                            </div>
+                            
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4">未読メッセージ</h3>
+                                ${store.userInbox.filter(m => !m.read).slice(0, 3).length > 0 ? store.userInbox.filter(m => !m.read).slice(0, 3).map(msg => `
+                                    <div class="flex items-center space-x-3 mb-3 pb-3 border-b border-slate-100 last:border-0">
+                                        <span class="material-icons-outlined text-blue-500">mail</span>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-bold text-slate-800">${msg.subject}</p>
+                                            <p class="text-xs text-slate-500">${msg.from} • ${msg.date}</p>
+                                        </div>
+                                        <button onclick="viewUserMessage('${msg.id}')" class="text-primary text-xs hover:underline">開く</button>
+                                    </div>
+                                `).join('') : '<p class="text-slate-400 text-sm">未読メッセージはありません</p>'}
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'inbox':
+                    return `
+                        <div class="bg-white rounded-2xl shadow-card">
+                            <div class="p-6 border-b border-slate-100">
+                                <h3 class="text-lg font-bold text-slate-800">受信箱</h3>
+                                <p class="text-sm text-slate-500 mt-1">管理者・イベント主催者からのメッセージ</p>
+                            </div>
+                            <div class="divide-y divide-slate-100">
+                                ${store.userInbox.map(msg => `
+                                    <div class="p-6 hover:bg-slate-50 transition cursor-pointer ${!msg.read ? 'bg-blue-50/30' : ''}" onclick="viewUserMessage('${msg.id}')">
+                                        <div class="flex items-start space-x-4">
+                                            <div class="w-10 h-10 rounded-full ${msg.fromType === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center flex-shrink-0">
+                                                <span class="material-icons-outlined text-sm">${msg.fromType === 'admin' ? 'shield' : 'event'}</span>
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="flex items-center space-x-2 mb-1">
+                                                    <p class="text-sm font-bold text-slate-800">${msg.from}</p>
+                                                    ${!msg.read ? '<span class="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">未読</span>' : ''}
+                                                </div>
+                                                <p class="text-sm font-bold text-slate-700 mb-1">${msg.subject}</p>
+                                                <p class="text-xs text-slate-500 line-clamp-2">${msg.preview}</p>
+                                            </div>
+                                            <div class="text-xs text-slate-400">${msg.date}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'profile':
+                    return `
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-6">プロフィール編集</h3>
+                            <form onsubmit="saveUserProfile(event)" class="space-y-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">氏名</label>
+                                        <input type="text" value="${store.user.name}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">ふりがな</label>
+                                        <input type="text" placeholder="やまだ たろう" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">表示名</label>
+                                        <input type="text" placeholder="タロウ" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">性別</label>
+                                        <select class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none">
+                                            <option>選択してください</option>
+                                            <option>男性</option>
+                                            <option>女性</option>
+                                            <option>その他</option>
+                                            <option>回答しない</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
+                                        <input type="email" value="${store.user.email}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold text-slate-700 mb-2">携帯電話</label>
+                                        <input type="tel" placeholder="090-1234-5678" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none">
+                                    </div>
+                                </div>
+                                
+                                <div class="flex space-x-3">
+                                    <button type="submit" class="flex-1 py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-700">
+                                        保存する
+                                    </button>
+                                    <button type="button" onclick="showToast('パスワード変更は準備中です', 'lock')" class="px-6 py-3 bg-slate-100 text-slate-700 rounded-lg font-bold hover:bg-slate-200">
+                                        パスワード変更
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    `;
+                    
+                default:
+                    return '';
+            }
+        }
+        
+        function renderDashboard(container, activeTab = 'overview') {
             const myTickets = store.tickets;
             const paymentHistory = store.paymentHistory.filter(p => p.userId === (store.user ? store.user.email : 'demo@example.com'));
             
@@ -2667,14 +2869,39 @@
 
                     <!-- タブメニュー -->
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
-                        <div class="flex border-b border-slate-200">
-                            <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="px-6 py-3 text-sm font-bold ${activeTab === 'tickets' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
-                                <span class="material-icons-outlined text-sm align-middle mr-1">confirmation_number</span>
-                                チケット一覧
+                        <div class="flex border-b border-slate-200 overflow-x-auto">
+                            <button onclick="renderDashboard(document.getElementById('app'), 'overview')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'overview' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">dashboard</span>
+                                ダッシュボード
                             </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'payments')" class="px-6 py-3 text-sm font-bold ${activeTab === 'payments' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="renderDashboard(document.getElementById('app'), 'inbox')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'inbox' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">inbox</span>
+                                受信箱
+                                ${(store.userInbox || []).filter(m => !m.read).length > 0 ? `<span class="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">${(store.userInbox || []).filter(m => !m.read).length}</span>` : ''}
+                            </button>
+                            <button onclick="renderDashboard(document.getElementById('app'), 'profile')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'profile' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">person</span>
+                                プロフィール
+                            </button>
+                            <button onclick="renderDashboard(document.getElementById('app'), 'interests')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'interests' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">favorite</span>
+                                興味・関心
+                            </button>
+                            <button onclick="renderDashboard(document.getElementById('app'), 'events')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'events' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">event</span>
+                                イベント管理
+                            </button>
+                            <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'tickets' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">confirmation_number</span>
+                                チケット
+                            </button>
+                            <button onclick="renderDashboard(document.getElementById('app'), 'payments')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'payments' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">receipt</span>
                                 決済履歴
+                            </button>
+                            <button onclick="renderDashboard(document.getElementById('app'), 'support')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'support' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">support_agent</span>
+                                サポート
                             </button>
                         </div>
                     </div>

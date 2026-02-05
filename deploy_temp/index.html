@@ -372,7 +372,15 @@
             // Events is now a mix of memory and local storage
             _events: [],
             get events() { 
-                return this._events.length > 0 ? this._events : (JSON.parse(localStorage.getItem('events')) || MASTER_EVENTS); 
+                const events = this._events.length > 0 ? this._events : (JSON.parse(localStorage.getItem('events')) || MASTER_EVENTS);
+                // Ensure all tickets have purchaseLimit
+                return events.map(e => ({
+                    ...e,
+                    tickets: e.tickets ? e.tickets.map(t => ({
+                        ...t,
+                        purchaseLimit: t.purchaseLimit || 5
+                    })) : []
+                }));
             },
             set events(v) { 
                 this._events = v;
@@ -416,18 +424,7 @@
                     bio: 'テクノロジーとクリエイティブの融合をテーマに、年間50以上のカンファレンスやミートアップを主催しています。',
                     img: 'https://i.pravatar.cc/150?u=LinkUp Official',
                     cover: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-4.0.3',
-                    links: { twitter: '', web: '', note: '' },
-                    // 拡張フィールド
-                    logo: '',  // ロゴ画像URL
-                    companyName: '',  // 法人名
-                    contactName: '山田 太郎',  // 担当者氏名
-                    contactPhoto: '',  // 担当者顔写真URL
-                    address: '東京都渋谷区神南1-1-1',  // 所在地
-                    website: '',  // ウェブサイト
-                    profile: '',  // プロフィール（300文字まで）
-                    corporateNumber: '',  // 法人番号
-                    corporateVerified: false,  // 法人番号確認済み
-                    ekycVerified: false  // 本人確認済み（EKYC）
+                    links: { twitter: '', web: '', note: '' }
                 };
             },
             
@@ -618,10 +615,64 @@
         store.init();
 
         // --- ROUTER & VIEW RENDERERS ---
-        function router(view, params = {}) {
+        // --- SEO-FRIENDLY ROUTING SYSTEM ---
+        function router(view, params = {}, pushState = true) {
             const app = document.getElementById('app');
             window.scrollTo(0, 0);
 
+            // Update URL based on view (SEO-friendly paths)
+            if (pushState && history.pushState) {
+                let url = '/';
+                let title = 'LinkUp';
+                
+                switch(view) {
+                    case 'home':
+                        url = '/';
+                        title = 'LinkUp - 日本最大級のイベントプラットフォーム';
+                        break;
+                    case 'detail':
+                        url = `/events/${params.id}`;
+                        const event = store.events.find(e => e.event_id === params.id);
+                        if (event) {
+                            title = `${event.title} | LinkUp`;
+                            updateMetaTags(event.title, event.description, event.cover_image_url, url);
+                        }
+                        break;
+                    case 'organizer_profile':
+                        url = `/organizers/${encodeURIComponent(params.id)}`;
+                        title = `${params.id} | LinkUp`;
+                        break;
+                    case 'dashboard':
+                        url = '/dashboard';
+                        title = 'マイページ | LinkUp';
+                        break;
+                    case 'organizer':
+                        url = '/organizer/dashboard';
+                        title = '主催者ダッシュボード | LinkUp';
+                        break;
+                    case 'organizer_event_edit':
+                        url = `/organizer/events/${params.id || 'new'}`;
+                        title = params.id === 'new' ? '新規イベント作成 | LinkUp' : 'イベント編集 | LinkUp';
+                        break;
+                    case 'admin':
+                        url = '/admin';
+                        title = '管理者コンソール | LinkUp';
+                        break;
+                    case 'static':
+                        url = `/pages/${params.page}`;
+                        title = `${params.page} | LinkUp`;
+                        break;
+                    case 'category':
+                        url = `/category/${params.category}`;
+                        title = `${params.category} イベント一覧 | LinkUp`;
+                        break;
+                }
+                
+                history.pushState({ view, params }, title, url);
+                document.title = title;
+            }
+
+            // Render views
             if (view === 'home') renderHome(app);
             else if (view === 'detail') renderDetail(app, params.id);
             else if (view === 'seat_selection') renderSeatSelection(app);
@@ -636,8 +687,77 @@
             else if (view === 'organizer_event_edit') renderOrganizerEventEdit(app, params.id);
             else if (view === 'admin') renderAdmin(app);
             else if (view === 'static') renderStaticPage(app, params.page);
+            else if (view === 'category') renderCategoryPage(app, params.category);
             
             updateNav();
+        }
+        
+        // Update meta tags for SEO
+        function updateMetaTags(title, description, image, url) {
+            document.title = title + ' | LinkUp';
+            
+            // Update meta description
+            let metaDesc = document.querySelector('meta[name="description"]');
+            if (metaDesc) metaDesc.content = description;
+            
+            // Update OGP tags
+            let ogTitle = document.querySelector('meta[property="og:title"]');
+            if (ogTitle) ogTitle.content = title;
+            
+            let ogDesc = document.querySelector('meta[property="og:description"]');
+            if (ogDesc) ogDesc.content = description;
+            
+            let ogImage = document.querySelector('meta[property="og:image"]');
+            if (ogImage) ogImage.content = image;
+            
+            let ogUrl = document.querySelector('meta[property="og:url"]');
+            if (ogUrl) ogUrl.content = 'https://link-up.live' + url;
+            
+            // Update canonical
+            let canonical = document.querySelector('link[rel="canonical"]');
+            if (canonical) canonical.href = 'https://link-up.live' + url;
+        }
+        
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', (event) => {
+            if (event.state) {
+                router(event.state.view, event.state.params, false);
+            } else {
+                router('home', {}, false);
+            }
+        });
+        
+        // Parse URL on initial load
+        function parseURL() {
+            const path = window.location.pathname;
+            
+            if (path === '/' || path === '/index.html') {
+                return { view: 'home', params: {} };
+            } else if (path.startsWith('/events/')) {
+                const eventId = path.split('/events/')[1];
+                return { view: 'detail', params: { id: eventId } };
+            } else if (path.startsWith('/organizers/')) {
+                const organizerId = decodeURIComponent(path.split('/organizers/')[1]);
+                return { view: 'organizer_profile', params: { id: organizerId } };
+            } else if (path === '/dashboard') {
+                return { view: 'dashboard', params: {} };
+            } else if (path.startsWith('/organizer')) {
+                if (path.includes('/events/')) {
+                    const eventId = path.split('/events/')[1];
+                    return { view: 'organizer_event_edit', params: { id: eventId } };
+                }
+                return { view: 'organizer', params: {} };
+            } else if (path === '/admin') {
+                return { view: 'admin', params: {} };
+            } else if (path.startsWith('/pages/')) {
+                const page = path.split('/pages/')[1];
+                return { view: 'static', params: { page } };
+            } else if (path.startsWith('/category/')) {
+                const category = path.split('/category/')[1];
+                return { view: 'category', params: { category } };
+            }
+            
+            return { view: 'home', params: {} };
         }
 
         // --- STATIC PAGE RENDERER ---
@@ -1244,6 +1364,82 @@
             }, 6000); // Slower for readability
         }
 
+        // --- CATEGORY PAGE RENDERER ---
+        function renderCategoryPage(container, category) {
+            const categoryEvents = store.events.filter(e => e.category === category);
+            const categoryNames = {
+                tech: 'テクノロジー',
+                business: 'ビジネス',
+                music: '音楽',
+                art: 'アート',
+                sports: 'スポーツ',
+                food: '食・グルメ',
+                health: '健康・ウェルネス',
+                education: '教育・学習'
+            };
+            
+            const categoryName = categoryNames[category] || category;
+            
+            // Update meta tags for category page
+            updateMetaTags(
+                `${categoryName}イベント一覧`,
+                `${categoryName}カテゴリーのイベントを探す。様々な${categoryName}イベントが見つかります。`,
+                'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80',
+                `/category/${category}`
+            );
+            
+            container.innerHTML = `
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 py-12">
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <h1 class="text-4xl font-bold text-white mb-4">${categoryName}イベント</h1>
+                        <p class="text-blue-100 text-lg">${categoryEvents.length}件のイベントが見つかりました</p>
+                    </div>
+                </div>
+                
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    ${categoryEvents.length > 0 ? `
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${categoryEvents.map(event => `
+                                <div class="bg-white rounded-2xl shadow-card overflow-hidden hover:shadow-float transition cursor-pointer" onclick="router('detail', {id: '${event.event_id}'})">
+                                    <div class="relative h-48 overflow-hidden">
+                                        <img src="${event.cover_image_url}" class="w-full h-full object-cover hover:scale-105 transition duration-300">
+                                        <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary">
+                                            ${event.category}
+                                        </div>
+                                    </div>
+                                    <div class="p-5">
+                                        <h3 class="font-bold text-lg mb-2 text-slate-800 line-clamp-2 hover:text-primary transition">
+                                            ${event.title}
+                                        </h3>
+                                        <div class="flex items-center text-sm text-slate-500 mb-3">
+                                            <span class="material-icons-outlined text-sm mr-1">calendar_today</span>
+                                            ${new Date(event.start_datetime).toLocaleDateString('ja-JP')}
+                                        </div>
+                                        <div class="flex items-center text-sm text-slate-500 mb-3">
+                                            <span class="material-icons-outlined text-sm mr-1">place</span>
+                                            ${event.venue_name}
+                                        </div>
+                                        <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                                            <div class="flex items-center text-sm">
+                                                <img src="https://i.pravatar.cc/40?u=${event.organizer_name}" class="w-6 h-6 rounded-full mr-2">
+                                                <span class="text-slate-600">${event.organizer_name}</span>
+                                            </div>
+                                            <span class="font-bold text-primary">¥${event.price.toLocaleString()}~</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `
+                        <div class="text-center py-12">
+                            <span class="material-icons-outlined text-6xl text-slate-300 mb-4">event_busy</span>
+                            <p class="text-slate-500 text-lg">現在、このカテゴリーにイベントはありません。</p>
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
         // New Logic for Smart Filters
         function toggleDatePanel() {
             const panel = document.getElementById('date-panel');
@@ -1421,6 +1617,10 @@
             const event = store.events.find(e => e.event_id === id);
             if (!event) return renderHome(container); 
             
+            // Insert JSON-LD structured data for SEO
+            const structuredData = generateEventStructuredData(event);
+            insertStructuredData(structuredData);
+            
             const isFollowing = store.followedOrganizers.includes(event.organizer_name);
             const recommendations = store.events.filter(e => e.event_id !== id).sort(() => 0.5 - Math.random()).slice(0, 3);
 
@@ -1487,70 +1687,21 @@
                                 </div>
                             </div>
                             
-                            <div class="bg-white rounded-2xl shadow-card p-6 border border-slate-100 mb-8">
-                                <div class="flex items-start justify-between mb-4">
-                                    <div class="flex items-start cursor-pointer flex-1" onclick="router('organizer_profile', {id: '${event.organizer_name}'})">
-                                        <img src="${store.organizerProfile.logo || store.organizerProfile.contactPhoto || 'https://i.pravatar.cc/150?u=' + event.organizer_name}" 
-                                             class="w-16 h-16 rounded-lg mr-4 border-2 border-slate-100 object-cover">
-                                        <div class="flex-1">
-                                            <p class="text-xs text-slate-400 mb-1">主催者</p>
-                                            <h3 class="font-bold text-lg hover:text-primary transition mb-1">
-                                                ${store.organizerProfile.companyName || store.organizerProfile.contactName || event.organizer_name}
-                                            </h3>
-                                            ${store.organizerProfile.contactName && store.organizerProfile.companyName ? `
-                                                <p class="text-sm text-slate-600 mb-1">担当: ${store.organizerProfile.contactName}</p>
-                                            ` : ''}
-                                            <div class="flex items-center space-x-2 mb-2">
-                                                ${store.organizerProfile.corporateVerified ? `
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">
-                                                        <span class="material-icons-outlined text-xs mr-1">verified</span>
-                                                        法人確認済み
-                                                    </span>
-                                                ` : ''}
-                                                ${store.organizerProfile.ekycVerified ? `
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700">
-                                                        <span class="material-icons-outlined text-xs mr-1">badge</span>
-                                                        本人確認済み
-                                                    </span>
-                                                ` : ''}
-                                            </div>
-                                            <div class="flex items-center text-xs text-yellow-500">
-                                                <span class="material-icons-outlined text-sm">star</span>
-                                                <span class="ml-1 font-bold text-slate-700">${event.organizer_rating}</span>
-                                            </div>
+                            <div class="bg-white rounded-2xl shadow-card p-6 flex items-center justify-between border border-slate-100 mb-8">
+                                <div class="flex items-center cursor-pointer" onclick="router('organizer_profile', {id: '${event.organizer_name}'})">
+                                    <img src="https://i.pravatar.cc/150?u=${event.organizer_name}" class="w-14 h-14 rounded-full mr-4 border-2 border-slate-100">
+                                    <div>
+                                        <p class="text-xs text-slate-400 mb-1">主催者</p>
+                                        <h3 class="font-bold text-lg hover:text-primary transition">${event.organizer_name}</h3>
+                                        <div class="flex items-center text-xs text-yellow-500">
+                                            <span class="material-icons-outlined text-sm">star</span>
+                                            <span class="ml-1 font-bold text-slate-700">${event.organizer_rating}</span>
                                         </div>
                                     </div>
-                                    <button onclick="toggleFollow('${event.organizer_name}')" class="px-4 py-2 rounded-full border transition font-bold flex items-center text-sm ${isFollowing ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-white text-primary border-primary hover:bg-blue-50'}">
-                                        ${isFollowing ? '<span class="material-icons-outlined text-sm mr-1">check</span>フォロー中' : '<span class="material-icons-outlined text-sm mr-1">person_add</span>フォロー'}
-                                    </button>
                                 </div>
-                                
-                                ${store.organizerProfile.profile ? `
-                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-3">
-                                        <p class="text-sm text-slate-600 leading-relaxed">${store.organizerProfile.profile}</p>
-                                    </div>
-                                ` : ''}
-                                
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                    ${store.organizerProfile.address ? `
-                                        <div class="flex items-start text-slate-600">
-                                            <span class="material-icons-outlined text-sm mr-2 mt-0.5">location_on</span>
-                                            <span>${store.organizerProfile.address}</span>
-                                        </div>
-                                    ` : ''}
-                                    ${store.organizerProfile.website ? `
-                                        <div class="flex items-start text-slate-600">
-                                            <span class="material-icons-outlined text-sm mr-2 mt-0.5">language</span>
-                                            <a href="${store.organizerProfile.website}" target="_blank" class="text-primary hover:underline">${store.organizerProfile.website}</a>
-                                        </div>
-                                    ` : ''}
-                                    ${store.organizerProfile.corporateNumber ? `
-                                        <div class="flex items-start text-slate-600">
-                                            <span class="material-icons-outlined text-sm mr-2 mt-0.5">business</span>
-                                            <span>法人番号: ${store.organizerProfile.corporateNumber}</span>
-                                        </div>
-                                    ` : ''}
-                                </div>
+                                <button onclick="toggleFollow('${event.organizer_name}')" class="px-6 py-2 rounded-full border transition font-bold flex items-center ${isFollowing ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-white text-primary border-primary hover:bg-blue-50'}">
+                                    ${isFollowing ? '<span class="material-icons-outlined text-sm mr-1">check</span>フォロー中' : '<span class="material-icons-outlined text-sm mr-1">person_add</span>フォロー'}
+                                </button>
                             </div>
                         </div>
 
@@ -1568,7 +1719,8 @@
                                                 <span class="font-bold text-slate-800 group-hover:text-primary">${tkt.name}</span>
                                                 <span class="font-bold text-lg text-slate-900">¥${tkt.price.toLocaleString()}</span>
                                             </div>
-                                            <p class="text-xs text-slate-500 mb-3">${tkt.desc}</p>
+                                            <p class="text-xs text-slate-500 mb-2">${tkt.desc || ''}</p>
+                                            ${tkt.purchaseLimit ? `<p class="text-xs text-slate-400 mb-3 flex items-center"><span class="material-icons-outlined text-xs mr-1">info</span>お一人様${tkt.purchaseLimit}枚まで</p>` : ''}
                                             <button class="w-full py-2 bg-primary text-white border border-transparent rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm">選択する</button>
                                         </div>
                                     `).join('')}
@@ -1918,7 +2070,7 @@
                         <!-- Footer Action -->
                         <div class="bg-white text-slate-900 rounded-xl p-4 flex items-center justify-between shadow-lg sticky bottom-4 z-30">
                             <div>
-                                <p class="text-xs text-slate-500">選択した座席 (最大4席)</p>
+                                <p class="text-xs text-slate-500">選択した座席 (最大${ticket.purchaseLimit || 4}席)</p>
                                 <p class="font-bold text-lg" id="selected-seats-display">なし</p>
                             </div>
                             <button onclick="confirmSeats()" id="confirm-seats-btn" disabled class="px-8 py-3 bg-primary text-white font-bold rounded-lg opacity-50 cursor-not-allowed transition">
@@ -1941,9 +2093,10 @@
                 store.cart.seats = currentSeats.filter(s => s !== seatId);
                 btn.className = btn.className.replace('bg-primary text-white', 'bg-slate-600 text-slate-300');
             } else {
-                // Select (Limit to 4)
-                if (currentSeats.length >= 4) {
-                    showToast('一度に購入できるのは4席までです', 'warning');
+                // Select (Check purchase limit from ticket)
+                const maxPurchase = store.cart.ticket.purchaseLimit || 4;
+                if (currentSeats.length >= maxPurchase) {
+                    showToast(`一度に購入できるのは${maxPurchase}席までです`, 'warning');
                     return;
                 }
                 
@@ -3298,7 +3451,7 @@
                                     <div id="ticket-list" class="space-y-4">
                                         ${event && event.tickets ? event.tickets.map((ticket, idx) => `
                                             <div class="border border-slate-200 rounded-lg p-4">
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div>
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
                                                         <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.name}" placeholder="一般参加">
@@ -3311,16 +3464,24 @@
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
                                                         <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.capacity || 100}" placeholder="100">
                                                     </div>
-                                                    <div class="flex items-end">
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                                                            一人あたり購入制限
+                                                            <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                                                        </label>
+                                                        <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.purchaseLimit || 5}" placeholder="5" min="1" max="10">
+                                                    </div>
+                                                    <div class="md:col-span-2 flex items-end">
                                                         <button onclick="removeTicketType(${idx})" class="text-red-500 hover:text-red-700">
                                                             <span class="material-icons-outlined">delete</span>
+                                                            削除
                                                         </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         `).join('') : `
                                             <div class="border border-slate-200 rounded-lg p-4">
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div>
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
                                                         <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="一般参加" placeholder="一般参加">
@@ -3332,6 +3493,13 @@
                                                     <div>
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
                                                         <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="100" placeholder="100">
+                                                    </div>
+                                                    <div class="md:col-span-3">
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                                                            一人あたり購入制限
+                                                            <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                                                        </label>
+                                                        <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="5" placeholder="5" min="1" max="10">
                                                     </div>
                                                 </div>
                                             </div>
@@ -3932,8 +4100,27 @@
                 <h1 class="text-2xl font-bold text-slate-800 mb-6">プロフィール設定</h1>
                 
                 <div class="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+                    <!-- Cover Image Preview -->
+                    <div class="h-48 bg-slate-200 relative group cursor-pointer" onclick="document.getElementById('cover-upload').click()">
+                        <img id="preview-cover" src="${p.cover}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                            <span class="text-white font-bold"><span class="material-icons-outlined mr-2">edit</span>カバー画像を変更</span>
+                        </div>
+                    </div>
+                    <input type="file" id="cover-upload" class="hidden" onchange="handleImageUpload(this, 'preview-cover')">
+
                     <div class="p-8">
-                        <form onsubmit="saveProfile(event)" class="space-y-8 max-w-3xl">
+                        <div class="flex items-end -mt-16 mb-6 relative">
+                            <div class="relative group cursor-pointer" onclick="document.getElementById('icon-upload').click()">
+                                <img id="preview-icon" src="${p.img}" class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover bg-white">
+                                <div class="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                    <span class="material-icons-outlined text-white">camera_alt</span>
+                                </div>
+                            </div>
+                            <input type="file" id="icon-upload" class="hidden" onchange="handleImageUpload(this, 'preview-icon')">
+                        </div>
+
+                        <form onsubmit="saveProfile(event)" class="space-y-6 max-w-2xl">
                             ${store.adminSettings.aiEnabled && store.adminSettings.aiFeatures.profileGen ? `
                                 <div class="bg-purple-50 border border-purple-100 rounded-xl p-4 mb-2 flex items-center justify-between">
                                     <div class="flex items-center">
@@ -3946,149 +4133,45 @@
                                 </div>
                             ` : ''}
                             
-                            <!-- ロゴ・画像 -->
-                            <div class="border-b border-slate-200 pb-6">
-                                <h2 class="text-lg font-bold text-slate-800 mb-4">ロゴ・画像</h2>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">ロゴ画像</label>
-                                        <div class="relative group cursor-pointer border-2 border-dashed border-slate-300 rounded-lg p-4 hover:border-primary transition" onclick="document.getElementById('logo-upload').click()">
-                                            <img id="preview-logo" src="${p.logo || 'https://via.placeholder.com/150?text=Logo'}" class="w-32 h-32 object-cover mx-auto rounded-lg">
-                                            <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-lg">
-                                                <span class="text-white font-bold text-sm"><span class="material-icons-outlined mr-1 text-sm">upload</span>変更</span>
-                                            </div>
-                                        </div>
-                                        <input type="file" id="logo-upload" class="hidden" accept="image/*" onchange="handleImageUpload(this, 'preview-logo', 'logo')">
-                                        <p class="text-xs text-slate-500 mt-2">推奨: 正方形（512x512px以上）</p>
-                                    </div>
-                                    
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">担当者顔写真</label>
-                                        <div class="relative group cursor-pointer border-2 border-dashed border-slate-300 rounded-lg p-4 hover:border-primary transition" onclick="document.getElementById('photo-upload').click()">
-                                            <img id="preview-photo" src="${p.contactPhoto || p.img || 'https://via.placeholder.com/150?text=Photo'}" class="w-32 h-32 object-cover mx-auto rounded-full">
-                                            <div class="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-lg">
-                                                <span class="text-white font-bold text-sm"><span class="material-icons-outlined mr-1 text-sm">upload</span>変更</span>
-                                            </div>
-                                        </div>
-                                        <input type="file" id="photo-upload" class="hidden" accept="image/*" onchange="handleImageUpload(this, 'preview-photo', 'contactPhoto')">
-                                        <p class="text-xs text-slate-500 mt-2">ロゴがない場合に使用</p>
-                                    </div>
-                                </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">主催者名</label>
+                                <input type="text" name="name" value="${p.name}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" required>
                             </div>
                             
-                            <!-- 基本情報 -->
-                            <div class="border-b border-slate-200 pb-6">
-                                <h2 class="text-lg font-bold text-slate-800 mb-4">基本情報</h2>
-                                <div class="space-y-4">
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">法人名</label>
-                                        <input type="text" name="companyName" value="${p.companyName || ''}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" placeholder="株式会社○○">
-                                        <p class="text-xs text-slate-500 mt-1">法人名がある場合は優先的に表示されます</p>
-                                    </div>
-                                    
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">担当者氏名 <span class="text-red-500">*</span></label>
-                                        <input type="text" name="contactName" value="${p.contactName || p.name}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" required placeholder="山田 太郎">
-                                    </div>
-                                    
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">所在地</label>
-                                        <input type="text" name="address" value="${p.address || ''}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" placeholder="東京都渋谷区○○">
-                                    </div>
-                                    
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">ウェブサイト</label>
-                                        <input type="url" name="website" value="${p.website || p.links?.web || ''}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" placeholder="https://example.com">
-                                    </div>
-                                </div>
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">紹介文 (Bio)</label>
+                                <textarea name="bio" rows="4" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">${p.bio}</textarea>
                             </div>
                             
-                            <!-- プロフィール -->
-                            <div class="border-b border-slate-200 pb-6">
-                                <h2 class="text-lg font-bold text-slate-800 mb-4">プロフィール</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">プロフィール（300文字まで）</label>
-                                    <textarea name="profile" rows="6" maxlength="300" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none resize-none" placeholder="主催者の紹介文を入力してください...">${p.profile || p.bio || ''}</textarea>
-                                    <p class="text-xs text-slate-500 mt-1 text-right"><span id="profile-count">${(p.profile || p.bio || '').length}</span> / 300文字</p>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">Website URL</label>
+                                    <input type="url" name="web" value="${p.links.web || ''}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                                 </div>
-                            </div>
-                            
-                            <!-- 認証情報 -->
-                            <div class="border-b border-slate-200 pb-6">
-                                <h2 class="text-lg font-bold text-slate-800 mb-4">認証情報</h2>
-                                <div class="space-y-4">
-                                    <div>
-                                        <label class="block text-sm font-bold text-slate-700 mb-2">法人番号</label>
-                                        <input type="text" name="corporateNumber" value="${p.corporateNumber || ''}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none" placeholder="1234567890123" maxlength="13">
-                                        <p class="text-xs text-slate-500 mt-1">13桁の法人番号を入力してください</p>
-                                    </div>
-                                    
-                                    <div class="bg-slate-50 p-4 rounded-lg">
-                                        <div class="flex items-center justify-between mb-3">
-                                            <div class="flex items-center">
-                                                <span class="material-icons-outlined text-blue-600 mr-2">verified</span>
-                                                <span class="font-bold text-slate-700">法人番号確認</span>
-                                            </div>
-                                            <span class="px-3 py-1 rounded-full text-xs font-bold ${p.corporateVerified ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-600'}">
-                                                ${p.corporateVerified ? '確認済み' : '未確認'}
-                                            </span>
-                                        </div>
-                                        ${!p.corporateVerified ? `
-                                            <button type="button" onclick="verifyCorporateNumber()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm">
-                                                法人番号を確認
-                                            </button>
-                                        ` : ''}
-                                    </div>
-                                    
-                                    <div class="bg-slate-50 p-4 rounded-lg">
-                                        <div class="flex items-center justify-between mb-3">
-                                            <div class="flex items-center">
-                                                <span class="material-icons-outlined text-green-600 mr-2">badge</span>
-                                                <span class="font-bold text-slate-700">本人確認（eKYC）</span>
-                                            </div>
-                                            <span class="px-3 py-1 rounded-full text-xs font-bold ${p.ekycVerified ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}">
-                                                ${p.ekycVerified ? '確認済み' : '未確認'}
-                                            </span>
-                                        </div>
-                                        ${!p.ekycVerified ? `
-                                            <button type="button" onclick="startEKYC()" class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm">
-                                                本人確認を開始
-                                            </button>
-                                        ` : ''}
-                                    </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">Twitter (X) URL</label>
+                                    <input type="url" name="twitter" value="${p.links.twitter || ''}" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                                 </div>
                             </div>
 
-                            <div class="pt-4 flex justify-end space-x-3">
-                                <button type="button" onclick="renderOrganizer(document.getElementById('app'), 'dashboard')" class="px-6 py-3 bg-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-300">
-                                    キャンセル
-                                </button>
-                                <button type="submit" class="px-8 py-3 bg-primary text-white font-bold rounded-lg shadow-lg hover:bg-blue-600 transition">
+                            <div class="pt-4 flex justify-end">
+                                <button type="submit" class="px-8 py-3 bg-primary text-white font-bold rounded-full shadow-lg hover:bg-blue-600 transition">
                                     変更を保存
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
-                
-                <script>
-                    document.querySelector('textarea[name="profile"]').addEventListener('input', function(e) {
-                        document.getElementById('profile-count').textContent = e.target.value.length;
-                    });
-                </script>
             `;
         }
 
         // --- ORGANIZER ACTIONS ---
         
-        function handleImageUpload(input, imgId, fieldName) {
+        function handleImageUpload(input, imgId) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     document.getElementById(imgId).src = e.target.result;
-                    // Store in temporary variable for save
-                    if (!window.tempProfileImages) window.tempProfileImages = {};
-                    window.tempProfileImages[fieldName || imgId] = e.target.result;
                 }
                 reader.readAsDataURL(input.files[0]);
             }
@@ -4097,63 +4180,17 @@
         function saveProfile(e) {
             e.preventDefault();
             const form = e.target;
-            const currentProfile = store.organizerProfile;
-            
             const newProfile = {
-                ...currentProfile,
-                companyName: form.companyName.value,
-                contactName: form.contactName.value,
-                address: form.address.value,
-                website: form.website.value,
-                profile: form.profile.value,
-                corporateNumber: form.corporateNumber.value,
-                name: form.contactName.value || currentProfile.name,
-                bio: form.profile.value || currentProfile.bio
+                name: form.name.value,
+                bio: form.bio.value,
+                img: document.getElementById('preview-icon').src,
+                cover: document.getElementById('preview-cover').src,
+                links: {
+                    web: form.web.value,
+                    twitter: form.twitter.value
+                }
             };
-            
-            // Apply temporary uploaded images
-            if (window.tempProfileImages) {
-                if (window.tempProfileImages.logo) newProfile.logo = window.tempProfileImages.logo;
-                if (window.tempProfileImages.contactPhoto) newProfile.contactPhoto = window.tempProfileImages.contactPhoto;
-                window.tempProfileImages = null;
-            }
-            
-            // Keep existing verification status
-            newProfile.corporateVerified = currentProfile.corporateVerified;
-            newProfile.ekycVerified = currentProfile.ekycVerified;
-            
             store.updateOrganizerProfile(newProfile);
-            renderOrganizer(document.getElementById('app'), 'settings');
-        }
-        
-        function verifyCorporateNumber() {
-            const corporateNumber = document.querySelector('input[name="corporateNumber"]').value;
-            if (!corporateNumber || corporateNumber.length !== 13) {
-                showToast('正しい法人番号を入力してください（13桁）', 'error');
-                return;
-            }
-            
-            // シミュレーション: 実際はAPIで法人番号を確認
-            showToast('法人番号を確認しています...', 'info');
-            setTimeout(() => {
-                const profile = store.organizerProfile;
-                profile.corporateVerified = true;
-                store.updateOrganizerProfile(profile);
-                showToast('法人番号が確認されました', 'verified');
-                renderOrganizer(document.getElementById('app'), 'settings');
-            }, 2000);
-        }
-        
-        function startEKYC() {
-            showToast('本人確認プロセスを開始しています...', 'info');
-            // シミュレーション: 実際はeKYCフローへ遷移
-            setTimeout(() => {
-                const profile = store.organizerProfile;
-                profile.ekycVerified = true;
-                store.updateOrganizerProfile(profile);
-                showToast('本人確認が完了しました', 'badge');
-                renderOrganizer(document.getElementById('app'), 'settings');
-            }, 3000);
         }
 
         function openEventEditor(eventId = null) {
@@ -4372,110 +4409,12 @@
         }
 
         function renderAdminPartners() {
-            const organizer = store.organizerProfile;
-            
             return `
                 <div class="flex justify-between items-center mb-6">
                     <h1 class="text-2xl font-bold text-slate-800">パートナー (主催者) 管理</h1>
-                    <button onclick="invitePartner()" class="bg-primary text-white px-4 py-2 rounded-full font-bold text-sm shadow hover:bg-blue-600">
-                        <span class="material-icons-outlined text-sm align-middle mr-1">person_add</span>
-                        パートナー招待
-                    </button>
+                    <button class="bg-primary text-white px-4 py-2 rounded-full font-bold text-sm shadow hover:bg-blue-600">パートナー招待</button>
                 </div>
-                
-                <!-- 主催者プロフィール詳細 -->
-                <div class="bg-white rounded-2xl shadow-card border border-slate-100 p-6 mb-6">
-                    <div class="flex items-start justify-between mb-4">
-                        <h2 class="text-lg font-bold text-slate-800">登録主催者プロフィール</h2>
-                        <button onclick="editOrganizerProfileAdmin()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-bold">
-                            <span class="material-icons-outlined text-sm align-middle mr-1">edit</span>
-                            編集
-                        </button>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <!-- 画像 -->
-                        <div class="space-y-4">
-                            <div>
-                                <p class="text-xs text-slate-500 mb-2">ロゴ</p>
-                                <img src="${organizer.logo || 'https://via.placeholder.com/150?text=Logo'}" class="w-32 h-32 rounded-lg object-cover border border-slate-200">
-                            </div>
-                            <div>
-                                <p class="text-xs text-slate-500 mb-2">担当者顔写真</p>
-                                <img src="${organizer.contactPhoto || organizer.img || 'https://via.placeholder.com/150?text=Photo'}" class="w-32 h-32 rounded-full object-cover border border-slate-200">
-                            </div>
-                        </div>
-                        
-                        <!-- 基本情報 -->
-                        <div class="lg:col-span-2 space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <p class="text-xs text-slate-500 mb-1">法人名</p>
-                                    <p class="font-bold text-slate-800">${organizer.companyName || '未設定'}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-slate-500 mb-1">担当者氏名</p>
-                                    <p class="font-bold text-slate-800">${organizer.contactName || organizer.name}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-slate-500 mb-1">所在地</p>
-                                    <p class="text-slate-700">${organizer.address || '未設定'}</p>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-slate-500 mb-1">ウェブサイト</p>
-                                    ${organizer.website ? `<a href="${organizer.website}" target="_blank" class="text-primary hover:underline">${organizer.website}</a>` : '<p class="text-slate-400">未設定</p>'}
-                                </div>
-                                <div>
-                                    <p class="text-xs text-slate-500 mb-1">法人番号</p>
-                                    <p class="font-mono text-slate-700">${organizer.corporateNumber || '未設定'}</p>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <p class="text-xs text-slate-500 mb-1">プロフィール</p>
-                                <p class="text-slate-700 text-sm leading-relaxed">${organizer.profile || organizer.bio || '未設定'}</p>
-                            </div>
-                            
-                            <div class="flex space-x-2">
-                                ${organizer.corporateVerified ? `
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
-                                        <span class="material-icons-outlined text-xs mr-1">verified</span>
-                                        法人確認済み
-                                    </span>
-                                ` : `
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-600">
-                                        <span class="material-icons-outlined text-xs mr-1">pending</span>
-                                        法人未確認
-                                    </span>
-                                    <button onclick="adminVerifyCorporate()" class="px-3 py-1 bg-blue-600 text-white rounded-full text-xs font-bold hover:bg-blue-700">
-                                        確認する
-                                    </button>
-                                `}
-                                
-                                ${organizer.ekycVerified ? `
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                                        <span class="material-icons-outlined text-xs mr-1">badge</span>
-                                        本人確認済み
-                                    </span>
-                                ` : `
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-600">
-                                        <span class="material-icons-outlined text-xs mr-1">pending</span>
-                                        本人未確認
-                                    </span>
-                                    <button onclick="adminVerifyEKYC()" class="px-3 py-1 bg-green-600 text-white rounded-full text-xs font-bold hover:bg-green-700">
-                                        確認する
-                                    </button>
-                                `}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- パートナー一覧（既存） -->
                 <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                    <div class="p-4 border-b border-slate-100">
-                        <h3 class="font-bold text-slate-800">パートナー一覧</h3>
-                    </div>
                     <table class="w-full text-left">
                         <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
                             <tr>
@@ -4489,143 +4428,28 @@
                         <tbody class="divide-y divide-slate-100 text-sm">
                             <tr>
                                 <td class="p-4">
-                                    <div class="flex items-center">
-                                        <img src="${organizer.logo || organizer.contactPhoto || organizer.img}" class="w-10 h-10 rounded-lg object-cover mr-3 border border-slate-200">
-                                        <div>
-                                            <div class="font-bold text-slate-800">${organizer.companyName || organizer.contactName || organizer.name}</div>
-                                            <div class="text-xs text-slate-500">${organizer.website || 'official@linkup.com'}</div>
-                                        </div>
-                                    </div>
+                                    <div class="font-bold text-slate-800">LinkUp Official</div>
+                                    <div class="text-xs text-slate-500">official@linkup.com</div>
                                 </td>
-                                <td class="p-4">${store.events.length} 件 (公開中)</td>
-                                <td class="p-4">¥${store.paymentHistory.reduce((sum, p) => sum + p.amount, 0).toLocaleString()}</td>
+                                <td class="p-4">12 件 (公開中)</td>
+                                <td class="p-4">¥4,500,000</td>
+                                <td class="p-4"><span class="bg-green-100 text-green-600 px-2 py-1 rounded text-xs font-bold">認証済み</span></td>
+                                <td class="p-4 text-right"><button class="text-blue-600 hover:underline">管理</button></td>
+                            </tr>
+                            <tr>
                                 <td class="p-4">
-                                    <span class="bg-green-100 text-green-600 px-2 py-1 rounded text-xs font-bold">
-                                        ${organizer.corporateVerified && organizer.ekycVerified ? '認証済み' : '認証待ち'}
-                                    </span>
+                                    <div class="font-bold text-slate-800">NextGen Creators</div>
+                                    <div class="text-xs text-slate-500">contact@nextgen.com</div>
                                 </td>
-                                <td class="p-4 text-right">
-                                    <button onclick="editOrganizerProfileAdmin()" class="text-blue-600 hover:underline font-bold">管理</button>
-                                </td>
+                                <td class="p-4">5 件 (公開中)</td>
+                                <td class="p-4">¥1,200,000</td>
+                                <td class="p-4"><span class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs font-bold">KYC審査中</span></td>
+                                <td class="p-4 text-right"><button class="text-blue-600 hover:underline">審査</button></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             `;
-        }
-        
-        function editOrganizerProfileAdmin() {
-            showToast('主催者プロフィール編集画面を準備中...', 'info');
-            // 主催者の設定画面と同じフォームをモーダルで表示
-            const p = store.organizerProfile;
-            
-            const modal = document.getElementById('modal-container');
-            modal.innerHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
-                        <div class="sticky top-0 bg-white border-b border-slate-200 p-6 flex justify-between items-center">
-                            <h2 class="text-2xl font-bold text-slate-800">主催者プロフィール編集（管理者）</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-slate-400 hover:text-slate-600">
-                                <span class="material-icons-outlined">close</span>
-                            </button>
-                        </div>
-                        
-                        <form onsubmit="saveOrganizerProfileAdmin(event)" class="p-6 space-y-6">
-                            <div class="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">法人名</label>
-                                    <input type="text" name="companyName" value="${p.companyName || ''}" class="w-full p-3 border border-slate-300 rounded-lg">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">担当者氏名</label>
-                                    <input type="text" name="contactName" value="${p.contactName || p.name}" class="w-full p-3 border border-slate-300 rounded-lg">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">所在地</label>
-                                    <input type="text" name="address" value="${p.address || ''}" class="w-full p-3 border border-slate-300 rounded-lg">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">ウェブサイト</label>
-                                    <input type="url" name="website" value="${p.website || ''}" class="w-full p-3 border border-slate-300 rounded-lg">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">法人番号</label>
-                                    <input type="text" name="corporateNumber" value="${p.corporateNumber || ''}" class="w-full p-3 border border-slate-300 rounded-lg" maxlength="13">
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">プロフィール（300文字）</label>
-                                <textarea name="profile" rows="4" maxlength="300" class="w-full p-3 border border-slate-300 rounded-lg resize-none">${p.profile || p.bio || ''}</textarea>
-                            </div>
-                            
-                            <div class="flex space-x-3">
-                                <label class="flex items-center">
-                                    <input type="checkbox" name="corporateVerified" ${p.corporateVerified ? 'checked' : ''} class="mr-2">
-                                    <span class="text-sm">法人番号確認済み</span>
-                                </label>
-                                <label class="flex items-center">
-                                    <input type="checkbox" name="ekycVerified" ${p.ekycVerified ? 'checked' : ''} class="mr-2">
-                                    <span class="text-sm">本人確認済み（eKYC）</span>
-                                </label>
-                            </div>
-                            
-                            <div class="border-t border-slate-200 pt-6 flex justify-end space-x-3">
-                                <button type="button" onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">
-                                    キャンセル
-                                </button>
-                                <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
-                                    保存
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            `;
-        }
-        
-        function saveOrganizerProfileAdmin(event) {
-            event.preventDefault();
-            const form = event.target;
-            const currentProfile = store.organizerProfile;
-            
-            const updatedProfile = {
-                ...currentProfile,
-                companyName: form.companyName.value,
-                contactName: form.contactName.value,
-                address: form.address.value,
-                website: form.website.value,
-                corporateNumber: form.corporateNumber.value,
-                profile: form.profile.value,
-                corporateVerified: form.corporateVerified.checked,
-                ekycVerified: form.ekycVerified.checked
-            };
-            
-            store.updateOrganizerProfile(updatedProfile);
-            document.querySelector('.fixed').remove();
-            renderAdmin(document.getElementById('app'), 'organizers');
-        }
-        
-        function adminVerifyCorporate() {
-            if (confirm('法人番号を確認済みにしますか？')) {
-                const profile = store.organizerProfile;
-                profile.corporateVerified = true;
-                store.updateOrganizerProfile(profile);
-                renderAdmin(document.getElementById('app'), 'organizers');
-            }
-        }
-        
-        function adminVerifyEKYC() {
-            if (confirm('本人確認を承認しますか？')) {
-                const profile = store.organizerProfile;
-                profile.ekycVerified = true;
-                store.updateOrganizerProfile(profile);
-                renderAdmin(document.getElementById('app'), 'organizers');
-            }
-        }
-        
-        function invitePartner() {
-            showToast('パートナー招待機能は準備中です', 'person_add');
         }
 
         function renderAdminPaymentHistory() {
@@ -5592,7 +5416,7 @@ C-1,C,1,自由席エリア,free,available`;
             const newTicket = document.createElement('div');
             newTicket.className = 'border border-slate-200 rounded-lg p-4';
             newTicket.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
                         <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="VIP席">
@@ -5604,6 +5428,21 @@ C-1,C,1,自由席エリア,free,available`;
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
                         <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">一人あたり購入制限</label>
+                        <select class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg">
+                            <option value="1">1枚まで</option>
+                            <option value="2">2枚まで</option>
+                            <option value="3">3枚まで</option>
+                            <option value="4" selected>4枚まで</option>
+                            <option value="5">5枚まで</option>
+                            <option value="6">6枚まで</option>
+                            <option value="7">7枚まで</option>
+                            <option value="8">8枚まで</option>
+                            <option value="9">9枚まで</option>
+                            <option value="10">10枚まで</option>
+                        </select>
                     </div>
                     <div class="flex items-end">
                         <button onclick="this.closest('.border').remove()" class="text-red-500 hover:text-red-700">
@@ -5698,13 +5537,17 @@ C-1,C,1,自由席エリア,free,available`;
             
             // チケット情報取得
             const ticketElements = document.querySelectorAll('#ticket-list > div');
-            const tickets = Array.from(ticketElements).map((el, idx) => ({
-                id: `ticket-${Date.now()}-${idx}`,
-                name: el.querySelector('.ticket-name').value,
-                price: parseInt(el.querySelector('.ticket-price').value) || 0,
-                capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,
-                available: parseInt(el.querySelector('.ticket-capacity').value) || 100
-            }));
+            const tickets = Array.from(ticketElements).map((el, idx) => {
+                const purchaseLimit = parseInt(el.querySelector('.ticket-limit').value) || 5;
+                return {
+                    id: `ticket-${Date.now()}-${idx}`,
+                    name: el.querySelector('.ticket-name').value,
+                    price: parseInt(el.querySelector('.ticket-price').value) || 0,
+                    capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,
+                    available: parseInt(el.querySelector('.ticket-capacity').value) || 100,
+                    purchaseLimit: Math.max(1, Math.min(10, purchaseLimit)) // 1-10の範囲に制限
+                };
+            });
             
             // イベントオブジェクト作成
             const eventData = {
@@ -6445,10 +6288,166 @@ C-1,C,1,自由席エリア,free,available`;
             }, 1000);
         }
 
+        // --- SITEMAP GENERATION ---
+        function generateSitemap() {
+            const baseUrl = 'https://link-up.live';
+            const now = new Date().toISOString().split('T')[0];
+            
+            let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <!-- Home Page -->
+    <url>
+        <loc>${baseUrl}/</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+    
+    <!-- Static Pages -->
+    <url>
+        <loc>${baseUrl}/pages/about</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>${baseUrl}/pages/terms</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.3</priority>
+    </url>
+    <url>
+        <loc>${baseUrl}/pages/privacy</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.3</priority>
+    </url>
+    
+    <!-- Category Pages -->
+    <url>
+        <loc>${baseUrl}/category/tech</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>${baseUrl}/category/business</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>${baseUrl}/category/music</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>${baseUrl}/category/art</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    
+    <!-- Event Pages -->
+${store.events.map(event => `    <url>
+        <loc>${baseUrl}/events/${event.event_id}</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+    </url>`).join('\n')}
+    
+    <!-- Organizer Pages -->
+${[...new Set(store.events.map(e => e.organizer_name))].map(organizer => `    <url>
+        <loc>${baseUrl}/organizers/${encodeURIComponent(organizer)}</loc>
+        <lastmod>${now}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.7</priority>
+    </url>`).join('\n')}
+</urlset>`;
+            
+            return sitemap;
+        }
+        
+        // Download sitemap
+        function downloadSitemap() {
+            const sitemap = generateSitemap();
+            const blob = new Blob([sitemap], { type: 'application/xml' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'sitemap.xml';
+            link.click();
+            showToast('サイトマップをダウンロードしました', 'download');
+        }
+        
+        // Generate JSON-LD structured data for events
+        function generateEventStructuredData(event) {
+            return {
+                "@context": "https://schema.org",
+                "@type": "Event",
+                "name": event.title,
+                "description": event.description,
+                "image": event.cover_image_url,
+                "startDate": event.start_datetime,
+                "endDate": event.end_datetime,
+                "eventStatus": "https://schema.org/EventScheduled",
+                "eventAttendanceMode": event.venue_name.includes('オンライン') ? 
+                    "https://schema.org/OnlineEventAttendanceMode" : 
+                    "https://schema.org/OfflineEventAttendanceMode",
+                "location": event.venue_name.includes('オンライン') ? {
+                    "@type": "VirtualLocation",
+                    "url": event.zoom_url || "https://link-up.live/events/" + event.event_id
+                } : {
+                    "@type": "Place",
+                    "name": event.venue_name,
+                    "address": {
+                        "@type": "PostalAddress",
+                        "addressLocality": event.venue_address || event.venue_name
+                    }
+                },
+                "offers": event.tickets ? event.tickets.map(ticket => ({
+                    "@type": "Offer",
+                    "name": ticket.name,
+                    "price": ticket.price,
+                    "priceCurrency": "JPY",
+                    "availability": "https://schema.org/InStock",
+                    "url": `https://link-up.live/events/${event.event_id}`
+                })) : [],
+                "organizer": {
+                    "@type": "Organization",
+                    "name": event.organizer_name,
+                    "url": `https://link-up.live/organizers/${encodeURIComponent(event.organizer_name)}`
+                },
+                "performer": {
+                    "@type": "Organization",
+                    "name": event.organizer_name
+                }
+            };
+        }
+        
+        // Insert structured data into page
+        function insertStructuredData(data) {
+            // Remove existing structured data
+            const existingScript = document.querySelector('script[type="application/ld+json"]');
+            if (existingScript) {
+                existingScript.remove();
+            }
+            
+            // Insert new structured data
+            const script = document.createElement('script');
+            script.type = 'application/ld+json';
+            script.text = JSON.stringify(data);
+            document.head.appendChild(script);
+        }
+
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', () => {
             updateNav();
-            router('home');
+            
+            // Parse URL and route to appropriate view
+            const { view, params } = parseURL();
+            router(view, params, false);
+            
             toggleChatWidget(); // Init chat visibility
         });
 

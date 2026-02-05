@@ -98,10 +98,14 @@ eventRoutes.post('/', authMiddleware, async (c) => {
     
     const ticketStmts = tickets.map((t: any) => {
         const ticketId = t.id && t.id.startsWith('tkt-') ? t.id : `tkt-${uuidv4()}`;
+        const maxPurchase = t.purchaseLimit || t.max_purchase || 5; // デフォルト5枚
+        const minPurchase = t.min_purchase || 1;
+        const stock = t.capacity || t.stock || 100;
+        
         return db.prepare(`
-            INSERT INTO tickets (ticket_id, event_id, ticket_name, description, price, quantity, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).bind(ticketId, eventId, t.name || '一般', t.desc || '', t.price || 0, 100);
+            INSERT INTO tickets (ticket_id, event_id, ticket_name, description, price, stock, min_purchase, max_purchase, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(ticketId, eventId, t.name || '一般', t.desc || '', t.price || 0, stock, minPurchase, maxPurchase);
     });
     
     await db.batch(ticketStmts);
@@ -136,8 +140,8 @@ eventRoutes.put('/:id', authMiddleware, async (c) => {
                 venue_address = ?,
                 start_datetime = ?, 
                 end_datetime = ?, 
-                price = ?,
-                cover_image_url = ?
+                cover_image_url = ?,
+                updated_at = CURRENT_TIMESTAMP
             WHERE event_id = ?
         `).bind(
             body.title, 
@@ -147,14 +151,55 @@ eventRoutes.put('/:id', authMiddleware, async (c) => {
             body.venue_address,
             body.start_datetime, 
             body.end_datetime, 
-            body.price,
             body.cover_image_url,
             eventId
         ).run();
 
-        // Ticket updates are complex (add/remove/update). 
-        // For simplicity in MVP, we might skip ticket updates or just replace them.
-        // Let's keep existing tickets for now to preserve order history.
+        // チケット更新処理
+        if (body.tickets && body.tickets.length > 0) {
+            // 既存チケットを削除（注文が既にある場合は保持すべきだが、簡易的に削除）
+            const { results: existingOrders } = await db.prepare('SELECT COUNT(*) as count FROM orders WHERE event_id = ?').bind(eventId).all();
+            const hasOrders = existingOrders && existingOrders[0] && (existingOrders[0] as any).count > 0;
+            
+            if (!hasOrders) {
+                // 注文がない場合のみチケットを削除して再作成
+                await db.prepare('DELETE FROM tickets WHERE event_id = ?').bind(eventId).run();
+                
+                const ticketStmts = body.tickets.map((t: any) => {
+                    const ticketId = t.id && t.id.startsWith('tkt-') ? t.id : `tkt-${uuidv4()}`;
+                    const maxPurchase = t.purchaseLimit || t.max_purchase || 5;
+                    const minPurchase = t.min_purchase || 1;
+                    const stock = t.capacity || t.stock || 100;
+                    
+                    return db.prepare(`
+                        INSERT INTO tickets (ticket_id, event_id, ticket_name, description, price, stock, min_purchase, max_purchase, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    `).bind(ticketId, eventId, t.name || '一般', t.desc || '', t.price || 0, stock, minPurchase, maxPurchase);
+                });
+                
+                await db.batch(ticketStmts);
+            } else {
+                // 注文がある場合は既存チケットを更新のみ
+                for (const t of body.tickets) {
+                    if (t.id && t.id.startsWith('tkt-')) {
+                        const maxPurchase = t.purchaseLimit || t.max_purchase || 5;
+                        const minPurchase = t.min_purchase || 1;
+                        const stock = t.capacity || t.stock || 100;
+                        
+                        await db.prepare(`
+                            UPDATE tickets SET 
+                                ticket_name = ?,
+                                description = ?,
+                                price = ?,
+                                stock = ?,
+                                min_purchase = ?,
+                                max_purchase = ?
+                            WHERE ticket_id = ? AND event_id = ?
+                        `).bind(t.name, t.desc || '', t.price, stock, minPurchase, maxPurchase, t.id, eventId).run();
+                    }
+                }
+            }
+        }
 
         return c.json({ success: true });
     } catch (e: any) {

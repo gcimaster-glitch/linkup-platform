@@ -4650,6 +4650,53 @@
                             <textarea name="description" rows="4" class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary outline-none">${event.description}</textarea>
                         </div>
                         
+                        <!-- Sub Images Section -->
+                        <div class="border-t border-slate-200 pt-4 mt-4">
+                            <label class="block text-xs font-bold text-slate-500 mb-2">サブ画像 (最大3枚)</label>
+                            <p class="text-xs text-slate-400 mb-3">イベントの詳細ページに表示される追加画像です。</p>
+                            <div class="grid grid-cols-3 gap-4">
+                                ${[0, 1, 2].map(index => {
+                                    const subImage = event.sub_images && event.sub_images[index] ? event.sub_images[index] : '';
+                                    return `
+                                        <div class="space-y-2">
+                                            <div class="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border-2 border-dashed border-slate-300 hover:border-primary transition">
+                                                ${subImage ? `
+                                                    <img src="${subImage}" alt="Sub image ${index + 1}" class="w-full h-full object-cover" id="sub-image-preview-${index}">
+                                                    <button type="button" onclick="removeSubImage(${index})" class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow">
+                                                        <span class="material-icons-outlined text-sm">close</span>
+                                                    </button>
+                                                ` : `
+                                                    <label for="sub-image-${index}" class="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-200 transition">
+                                                        <span class="material-icons-outlined text-slate-400 text-3xl mb-1">add_photo_alternate</span>
+                                                        <span class="text-xs text-slate-500 font-bold">画像${index + 1}</span>
+                                                    </label>
+                                                    <div id="sub-image-preview-${index}" class="hidden absolute inset-0">
+                                                        <img src="" alt="Preview" class="w-full h-full object-cover">
+                                                    </div>
+                                                `}
+                                            </div>
+                                            <input type="file" id="sub-image-${index}" name="sub_image_${index}" accept="image/*" class="hidden" onchange="previewSubImage(${index}, event)">
+                                            <input type="hidden" name="sub_image_url_${index}" value="${subImage}" id="sub-image-url-${index}">
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- Video URL Section -->
+                        <div class="border-t border-slate-200 pt-4 mt-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-xs font-bold text-slate-500">動画URL (YouTube, Vimeo等)</label>
+                                <button type="button" onclick="toggleVideoUrlField()" class="text-xs text-blue-600 hover:underline" id="toggle-video-btn">
+                                    ${event.video_url ? '削除' : '追加'}
+                                </button>
+                            </div>
+                            <div id="video-url-container" class="${event.video_url ? '' : 'hidden'}">
+                                <input type="url" name="video_url" value="${event.video_url || ''}" placeholder="https://www.youtube.com/watch?v=..." class="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-primary outline-none text-sm">
+                                <p class="text-xs text-slate-400 mt-2">YouTubeやVimeoの動画URLを入力してください。イベント詳細ページに埋め込み表示されます。</p>
+                            </div>
+                        </div>
+                        
                         <div class="pt-4 flex justify-end space-x-3">
                             <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded">キャンセル</button>
                             <button type="submit" class="px-6 py-2 bg-primary text-white font-bold rounded shadow hover:bg-blue-600">保存</button>
@@ -8290,49 +8337,98 @@ ${pages.map(page => `  &lt;url&gt;
                 return;
             }
             
-            showToast(`${name} さんに招待メールを送信しました`, 'success');
-            const modal = document.getElementById('modal-container');
-            if (modal) modal.innerHTML = '';
-            setTimeout(() => {
-                renderAdmin(document.getElementById('app'), 'admin-staff');
-            }, 500);
-        }
-
-        function editAdminStaff(id) {
-            const staff = {
-                id: id,
-                name: 'サンプルスタッフ',
-                email: 'staff@example.com',
-                role: 'admin'
-            };
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showToast('有効なメールアドレスを入力してください', 'error');
+                return;
+            }
             
+            // Show confirmation modal with email preview
             const modal = document.getElementById('modal-container');
             modal.innerHTML = `
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="this.remove()">
-                    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full" onclick="event.stopPropagation()">
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="event.stopPropagation()">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
                         <div class="p-6 border-b border-slate-200">
-                            <h2 class="text-2xl font-bold text-slate-800">スタッフ情報を編集</h2>
-                            <p class="text-sm text-slate-500 mt-1">ID: ${staff.id}</p>
+                            <h2 class="text-2xl font-bold text-slate-800">招待メールを送信</h2>
+                            <p class="text-sm text-slate-500 mt-1">以下の内容で招待メールを送信します</p>
                         </div>
 
-                        <div class="p-6 space-y-4">
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">氏名</label>
-                                <input type="text" id="edit-staff-name" value="${staff.name}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        <div class="p-6 space-y-6">
+                            <!-- Recipient Info -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h3 class="text-sm font-bold text-blue-800 mb-3">招待先情報</h3>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex items-center">
+                                        <span class="material-icons-outlined text-blue-600 text-sm mr-2">person</span>
+                                        <span class="font-bold text-slate-700">氏名:</span>
+                                        <span class="ml-2 text-slate-600">${name}</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="material-icons-outlined text-blue-600 text-sm mr-2">email</span>
+                                        <span class="font-bold text-slate-700">メール:</span>
+                                        <span class="ml-2 text-slate-600">${email}</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="material-icons-outlined text-blue-600 text-sm mr-2">badge</span>
+                                        <span class="font-bold text-slate-700">ロール:</span>
+                                        <span class="ml-2 px-2 py-1 rounded text-xs font-bold ${role === 'super_admin' ? 'bg-red-100 text-red-700' : role === 'admin' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}">
+                                            ${role === 'super_admin' ? 'スーパー管理者' : role === 'admin' ? '管理者' : 'サポート'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                             
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
-                                <input type="email" id="edit-staff-email" value="${staff.email}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">ロール</label>
-                                <select id="edit-staff-role" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                    <option value="support" ${staff.role === 'support' ? 'selected' : ''}>サポート</option>
-                                    <option value="admin" ${staff.role === 'admin' ? 'selected' : ''}>管理者</option>
-                                    <option value="super_admin" ${staff.role === 'super_admin' ? 'selected' : ''}>スーパー管理者</option>
-                                </select>
+                            <!-- Email Preview -->
+                            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                                <div class="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                                    <span class="text-xs font-bold text-slate-600">メールプレビュー</span>
+                                </div>
+                                <div class="p-6 bg-white">
+                                    <div class="space-y-4 text-sm">
+                                        <div>
+                                            <div class="text-xs text-slate-500 mb-1">件名:</div>
+                                            <div class="font-bold text-slate-800">【Link-Up】管理者スタッフ招待のご案内</div>
+                                        </div>
+                                        
+                                        <div class="border-t border-slate-200 pt-4">
+                                            <p class="text-slate-700 leading-relaxed mb-4">${name} 様</p>
+                                            
+                                            <p class="text-slate-700 leading-relaxed mb-4">
+                                                Link-Upプラットフォームの管理者スタッフにご招待させていただきます。<br>
+                                                以下のリンクからアカウント設定を完了してください。
+                                            </p>
+                                            
+                                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 my-4">
+                                                <div class="text-xs text-slate-500 mb-2">招待URL:</div>
+                                                <div class="text-blue-600 text-sm font-mono break-all">
+                                                    https://link-up.live/admin/invite?token=${btoa(email + Date.now()).substring(0, 32)}
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 my-4">
+                                                <p class="text-xs text-yellow-800 font-bold mb-1">付与されるロール:</p>
+                                                <p class="text-xs text-yellow-700">
+                                                    ${role === 'super_admin' ? 'スーパー管理者 - 全機能へのアクセス権限' : 
+                                                      role === 'admin' ? '管理者 - イベント・ユーザー管理権限' : 
+                                                      'サポート - 問い合わせ対応権限'}
+                                                </p>
+                                            </div>
+                                            
+                                            <p class="text-slate-700 leading-relaxed mb-4">
+                                                このリンクの有効期限は24時間です。<br>
+                                                期限が切れた場合は、再度招待メールを送信してください。
+                                            </p>
+                                            
+                                            <p class="text-slate-600 text-xs mt-6">
+                                                ---<br>
+                                                Link-Up運営チーム<br>
+                                                https://link-up.live<br>
+                                                このメールに心当たりがない場合は、削除していただくようお願いいたします。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -8340,8 +8436,9 @@ ${pages.map(page => `  &lt;url&gt;
                             <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold">
                                 キャンセル
                             </button>
-                            <button onclick="submitStaffEdit('${id}')" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold">
-                                保存
+                            <button onclick="confirmSendStaffInvite('${name}', '${email}', '${role}')" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">send</span>
+                                送信する
                             </button>
                         </div>
                     </div>
@@ -8349,17 +8446,257 @@ ${pages.map(page => `  &lt;url&gt;
             `;
         }
         
+        function confirmSendStaffInvite(name, email, role) {
+            // In production, this would call an API endpoint to send the email
+            // For now, simulate the sending process
+            
+            // Close modal
+            const modal = document.getElementById('modal-container');
+            if (modal) modal.innerHTML = '';
+            
+            // Show loading toast
+            showToast('招待メールを送信中...', 'schedule_send');
+            
+            // Simulate email sending delay
+            setTimeout(() => {
+                showToast(`${name} さん (${email}) に招待メールを送信しました`, 'mark_email_read');
+                
+                // Add to staff list (mock)
+                // In production, this would be handled by the backend
+                
+                // Reload admin staff page
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'admin-staff');
+                }, 500);
+            }, 1500);
+        }
+
+        function editAdminStaff(id) {
+            // Mock staff data with extended information
+            const staff = {
+                id: id,
+                name: id === 1 ? 'スーパー管理者' : (id === 2 ? '山田太郎' : '佐藤花子'),
+                email: id === 1 ? 'admin@linkup.com' : (id === 2 ? 'yamada@linkup.com' : 'sato@linkup.com'),
+                role: id === 1 ? 'super_admin' : (id === 2 ? 'admin' : 'support'),
+                status: 'active',
+                lastLogin: id === 1 ? '2024-02-05 10:30' : (id === 2 ? '2024-02-04 18:45' : '2024-02-03 09:15'),
+                createdAt: id === 1 ? '2023-01-01' : (id === 2 ? '2023-06-15' : '2024-01-10'),
+                permissions: {
+                    event_management: id !== 3,
+                    user_management: id !== 3,
+                    payment_management: id !== 3,
+                    support_chat: true,
+                    system_settings: id === 1
+                },
+                activityCount: id === 1 ? 542 : (id === 2 ? 128 : 45)
+            };
+            
+            const modal = document.getElementById('modal-container');
+            modal.innerHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onclick="event.stopPropagation()">
+                    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                        <div class="p-6 border-b border-slate-200">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h2 class="text-2xl font-bold text-slate-800">スタッフ情報を編集</h2>
+                                    <p class="text-sm text-slate-500 mt-1">ID: ${staff.id} • 登録日: ${staff.createdAt}</p>
+                                </div>
+                                <span class="px-3 py-1 rounded-lg text-xs font-bold ${staff.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                                    ${staff.status === 'active' ? 'アクティブ' : '停止中'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="p-6">
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Left: Basic Info -->
+                                <div class="lg:col-span-2 space-y-6">
+                                    <div class="bg-white border border-slate-200 rounded-lg p-4">
+                                        <h3 class="text-sm font-bold text-slate-700 mb-4">基本情報</h3>
+                                        <div class="space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-2">氏名 <span class="text-red-500">*</span></label>
+                                                <input type="text" id="edit-staff-name" value="${staff.name}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" ${staff.role === 'super_admin' ? 'disabled' : ''}>
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス <span class="text-red-500">*</span></label>
+                                                <input type="email" id="edit-staff-email" value="${staff.email}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" ${staff.role === 'super_admin' ? 'disabled' : ''}>
+                                            </div>
+                                            
+                                            <div>
+                                                <label class="block text-sm font-bold text-slate-700 mb-2">ロール <span class="text-red-500">*</span></label>
+                                                <select id="edit-staff-role" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500" ${staff.role === 'super_admin' ? 'disabled' : ''}>
+                                                    <option value="support" ${staff.role === 'support' ? 'selected' : ''}>サポート</option>
+                                                    <option value="admin" ${staff.role === 'admin' ? 'selected' : ''}>管理者</option>
+                                                    <option value="super_admin" ${staff.role === 'super_admin' ? 'selected' : ''}>スーパー管理者</option>
+                                                </select>
+                                                <p class="text-xs text-slate-500 mt-2">
+                                                    サポート: 問い合わせ対応のみ<br>
+                                                    管理者: イベント・ユーザー管理<br>
+                                                    スーパー管理者: 全機能アクセス可能
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="bg-white border border-slate-200 rounded-lg p-4">
+                                        <h3 class="text-sm font-bold text-slate-700 mb-4">権限設定</h3>
+                                        <div class="space-y-3">
+                                            <label class="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-50 cursor-pointer">
+                                                <input type="checkbox" class="permission-checkbox" data-permission="event_management" ${staff.permissions.event_management ? 'checked' : ''} ${staff.role === 'super_admin' ? 'disabled' : ''} class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                                                <div class="flex-1">
+                                                    <div class="text-sm font-bold text-slate-700">イベント管理</div>
+                                                    <div class="text-xs text-slate-500">イベントの作成・編集・削除</div>
+                                                </div>
+                                            </label>
+                                            
+                                            <label class="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-50 cursor-pointer">
+                                                <input type="checkbox" class="permission-checkbox" data-permission="user_management" ${staff.permissions.user_management ? 'checked' : ''} ${staff.role === 'super_admin' ? 'disabled' : ''} class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                                                <div class="flex-1">
+                                                    <div class="text-sm font-bold text-slate-700">ユーザー管理</div>
+                                                    <div class="text-xs text-slate-500">ユーザー情報の閲覧・編集</div>
+                                                </div>
+                                            </label>
+                                            
+                                            <label class="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-50 cursor-pointer">
+                                                <input type="checkbox" class="permission-checkbox" data-permission="payment_management" ${staff.permissions.payment_management ? 'checked' : ''} ${staff.role === 'super_admin' ? 'disabled' : ''} class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                                                <div class="flex-1">
+                                                    <div class="text-sm font-bold text-slate-700">決済管理</div>
+                                                    <div class="text-xs text-slate-500">決済履歴の閲覧・返金処理</div>
+                                                </div>
+                                            </label>
+                                            
+                                            <label class="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-50 cursor-pointer">
+                                                <input type="checkbox" class="permission-checkbox" data-permission="support_chat" ${staff.permissions.support_chat ? 'checked' : ''} ${staff.role === 'super_admin' ? 'disabled' : ''} class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                                                <div class="flex-1">
+                                                    <div class="text-sm font-bold text-slate-700">サポートチャット</div>
+                                                    <div class="text-xs text-slate-500">ユーザーサポート対応</div>
+                                                </div>
+                                            </label>
+                                            
+                                            <label class="flex items-center space-x-3 p-3 rounded-lg hover:bg-slate-50 cursor-pointer">
+                                                <input type="checkbox" class="permission-checkbox" data-permission="system_settings" ${staff.permissions.system_settings ? 'checked' : ''} ${staff.role === 'super_admin' ? 'disabled' : ''} class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                                                <div class="flex-1">
+                                                    <div class="text-sm font-bold text-slate-700">システム設定</div>
+                                                    <div class="text-xs text-slate-500">プラットフォーム設定の変更</div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Right: Stats & Activity -->
+                                <div class="space-y-4">
+                                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                                        <div class="text-xs opacity-80 mb-1">最終ログイン</div>
+                                        <div class="text-sm font-bold">${staff.lastLogin}</div>
+                                    </div>
+                                    
+                                    <div class="bg-white border border-slate-200 rounded-lg p-4">
+                                        <div class="text-xs text-slate-500 mb-1">アクティビティ</div>
+                                        <div class="text-2xl font-bold text-slate-800">${staff.activityCount}</div>
+                                        <div class="text-xs text-slate-500">操作回数</div>
+                                    </div>
+                                    
+                                    <div class="bg-white border border-slate-200 rounded-lg p-4">
+                                        <div class="text-xs font-bold text-slate-700 mb-3">最近のアクティビティ</div>
+                                        <div class="space-y-2 text-xs">
+                                            <div class="flex items-start space-x-2">
+                                                <span class="material-icons-outlined text-green-500 text-sm">check_circle</span>
+                                                <div class="flex-1">
+                                                    <div class="text-slate-700">イベント承認</div>
+                                                    <div class="text-slate-400">2時間前</div>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-start space-x-2">
+                                                <span class="material-icons-outlined text-blue-500 text-sm">edit</span>
+                                                <div class="flex-1">
+                                                    <div class="text-slate-700">ユーザー情報更新</div>
+                                                    <div class="text-slate-400">5時間前</div>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-start space-x-2">
+                                                <span class="material-icons-outlined text-purple-500 text-sm">chat</span>
+                                                <div class="flex-1">
+                                                    <div class="text-slate-700">サポート対応</div>
+                                                    <div class="text-slate-400">1日前</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    ${staff.role !== 'super_admin' ? `
+                                        <div class="bg-white border border-red-200 rounded-lg p-4">
+                                            <div class="text-xs font-bold text-red-700 mb-2">危険な操作</div>
+                                            <button onclick="resetStaffPassword('${staff.id}')" class="w-full mb-2 px-3 py-2 bg-yellow-100 text-yellow-700 rounded text-xs font-bold hover:bg-yellow-200">
+                                                <span class="material-icons-outlined text-xs align-middle mr-1">lock_reset</span>
+                                                パスワードリセット
+                                            </button>
+                                            <button onclick="deleteAdminStaff('${staff.id}')" class="w-full px-3 py-2 bg-red-100 text-red-700 rounded text-xs font-bold hover:bg-red-200">
+                                                <span class="material-icons-outlined text-xs align-middle mr-1">delete</span>
+                                                スタッフ削除
+                                            </button>
+                                        </div>
+                                    ` : `
+                                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center">
+                                            <span class="material-icons-outlined text-slate-400 text-3xl mb-2">shield</span>
+                                            <div class="text-xs text-slate-500">スーパー管理者は保護されています</div>
+                                        </div>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="p-6 border-t border-slate-200 bg-slate-50 flex justify-end space-x-3">
+                            <button onclick="this.closest('.fixed').remove()" class="px-6 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold">
+                                キャンセル
+                            </button>
+                            ${staff.role !== 'super_admin' ? `
+                                <button onclick="submitStaffEdit('${id}')" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold">
+                                    <span class="material-icons-outlined text-sm align-middle mr-1">save</span>
+                                    保存
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function resetStaffPassword(id) {
+            if (confirm('このスタッフのパスワードをリセットしますか？\n\nリセット用のメールが送信されます。')) {
+                showToast('パスワードリセットメールを送信しました', 'mail');
+                setTimeout(() => {
+                    document.getElementById('modal-container').innerHTML = '';
+                }, 1000);
+            }
+        }
+        
         function submitStaffEdit(id) {
             const name = document.getElementById('edit-staff-name').value.trim();
             const email = document.getElementById('edit-staff-email').value.trim();
             const role = document.getElementById('edit-staff-role').value;
+            
+            // Get permissions
+            const permissions = {};
+            document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+                permissions[checkbox.dataset.permission] = checkbox.checked;
+            });
             
             if (!name || !email) {
                 showToast('必須項目を入力してください', 'error');
                 return;
             }
             
-            showToast('スタッフ情報を更新しました', 'success');
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showToast('有効なメールアドレスを入力してください', 'error');
+                return;
+            }
+            
+            showToast('スタッフ情報を更新しました', 'check_circle');
             const modal = document.getElementById('modal-container');
             if (modal) modal.innerHTML = '';
             setTimeout(() => {
@@ -9633,6 +9970,82 @@ C-1,C,1,自由席エリア,free,available`;
         }
 
         // --- UTILS ---
+        
+        // Sub Image Upload Helpers
+        function previewSubImage(index, event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewContainer = document.getElementById(`sub-image-preview-${index}`);
+                    const urlInput = document.getElementById(`sub-image-url-${index}`);
+                    
+                    // In real implementation, upload to server and get URL
+                    // For now, use data URL for preview
+                    const dataUrl = e.target.result;
+                    urlInput.value = dataUrl; // In production, this would be the server URL
+                    
+                    // Update preview
+                    previewContainer.innerHTML = `
+                        <img src="${dataUrl}" alt="Sub image ${index + 1}" class="w-full h-full object-cover">
+                        <button type="button" onclick="removeSubImage(${index})" class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow">
+                            <span class="material-icons-outlined text-sm">close</span>
+                        </button>
+                    `;
+                    previewContainer.classList.remove('hidden');
+                    previewContainer.classList.add('absolute', 'inset-0');
+                    
+                    // Hide the upload label
+                    const label = previewContainer.previousElementSibling;
+                    if (label && label.tagName === 'LABEL') {
+                        label.classList.add('hidden');
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function removeSubImage(index) {
+            const fileInput = document.getElementById(`sub-image-${index}`);
+            const urlInput = document.getElementById(`sub-image-url-${index}`);
+            const previewContainer = document.getElementById(`sub-image-preview-${index}`);
+            
+            // Clear inputs
+            fileInput.value = '';
+            urlInput.value = '';
+            
+            // Reset preview
+            previewContainer.innerHTML = '';
+            previewContainer.classList.add('hidden');
+            previewContainer.classList.remove('absolute', 'inset-0');
+            
+            // Show upload label
+            const uploadArea = previewContainer.closest('.relative');
+            const label = uploadArea.querySelector('label[for^="sub-image"]');
+            if (label) {
+                label.classList.remove('hidden');
+            }
+            
+            showToast(`サブ画像${index + 1}を削除しました`, 'delete');
+        }
+        
+        function toggleVideoUrlField() {
+            const container = document.getElementById('video-url-container');
+            const btn = document.getElementById('toggle-video-btn');
+            const input = container.querySelector('input[name="video_url"]');
+            
+            if (container.classList.contains('hidden')) {
+                // Show
+                container.classList.remove('hidden');
+                btn.textContent = '削除';
+            } else {
+                // Hide and clear
+                container.classList.add('hidden');
+                input.value = '';
+                btn.textContent = '追加';
+            }
+        }
+        
         function closeModal() {
             document.getElementById('modal-container').classList.add('hidden');
         }

@@ -2808,6 +2808,9 @@
                                 <button onclick="renderOrganizer(document.getElementById('app'), 'operations')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'operations' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">confirmation_number</span> 運営・受付
                                 </button>
+                                <button onclick="renderOrganizer(document.getElementById('app'), 'venues')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'venues' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">event_seat</span> 会場・座席管理
+                                </button>
                                 <button onclick="renderOrganizer(document.getElementById('app'), 'marketing')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'marketing' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">campaign</span> マーケティング
                                 </button>
@@ -2944,6 +2947,7 @@
             if (tab === 'dashboard') return renderOrganizerDashboard();
             if (tab === 'events') return renderOrganizerEvents();
             if (tab === 'operations') return renderOrganizerOperations();
+            if (tab === 'venues') return renderOrganizerVenues();
             if (tab === 'marketing') return renderOrganizerMarketing();
             if (tab === 'payment-history') return renderOrganizerPaymentHistory();
             if (tab === 'finance') return renderOrganizerFinance();
@@ -3083,6 +3087,173 @@
 
                     <div class="p-4 border-t border-slate-100 flex justify-between items-center">
                         <p class="text-sm text-slate-500">${paymentHistory.length}件の決済履歴を表示中</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderOrganizerVenues() {
+            // Mock seating request data
+            const seatRequests = [
+                {
+                    id: 'req-001',
+                    eventId: 'evt-001',
+                    eventName: 'Tech Conference 2024',
+                    venueName: '東京国際フォーラム ホールA',
+                    venueCapacity: 5000,
+                    venueUrl: 'https://www.t-i-forum.co.jp/',
+                    requestDate: '2024-02-01',
+                    status: 'pending',
+                    notes: '公式サイトに座席表が掲載されています。'
+                },
+                {
+                    id: 'req-002',
+                    eventId: 'evt-002',
+                    eventName: 'Music Festival 2024',
+                    venueName: '大阪城ホール',
+                    venueCapacity: 16000,
+                    venueUrl: 'https://www.osaka-johall.com/',
+                    requestDate: '2024-01-28',
+                    status: 'approved',
+                    notes: '公式座席表をインポート済み',
+                    approvedDate: '2024-01-30'
+                }
+            ];
+            
+            const pendingRequests = seatRequests.filter(r => r.status === 'pending').length;
+            const approvedRequests = seatRequests.filter(r => r.status === 'approved').length;
+            
+            return `
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">会場・座席管理</h1>
+                            <p class="text-sm text-slate-500 mt-1">大規模会場の座席表設定をリクエスト</p>
+                        </div>
+                        <button onclick="openSeatRequestForm()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 flex items-center font-bold">
+                            <span class="material-icons-outlined text-sm mr-2">add</span>
+                            新規リクエスト
+                        </button>
+                    </div>
+                    
+                    <!-- Info Banner -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                        <div class="flex items-start space-x-4">
+                            <span class="material-icons-outlined text-blue-600 text-3xl">info</span>
+                            <div class="flex-1">
+                                <h3 class="text-lg font-bold text-blue-900 mb-2">座席表設定リクエストについて</h3>
+                                <div class="text-sm text-blue-800 space-y-2">
+                                    <p>
+                                        <strong>100名以上のコンサートホールやイベントホールの場合</strong>、リクエストをいただければ対応いたします。
+                                    </p>
+                                    <p>
+                                        <span class="font-bold text-blue-900">対応条件:</span>
+                                        <span class="ml-2">公式サイトに座席表が公開されている会場のみ</span>
+                                    </p>
+                                    <p class="text-xs text-blue-700 mt-3">
+                                        ※ 座席表のインポートには数日かかる場合があります。<br>
+                                        ※ 100名未満の会場は、イベント作成時に簡易座席設定をご利用ください。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white rounded-xl shadow-card p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-slate-500 text-sm">総リクエスト数</span>
+                                <span class="material-icons-outlined text-blue-500">event_seat</span>
+                            </div>
+                            <div class="text-3xl font-bold text-slate-800">${seatRequests.length}</div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-slate-500 text-sm">審査中</span>
+                                <span class="material-icons-outlined text-yellow-500">pending</span>
+                            </div>
+                            <div class="text-3xl font-bold text-yellow-600">${pendingRequests}</div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-card p-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-slate-500 text-sm">承認済み</span>
+                                <span class="material-icons-outlined text-green-500">check_circle</span>
+                            </div>
+                            <div class="text-3xl font-bold text-green-600">${approvedRequests}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Requests List -->
+                    <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+                        <div class="p-6 border-b border-slate-200">
+                            <h2 class="text-lg font-bold text-slate-800">座席表設定リクエスト一覧</h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                    <tr>
+                                        <th class="p-4 w-20">NO</th>
+                                        <th class="p-4">イベント名</th>
+                                        <th class="p-4">会場名</th>
+                                        <th class="p-4 text-center">収容人数</th>
+                                        <th class="p-4 text-center">リクエスト日</th>
+                                        <th class="p-4 text-center">ステータス</th>
+                                        <th class="p-4 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${seatRequests.length === 0 ? `
+                                        <tr>
+                                            <td colspan="7" class="p-8 text-center text-slate-400">
+                                                リクエストがありません
+                                            </td>
+                                        </tr>
+                                    ` : seatRequests.map((req, index) => `
+                                        <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100 text-sm">
+                                            <td class="p-4 font-bold text-slate-500">${index + 1}</td>
+                                            <td class="p-4">
+                                                <div class="font-bold text-slate-800">${req.eventName}</div>
+                                                <div class="text-xs text-slate-500">ID: ${req.eventId}</div>
+                                            </td>
+                                            <td class="p-4">
+                                                <div class="font-bold text-slate-700">${req.venueName}</div>
+                                                ${req.venueUrl ? `
+                                                    <a href="${req.venueUrl}" target="_blank" class="text-xs text-blue-600 hover:underline flex items-center mt-1">
+                                                        <span class="material-icons-outlined text-xs mr-1">link</span>
+                                                        公式サイト
+                                                    </a>
+                                                ` : ''}
+                                            </td>
+                                            <td class="p-4 text-center">
+                                                <span class="font-bold text-slate-700">${req.venueCapacity.toLocaleString()}</span>
+                                                <span class="text-xs text-slate-500">名</span>
+                                            </td>
+                                            <td class="p-4 text-center text-slate-600">${req.requestDate}</td>
+                                            <td class="p-4 text-center">
+                                                ${req.status === 'pending' ? `
+                                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
+                                                        審査中
+                                                    </span>
+                                                ` : req.status === 'approved' ? `
+                                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                                                        承認済み
+                                                    </span>
+                                                ` : `
+                                                    <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                                                        却下
+                                                    </span>
+                                                `}
+                                            </td>
+                                            <td class="p-4 text-right">
+                                                <button onclick="viewSeatRequest('${req.id}')" class="text-blue-600 hover:underline text-xs font-bold">詳細</button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             `;
@@ -6001,40 +6172,295 @@
         }
 
         function renderAdminVenues() {
+            // Mock seating requests from organizers
+            const seatRequests = [
+                {
+                    id: 'req-001',
+                    eventId: 'evt-001',
+                    eventName: 'Tech Conference 2024',
+                    venueName: '東京国際フォーラム ホールA',
+                    venueCapacity: 5000,
+                    venueUrl: 'https://www.t-i-forum.co.jp/',
+                    chartUrl: 'https://www.t-i-forum.co.jp/seating/',
+                    requestDate: '2024-02-01',
+                    status: 'pending',
+                    notes: '公式サイトに座席表が掲載されています。',
+                    organizerName: '株式会社テックイベント',
+                    organizerEmail: 'info@techev.com'
+                },
+                {
+                    id: 'req-002',
+                    eventId: 'evt-002',
+                    eventName: 'Music Festival 2024',
+                    venueName: '大阪城ホール',
+                    venueCapacity: 16000,
+                    venueUrl: 'https://www.osaka-johall.com/',
+                    requestDate: '2024-01-28',
+                    status: 'approved',
+                    notes: '公式座席表をインポート済み',
+                    organizerName: '音楽イベント企画',
+                    organizerEmail: 'music@events.com',
+                    approvedDate: '2024-01-30',
+                    approvedBy: 'スーパー管理者'
+                }
+            ];
+            
+            const pendingRequests = seatRequests.filter(r => r.status === 'pending');
+            
             return `
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold text-slate-800">施設・会場管理</h1>
-                    <button onclick="openVenueEditor()" class="flex items-center px-4 py-2 bg-primary text-white rounded-full hover:bg-blue-600 transition font-bold shadow-lg">
-                        <span class="material-icons-outlined mr-2">add</span> 施設登録
-                    </button>
-                </div>
-
-                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
-                            <tr>
-                                <th class="p-4">施設名</th>
-                                <th class="p-4">住所</th>
-                                <th class="p-4">収容人数</th>
-                                <th class="p-4 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
-                            ${store.venues.map(v => `
-                                <tr class="hover:bg-slate-50">
-                                    <td class="p-4 font-bold text-slate-800">${v.name}</td>
-                                    <td class="p-4 text-slate-500">${v.address}</td>
-                                    <td class="p-4">${v.layout ? (v.layout.rows * v.layout.cols) + '席' : 'N/A'}</td>
-                                    <td class="p-4 text-right">
-                                        <button onclick="openVenueEditor('${v.id}')" class="text-blue-500 hover:underline text-xs mr-2">編集</button>
-                                        <button onclick="deleteVenue('${v.id}')" class="text-red-500 hover:underline text-xs">削除</button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">施設・会場管理</h1>
+                            <p class="text-sm text-slate-500 mt-1">会場登録と座席表設定リクエスト管理</p>
+                        </div>
+                        <button onclick="openVenueEditor()" class="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition font-bold shadow">
+                            <span class="material-icons-outlined mr-2 text-sm">add</span> 施設登録
+                        </button>
+                    </div>
+                    
+                    <!-- Pending Requests Alert -->
+                    ${pendingRequests.length > 0 ? `
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                            <div class="flex items-center space-x-3">
+                                <span class="material-icons-outlined text-yellow-600 text-2xl">notifications_active</span>
+                                <div class="flex-1">
+                                    <p class="font-bold text-yellow-800">
+                                        ${pendingRequests.length}件の座席表設定リクエストが承認待ちです
+                                    </p>
+                                    <p class="text-sm text-yellow-700 mt-1">主催者から座席表設定のリクエストが届いています。確認してください。</p>
+                                </div>
+                                <button onclick="switchVenueTab('requests')" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm font-bold">
+                                    確認する
+                                </button>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Tabs -->
+                    <div class="bg-white rounded-xl shadow-card">
+                        <div class="border-b border-slate-200 px-6 pt-4">
+                            <div class="flex space-x-4">
+                                <button onclick="switchVenueTab('venues')" id="tab-venues" 
+                                        class="px-4 py-2 text-sm font-bold border-b-2 border-primary text-primary">
+                                    登録会場一覧
+                                </button>
+                                <button onclick="switchVenueTab('requests')" id="tab-requests" 
+                                        class="px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 relative">
+                                    座席表リクエスト
+                                    ${pendingRequests.length > 0 ? `
+                                        <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                                            ${pendingRequests.length}
+                                        </span>
+                                    ` : ''}
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="venue-tab-content" class="p-6">
+                            ${renderVenuesTabContent('venues', seatRequests)}
+                        </div>
+                    </div>
                 </div>
             `;
+        }
+        
+        function switchVenueTab(tabName) {
+            // Update tab buttons
+            const venuesTab = document.getElementById('tab-venues');
+            const requestsTab = document.getElementById('tab-requests');
+            
+            if (tabName === 'venues') {
+                venuesTab.className = 'px-4 py-2 text-sm font-bold border-b-2 border-primary text-primary';
+                requestsTab.className = 'px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 relative';
+            } else {
+                venuesTab.className = 'px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700';
+                requestsTab.className = 'px-4 py-2 text-sm font-bold border-b-2 border-primary text-primary relative';
+            }
+            
+            // Update content
+            const seatRequests = [
+                {
+                    id: 'req-001',
+                    eventId: 'evt-001',
+                    eventName: 'Tech Conference 2024',
+                    venueName: '東京国際フォーラム ホールA',
+                    venueCapacity: 5000,
+                    venueUrl: 'https://www.t-i-forum.co.jp/',
+                    chartUrl: 'https://www.t-i-forum.co.jp/seating/',
+                    requestDate: '2024-02-01',
+                    status: 'pending',
+                    notes: '公式サイトに座席表が掲載されています。',
+                    organizerName: '株式会社テックイベント',
+                    organizerEmail: 'info@techev.com'
+                },
+                {
+                    id: 'req-002',
+                    eventId: 'evt-002',
+                    eventName: 'Music Festival 2024',
+                    venueName: '大阪城ホール',
+                    venueCapacity: 16000,
+                    venueUrl: 'https://www.osaka-johall.com/',
+                    requestDate: '2024-01-28',
+                    status: 'approved',
+                    notes: '公式座席表をインポート済み',
+                    organizerName: '音楽イベント企画',
+                    organizerEmail: 'music@events.com',
+                    approvedDate: '2024-01-30',
+                    approvedBy: 'スーパー管理者'
+                }
+            ];
+            
+            document.getElementById('venue-tab-content').innerHTML = renderVenuesTabContent(tabName, seatRequests);
+        }
+        
+        function renderVenuesTabContent(tabName, seatRequests) {
+            if (tabName === 'venues') {
+                return `
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4 w-20">NO</th>
+                                    <th class="p-4">施設名</th>
+                                    <th class="p-4">住所</th>
+                                    <th class="p-4 text-center">収容人数</th>
+                                    <th class="p-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${store.venues.map((v, index) => `
+                                    <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100 text-sm">
+                                        <td class="p-4 font-bold text-slate-500">${index + 1}</td>
+                                        <td class="p-4 font-bold text-slate-800">${v.name}</td>
+                                        <td class="p-4 text-slate-600">${v.address}</td>
+                                        <td class="p-4 text-center text-slate-700">${v.layout ? (v.layout.rows * v.layout.cols) + '席' : 'N/A'}</td>
+                                        <td class="p-4 text-right space-x-2">
+                                            <button onclick="openVenueEditor('${v.id}')" class="text-blue-600 hover:underline text-xs font-bold">編集</button>
+                                            <button onclick="deleteVenue('${v.id}')" class="text-red-600 hover:underline text-xs font-bold">削除</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                // Seat requests tab
+                const pendingRequests = seatRequests.filter(r => r.status === 'pending').length;
+                const approvedRequests = seatRequests.filter(r => r.status === 'approved').length;
+                
+                return `
+                    <div class="space-y-6">
+                        <!-- Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-4 text-white">
+                                <div class="text-sm opacity-80 mb-1">総リクエスト数</div>
+                                <div class="text-3xl font-bold">${seatRequests.length}</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg p-4 text-white">
+                                <div class="text-sm opacity-80 mb-1">承認待ち</div>
+                                <div class="text-3xl font-bold">${pendingRequests}</div>
+                            </div>
+                            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white">
+                                <div class="text-sm opacity-80 mb-1">承認済み</div>
+                                <div class="text-3xl font-bold">${approvedRequests}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Requests Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                    <tr>
+                                        <th class="p-4 w-20">NO</th>
+                                        <th class="p-4">イベント/会場</th>
+                                        <th class="p-4">主催者</th>
+                                        <th class="p-4 text-center">収容人数</th>
+                                        <th class="p-4 text-center">リクエスト日</th>
+                                        <th class="p-4 text-center">ステータス</th>
+                                        <th class="p-4 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${seatRequests.length === 0 ? `
+                                        <tr>
+                                            <td colspan="7" class="p-8 text-center text-slate-400">
+                                                リクエストがありません
+                                            </td>
+                                        </tr>
+                                    ` : seatRequests.map((req, index) => `
+                                        <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100 text-sm">
+                                            <td class="p-4 font-bold text-slate-500">${index + 1}</td>
+                                            <td class="p-4">
+                                                <div class="font-bold text-slate-800">${req.eventName}</div>
+                                                <div class="text-xs text-slate-600 mt-1">${req.venueName}</div>
+                                            </td>
+                                            <td class="p-4">
+                                                <div class="text-slate-700">${req.organizerName}</div>
+                                                <div class="text-xs text-slate-500">${req.organizerEmail}</div>
+                                            </td>
+                                            <td class="p-4 text-center font-bold text-slate-700">${req.venueCapacity.toLocaleString()}名</td>
+                                            <td class="p-4 text-center text-slate-600">${req.requestDate}</td>
+                                            <td class="p-4 text-center">
+                                                ${req.status === 'pending' ? `
+                                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">
+                                                        承認待ち
+                                                    </span>
+                                                ` : req.status === 'approved' ? `
+                                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                                                        承認済み
+                                                    </span>
+                                                ` : `
+                                                    <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                                                        却下
+                                                    </span>
+                                                `}
+                                            </td>
+                                            <td class="p-4 text-right space-x-2">
+                                                <button onclick="viewAdminSeatRequest('${req.id}')" class="text-blue-600 hover:underline text-xs font-bold">詳細</button>
+                                                ${req.status === 'pending' ? `
+                                                    <button onclick="approveSeatRequest('${req.id}')" class="text-green-600 hover:underline text-xs font-bold">承認</button>
+                                                    <button onclick="rejectSeatRequest('${req.id}')" class="text-red-600 hover:underline text-xs font-bold">却下</button>
+                                                ` : ''}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        function viewAdminSeatRequest(requestId) {
+            // Use the same viewSeatRequest function, but with admin context
+            viewSeatRequest(requestId);
+        }
+        
+        function approveSeatRequest(requestId) {
+            if (confirm('この座席表設定リクエストを承認しますか？\n\n承認後、主催者に通知メールが送信されます。')) {
+                showToast('座席表設定リクエストを承認しました', 'check_circle');
+                // In production, this would call an API to update the request status
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'venues');
+                    switchVenueTab('requests');
+                }, 1000);
+            }
+        }
+        
+        function rejectSeatRequest(requestId) {
+            const reason = prompt('却下理由を入力してください:');
+            if (reason && reason.trim()) {
+                showToast('座席表設定リクエストを却下しました', 'cancel');
+                // In production, this would call an API to update the request status with reason
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'venues');
+                    switchVenueTab('requests');
+                }, 1000);
+            }
         }
 
         // ========================================
@@ -8469,6 +8895,325 @@ ${pages.map(page => `  &lt;url&gt;
                     renderAdmin(document.getElementById('app'), 'admin-staff');
                 }, 500);
             }, 1500);
+        }
+        
+        // === Venue & Seating Request Functions ===
+        
+        function openSeatRequestForm() {
+            const modal = document.getElementById('modal-container');
+            modal.classList.remove('hidden');
+            modal.innerHTML = `
+                <div class="p-6 max-w-3xl mx-auto max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-slate-800">座席表設定リクエスト</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Info Box -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                        <div class="flex items-start space-x-3">
+                            <span class="material-icons-outlined text-yellow-600 text-xl">warning</span>
+                            <div class="text-sm text-yellow-800">
+                                <p class="font-bold mb-1">対応条件</p>
+                                <ul class="list-disc list-inside space-y-1 text-xs">
+                                    <li>収容人数が<strong>100名以上</strong>の会場のみ対応</li>
+                                    <li>公式サイトに<strong>座席表が公開されている</strong>会場のみ</li>
+                                    <li>インポートには<strong>数日かかる</strong>場合があります</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form onsubmit="submitSeatRequest(event)" class="space-y-6">
+                        <!-- Event Selection -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                対象イベント <span class="text-red-500">*</span>
+                            </label>
+                            <select id="seat-request-event" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" required>
+                                <option value="">イベントを選択...</option>
+                                ${store.events.filter(e => e.organizer_name === store.organizerProfile.name).map(e => `
+                                    <option value="${e.event_id}">${e.title} (${new Date(e.start_datetime).toLocaleDateString('ja-JP')})</option>
+                                `).join('')}
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">座席表を設定したいイベントを選択してください</p>
+                        </div>
+                        
+                        <!-- Venue Name -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                会場名 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="seat-request-venue-name" 
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" 
+                                   placeholder="例: 東京国際フォーラム ホールA" required>
+                            <p class="text-xs text-slate-500 mt-1">正式な会場名を入力してください</p>
+                        </div>
+                        
+                        <!-- Venue Capacity -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                収容人数 <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <input type="number" id="seat-request-capacity" 
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" 
+                                       placeholder="例: 5000" min="100" required>
+                                <span class="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">名</span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">100名以上の会場のみ対応可能です</p>
+                        </div>
+                        
+                        <!-- Venue Official URL -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                会場公式サイトURL <span class="text-red-500">*</span>
+                            </label>
+                            <input type="url" id="seat-request-venue-url" 
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" 
+                                   placeholder="https://www.venue-example.com/" required>
+                            <p class="text-xs text-slate-500 mt-1">座席表が掲載されている公式サイトのURLを入力してください</p>
+                        </div>
+                        
+                        <!-- Seating Chart URL -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                座席表ページURL（任意）
+                            </label>
+                            <input type="url" id="seat-request-chart-url" 
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" 
+                                   placeholder="https://www.venue-example.com/seating-chart">
+                            <p class="text-xs text-slate-500 mt-1">座席表の直接URLがわかる場合は入力してください（推奨）</p>
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                備考・補足情報（任意）
+                            </label>
+                            <textarea id="seat-request-notes" rows="4" 
+                                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" 
+                                      placeholder="座席表に関する特記事項があれば記入してください（座席ブロック情報、特殊な座席配置など）"></textarea>
+                        </div>
+                        
+                        <!-- Contact Info -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                            <h4 class="text-sm font-bold text-slate-700 mb-3">連絡先情報</h4>
+                            <div class="space-y-3 text-sm text-slate-600">
+                                <div class="flex items-center">
+                                    <span class="material-icons-outlined text-slate-400 text-sm mr-2">person</span>
+                                    <span class="font-bold mr-2">主催者:</span>
+                                    <span>${store.organizerProfile.name}</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <span class="material-icons-outlined text-slate-400 text-sm mr-2">email</span>
+                                    <span class="font-bold mr-2">メール:</span>
+                                    <span>${store.organizerProfile.email || 'organizer@linkup.com'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Buttons -->
+                        <div class="flex justify-end space-x-3 pt-4">
+                            <button type="button" onclick="closeModal()" class="px-6 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold">
+                                キャンセル
+                            </button>
+                            <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">send</span>
+                                リクエスト送信
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+        
+        function submitSeatRequest(event) {
+            event.preventDefault();
+            
+            const eventId = document.getElementById('seat-request-event').value;
+            const venueName = document.getElementById('seat-request-venue-name').value.trim();
+            const capacity = parseInt(document.getElementById('seat-request-capacity').value);
+            const venueUrl = document.getElementById('seat-request-venue-url').value.trim();
+            const chartUrl = document.getElementById('seat-request-chart-url').value.trim();
+            const notes = document.getElementById('seat-request-notes').value.trim();
+            
+            // Validation
+            if (!eventId || !venueName || !capacity || !venueUrl) {
+                showToast('必須項目を入力してください', 'error');
+                return;
+            }
+            
+            if (capacity < 100) {
+                showToast('収容人数は100名以上である必要があります', 'error');
+                return;
+            }
+            
+            // Get event name
+            const selectedEvent = store.events.find(e => e.event_id === eventId);
+            const eventName = selectedEvent ? selectedEvent.title : '';
+            
+            // In production, this would send to backend API
+            // For now, simulate the request submission
+            
+            showToast('リクエストを送信中...', 'send');
+            closeModal();
+            
+            setTimeout(() => {
+                showToast('座席表設定リクエストを送信しました。総管理者が確認次第、ご連絡いたします。', 'check_circle');
+                
+                // Reload venues page
+                setTimeout(() => {
+                    renderOrganizer(document.getElementById('app'), 'venues');
+                }, 1000);
+            }, 1500);
+        }
+        
+        function viewSeatRequest(requestId) {
+            // Mock request data
+            const request = {
+                id: requestId,
+                eventId: 'evt-001',
+                eventName: 'Tech Conference 2024',
+                venueName: '東京国際フォーラム ホールA',
+                venueCapacity: 5000,
+                venueUrl: 'https://www.t-i-forum.co.jp/',
+                chartUrl: 'https://www.t-i-forum.co.jp/seating/',
+                requestDate: '2024-02-01',
+                status: 'pending',
+                notes: '公式サイトに座席表が掲載されています。',
+                organizerName: store.organizerProfile.name,
+                organizerEmail: store.organizerProfile.email || 'organizer@linkup.com'
+            };
+            
+            const modal = document.getElementById('modal-container');
+            modal.classList.remove('hidden');
+            modal.innerHTML = `
+                <div class="p-6 max-w-3xl mx-auto max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-slate-800">座席表設定リクエスト詳細</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Status Badge -->
+                    <div class="mb-6">
+                        ${request.status === 'pending' ? `
+                            <span class="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-bold inline-flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">pending</span>
+                                審査中
+                            </span>
+                        ` : request.status === 'approved' ? `
+                            <span class="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-bold inline-flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">check_circle</span>
+                                承認済み
+                            </span>
+                        ` : `
+                            <span class="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-bold inline-flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">cancel</span>
+                                却下
+                            </span>
+                        `}
+                    </div>
+                    
+                    <!-- Request Details -->
+                    <div class="space-y-6">
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                            <h4 class="text-sm font-bold text-slate-700 mb-4">リクエスト情報</h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">リクエストID:</span>
+                                    <span class="text-slate-800">${request.id}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">申請日:</span>
+                                    <span class="text-slate-800">${request.requestDate}</span>
+                                </div>
+                                ${request.status === 'approved' && request.approvedDate ? `
+                                    <div class="flex">
+                                        <span class="font-bold text-slate-600 w-32">承認日:</span>
+                                        <span class="text-slate-800">${request.approvedDate}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white border border-slate-200 rounded-lg p-4">
+                            <h4 class="text-sm font-bold text-slate-700 mb-4">イベント情報</h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">イベント名:</span>
+                                    <span class="text-slate-800">${request.eventName}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">イベントID:</span>
+                                    <span class="text-slate-800">${request.eventId}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white border border-slate-200 rounded-lg p-4">
+                            <h4 class="text-sm font-bold text-slate-700 mb-4">会場情報</h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">会場名:</span>
+                                    <span class="text-slate-800">${request.venueName}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">収容人数:</span>
+                                    <span class="text-slate-800">${request.venueCapacity.toLocaleString()}名</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">公式サイト:</span>
+                                    <a href="${request.venueUrl}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                        ${request.venueUrl}
+                                        <span class="material-icons-outlined text-xs ml-1">open_in_new</span>
+                                    </a>
+                                </div>
+                                ${request.chartUrl ? `
+                                    <div class="flex">
+                                        <span class="font-bold text-slate-600 w-32">座席表URL:</span>
+                                        <a href="${request.chartUrl}" target="_blank" class="text-blue-600 hover:underline flex items-center">
+                                            ${request.chartUrl}
+                                            <span class="material-icons-outlined text-xs ml-1">open_in_new</span>
+                                        </a>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        ${request.notes ? `
+                            <div class="bg-white border border-slate-200 rounded-lg p-4">
+                                <h4 class="text-sm font-bold text-slate-700 mb-2">備考</h4>
+                                <p class="text-sm text-slate-600">${request.notes}</p>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                            <h4 class="text-sm font-bold text-slate-700 mb-4">主催者情報</h4>
+                            <div class="space-y-3 text-sm">
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">主催者名:</span>
+                                    <span class="text-slate-800">${request.organizerName}</span>
+                                </div>
+                                <div class="flex">
+                                    <span class="font-bold text-slate-600 w-32">メール:</span>
+                                    <span class="text-slate-800">${request.organizerEmail}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end mt-6">
+                        <button onclick="closeModal()" class="px-6 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-bold">
+                            閉じる
+                        </button>
+                    </div>
+                </div>
+            `;
         }
 
         function editAdminStaff(id) {

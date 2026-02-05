@@ -1,0 +1,13 @@
+# robots.txt for LinkUp Platform
+User-agent: *
+Allow: /
+Allow: /events/
+Allow: /organizers/
+Allow: /category/
+Allow: /pages/
+
+Disallow: /admin
+Disallow: /organizer/dashboard
+Disallow: /dashboard
+
+Sitemap: https://link-up.live/sitemap.xml

@@ -5443,44 +5443,280 @@
         }
 
         function renderAdminUsers() {
+            // Mock user data with comprehensive information
             const mockUsers = [
-                { id: 1, name: store.user?.name || 'Guest User', email: store.user?.email || 'guest@example.com', kycStatus: store.user?.kycStatus || 'pending' }
+                { 
+                    id: 100001, 
+                    name: store.user?.name || 'Guest User',
+                    furigana: 'ゲスト ユーザー',
+                    displayName: 'Guest',
+                    gender: 'male',
+                    email: store.user?.email || 'guest@example.com',
+                    phone: '090-1234-5678',
+                    kycStatus: store.user?.kycStatus || 'pending',
+                    emailVerified: true,
+                    phoneVerified: false,
+                    personalInfoConsent: true,
+                    termsConsent: true,
+                    favorites: 12,
+                    viewHistory: 45,
+                    upcomingEvents: 3,
+                    purchasedTickets: 8,
+                    totalSpent: 42500,
+                    interests: ['Tech', 'Music', 'Art'],
+                    registeredAt: '2024-01-15',
+                    lastLogin: '2024-02-04',
+                    unreadMessages: 3
+                },
+                { 
+                    id: 100002, 
+                    name: '山田太郎',
+                    furigana: 'ヤマダ タロウ',
+                    displayName: 'タロウ',
+                    gender: 'male',
+                    email: 'yamada@example.com',
+                    phone: '080-9876-5432',
+                    kycStatus: 'verified',
+                    emailVerified: true,
+                    phoneVerified: true,
+                    personalInfoConsent: true,
+                    termsConsent: true,
+                    favorites: 28,
+                    viewHistory: 112,
+                    upcomingEvents: 5,
+                    purchasedTickets: 15,
+                    totalSpent: 125000,
+                    interests: ['Business', 'Tech', 'Sports'],
+                    registeredAt: '2023-11-02',
+                    lastLogin: '2024-02-05',
+                    unreadMessages: 0
+                },
+                { 
+                    id: 100003, 
+                    name: '佐藤花子',
+                    furigana: 'サトウ ハナコ',
+                    displayName: '花子',
+                    gender: 'female',
+                    email: 'hanako@example.com',
+                    phone: '070-1111-2222',
+                    kycStatus: 'unsubmitted',
+                    emailVerified: true,
+                    phoneVerified: false,
+                    personalInfoConsent: true,
+                    termsConsent: true,
+                    favorites: 5,
+                    viewHistory: 23,
+                    upcomingEvents: 1,
+                    purchasedTickets: 3,
+                    totalSpent: 12000,
+                    interests: ['Art', 'Music'],
+                    registeredAt: '2024-01-28',
+                    lastLogin: '2024-02-03',
+                    unreadMessages: 1
+                }
             ];
             
+            // Filter and search
+            const filters = adminFilters.users || { status: 'all', kyc: 'all', search: '' };
+            let filteredUsers = [...mockUsers];
+            
+            if (filters.kyc !== 'all') {
+                filteredUsers = filteredUsers.filter(u => u.kycStatus === filters.kyc);
+            }
+            if (filters.search) {
+                const search = filters.search.toLowerCase();
+                filteredUsers = filteredUsers.filter(u => 
+                    u.name.toLowerCase().includes(search) ||
+                    u.email.toLowerCase().includes(search) ||
+                    u.id.toString().includes(search)
+                );
+            }
+            
             return `
-                <h1 class="text-2xl font-bold text-slate-800 mb-6">ユーザー管理</h1>
-                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50 text-slate-600 text-xs uppercase border-b">
-                            <tr>
-                                <th class="p-4 w-20">NO</th>
-                                <th class="p-4">氏名</th>
-                                <th class="p-4">本人確認 (KYC)</th>
-                                <th class="p-4 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${mockUsers.map((user, index) => `
-                                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100 text-sm">
-                                    <td class="p-4 font-bold text-slate-500">${user.id}</td>
-                                    <td class="p-4">
-                                        <div class="font-bold text-slate-800">${user.name}</div>
-                                        <div class="text-xs text-slate-500">${user.email}</div>
-                                    </td>
-                                    <td class="p-4">
-                                        <span class="px-2 py-1 rounded-full text-xs font-bold 
-                                            ${user.kycStatus === 'verified' ? 'bg-green-100 text-green-600' : 
-                                              user.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}">
-                                            ${user.kycStatus === 'verified' ? '認証済' : user.kycStatus === 'pending' ? '審査中' : '未提出'}
-                                        </span>
-                                    </td>
-                                    <td class="p-4 text-right">
-                                        <button class="text-blue-600 hover:underline text-xs" onclick="approveKYC()">承認する</button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">ユーザー管理</h1>
+                            <p class="text-sm text-slate-500 mt-1">全ユーザーの情報管理と認証</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="exportUsersCSV()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">download</span>
+                                CSV出力
+                            </button>
+                            <button onclick="openUserInviteModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">person_add</span>
+                                ユーザー招待
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-card p-6 text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="material-icons-outlined opacity-80">people</span>
+                                <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">総数</span>
+                            </div>
+                            <div class="text-3xl font-bold">${mockUsers.length}</div>
+                            <div class="text-sm opacity-80 mt-1">登録ユーザー</div>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-card p-6 text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="material-icons-outlined opacity-80">verified_user</span>
+                                <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">KYC</span>
+                            </div>
+                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.kycStatus === 'verified').length}</div>
+                            <div class="text-sm opacity-80 mt-1">本人確認済み</div>
+                        </div>
+                        <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl shadow-card p-6 text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="material-icons-outlined opacity-80">pending</span>
+                                <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">審査中</span>
+                            </div>
+                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.kycStatus === 'pending').length}</div>
+                            <div class="text-sm opacity-80 mt-1">KYC審査待ち</div>
+                        </div>
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-card p-6 text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="material-icons-outlined opacity-80">local_activity</span>
+                                <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">アクティブ</span>
+                            </div>
+                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.purchasedTickets > 0).length}</div>
+                            <div class="text-sm opacity-80 mt-1">チケット購入済み</div>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filters -->
+                    <div class="bg-white rounded-2xl shadow-card p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">KYCステータス</label>
+                                <select onchange="updateAdminFilter('users', 'kyc', this.value)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
+                                    <option value="all">すべて</option>
+                                    <option value="verified">認証済</option>
+                                    <option value="pending">審査中</option>
+                                    <option value="unsubmitted">未提出</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-slate-500 mb-2">検索</label>
+                                <div class="relative">
+                                    <span class="material-icons-outlined absolute left-3 top-3 text-slate-400 text-sm">search</span>
+                                    <input type="text" placeholder="ユーザー名、メール、IDで検索..." 
+                                           oninput="updateAdminFilter('users', 'search', this.value)"
+                                           class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                    <tr>
+                                        <th class="p-4 w-20">NO</th>
+                                        <th class="p-4">ユーザー情報</th>
+                                        <th class="p-4">連絡先</th>
+                                        <th class="p-4 text-center">興味</th>
+                                        <th class="p-4 text-center">認証</th>
+                                        <th class="p-4 text-center">アクティビティ</th>
+                                        <th class="p-4 text-center">チケット</th>
+                                        <th class="p-4 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${filteredUsers.length === 0 ? `
+                                        <tr>
+                                            <td colspan="8" class="p-8 text-center text-slate-400">
+                                                ユーザーが見つかりませんでした
+                                            </td>
+                                        </tr>
+                                    ` : filteredUsers.map((user, index) => `
+                                        <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100 text-sm">
+                                            <td class="p-4 font-bold text-slate-500">${user.id}</td>
+                                            <td class="p-4">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                                                        ${user.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <div class="font-bold text-slate-800">${user.name}</div>
+                                                        <div class="text-xs text-slate-500">${user.furigana}</div>
+                                                        <div class="text-xs text-slate-400">表示名: ${user.displayName}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="p-4">
+                                                <div class="flex items-center space-x-1 mb-1">
+                                                    <span class="material-icons-outlined text-xs ${user.emailVerified ? 'text-green-500' : 'text-slate-400'}">mail</span>
+                                                    <span class="text-xs text-slate-600">${user.email}</span>
+                                                </div>
+                                                <div class="flex items-center space-x-1">
+                                                    <span class="material-icons-outlined text-xs ${user.phoneVerified ? 'text-green-500' : 'text-slate-400'}">phone</span>
+                                                    <span class="text-xs text-slate-600">${user.phone}</span>
+                                                </div>
+                                            </td>
+                                            <td class="p-4">
+                                                <div class="flex flex-wrap gap-1 justify-center">
+                                                    ${user.interests.slice(0, 2).map(interest => `
+                                                        <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">${interest}</span>
+                                                    `).join('')}
+                                                    ${user.interests.length > 2 ? `
+                                                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">+${user.interests.length - 2}</span>
+                                                    ` : ''}
+                                                </div>
+                                            </td>
+                                            <td class="p-4 text-center">
+                                                <div class="flex flex-col items-center space-y-1">
+                                                    <span class="px-2 py-1 rounded-full text-xs font-bold 
+                                                        ${user.kycStatus === 'verified' ? 'bg-green-100 text-green-600' : 
+                                                          user.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}">
+                                                        ${user.kycStatus === 'verified' ? '認証済' : user.kycStatus === 'pending' ? '審査中' : '未提出'}
+                                                    </span>
+                                                    <div class="flex space-x-1">
+                                                        <span class="material-icons-outlined text-xs ${user.personalInfoConsent ? 'text-green-500' : 'text-slate-300'}" title="個人情報同意">policy</span>
+                                                        <span class="material-icons-outlined text-xs ${user.termsConsent ? 'text-green-500' : 'text-slate-300'}" title="利用規約同意">gavel</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="p-4 text-center">
+                                                <div class="text-xs space-y-1">
+                                                    <div class="flex items-center justify-center space-x-1">
+                                                        <span class="material-icons-outlined text-xs text-red-400">favorite</span>
+                                                        <span class="font-bold text-slate-700">${user.favorites}</span>
+                                                    </div>
+                                                    <div class="flex items-center justify-center space-x-1">
+                                                        <span class="material-icons-outlined text-xs text-blue-400">visibility</span>
+                                                        <span class="font-bold text-slate-700">${user.viewHistory}</span>
+                                                    </div>
+                                                    <div class="flex items-center justify-center space-x-1">
+                                                        <span class="material-icons-outlined text-xs text-green-400">event</span>
+                                                        <span class="font-bold text-slate-700">${user.upcomingEvents}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="p-4 text-center">
+                                                <div class="text-xs space-y-1">
+                                                    <div class="font-bold text-slate-800">${user.purchasedTickets}枚</div>
+                                                    <div class="text-slate-500">¥${user.totalSpent.toLocaleString()}</div>
+                                                </div>
+                                            </td>
+                                            <td class="p-4 text-right space-x-2">
+                                                <button onclick="viewUserDetail(${user.id})" class="text-blue-600 hover:underline text-xs font-bold">詳細</button>
+                                                ${user.kycStatus === 'pending' ? `
+                                                    <button onclick="approveUserKYC(${user.id})" class="text-green-600 hover:underline text-xs font-bold">承認</button>
+                                                ` : ''}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -8799,6 +9035,591 @@ C-1,C,1,自由席エリア,free,available`;
                     showToast('AIがプロフィールを生成しました', 'auto_awesome');
                 }
             }, 1500);
+        }
+        
+        // === User Management Functions ===
+        
+        function viewUserDetail(userId) {
+            // Mock user detail data
+            const user = {
+                id: userId,
+                name: userId === 100001 ? (store.user?.name || 'Guest User') : (userId === 100002 ? '山田太郎' : '佐藤花子'),
+                furigana: userId === 100001 ? 'ゲスト ユーザー' : (userId === 100002 ? 'ヤマダ タロウ' : 'サトウ ハナコ'),
+                displayName: userId === 100001 ? 'Guest' : (userId === 100002 ? 'タロウ' : '花子'),
+                gender: userId === 100003 ? 'female' : 'male',
+                email: userId === 100001 ? (store.user?.email || 'guest@example.com') : (userId === 100002 ? 'yamada@example.com' : 'hanako@example.com'),
+                phone: userId === 100001 ? '090-1234-5678' : (userId === 100002 ? '080-9876-5432' : '070-1111-2222'),
+                kycStatus: userId === 100001 ? (store.user?.kycStatus || 'pending') : (userId === 100002 ? 'verified' : 'unsubmitted'),
+                emailVerified: true,
+                phoneVerified: userId === 100002,
+                personalInfoConsent: true,
+                termsConsent: true,
+                registeredAt: userId === 100001 ? '2024-01-15' : (userId === 100002 ? '2023-11-02' : '2024-01-28'),
+                lastLogin: '2024-02-04',
+                // Interests (大カテゴリー30, 大中タグ50)
+                interests: {
+                    categories: ['Tech', 'Music', 'Art', 'Business', 'Sports'],
+                    tags: ['AI', 'Web Development', 'Classical Music', 'Digital Art', 'Marketing', 'Football']
+                },
+                // Events
+                favorites: [
+                    { id: 'evt-001', title: 'Tech Conference 2024', date: '2024-03-15' },
+                    { id: 'evt-002', title: 'Music Festival', date: '2024-04-20' }
+                ],
+                viewHistory: [
+                    { id: 'evt-003', title: 'Art Exhibition', viewedAt: '2024-02-03' },
+                    { id: 'evt-004', title: 'Business Seminar', viewedAt: '2024-02-01' }
+                ],
+                upcomingEvents: [
+                    { id: 'evt-005', title: 'Workshop', date: '2024-02-20', ticketId: 'tkt-123' }
+                ],
+                // Tickets
+                tickets: [
+                    { id: 'tkt-001', eventTitle: 'Tech Conference 2024', purchaseDate: '2024-01-20', price: 5000, status: 'paid' },
+                    { id: 'tkt-002', eventTitle: 'Music Festival', purchaseDate: '2024-01-25', price: 8000, status: 'paid' }
+                ],
+                payments: [
+                    { id: 'pay-001', date: '2024-01-20', amount: 5000, method: 'クレジットカード', status: 'success' },
+                    { id: 'pay-002', date: '2024-01-25', amount: 8000, method: 'クレジットカード', status: 'success' }
+                ],
+                // Messages
+                inbox: [
+                    { id: 'msg-001', from: '管理者', subject: 'プラットフォームからのお知らせ', date: '2024-02-01', read: false },
+                    { id: 'msg-002', from: 'イベント主催者A', subject: '新イベントのご案内', date: '2024-01-28', read: true },
+                    { id: 'msg-003', from: '管理者', subject: 'チケット購入確認', date: '2024-01-25', read: true }
+                ],
+                // Support
+                supportTickets: [
+                    { id: 'sup-001', subject: 'チケットが表示されない', status: 'resolved', createdAt: '2024-01-22' }
+                ]
+            };
+            
+            const modal = document.getElementById('modal-container');
+            modal.classList.remove('hidden');
+            modal.innerHTML = `
+                <div class="p-6 max-w-7xl mx-auto max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-slate-800">ユーザー詳細 - ${user.name}</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <!-- User Info Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                        <!-- Left: Basic Info -->
+                        <div class="lg:col-span-1">
+                            <div class="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-card p-6 text-white mb-4">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-24 h-24 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-4xl font-bold mb-4">
+                                        ${user.name.charAt(0)}
+                                    </div>
+                                    <div class="text-xl font-bold mb-1">${user.name}</div>
+                                    <div class="text-sm opacity-80 mb-2">${user.furigana}</div>
+                                    <div class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold">ID: ${user.id}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white rounded-2xl shadow-card p-4 space-y-3">
+                                <div class="flex items-center space-x-2">
+                                    <span class="material-icons-outlined text-slate-400 text-sm">badge</span>
+                                    <div class="text-sm">
+                                        <div class="text-xs text-slate-500">表示名</div>
+                                        <div class="font-bold text-slate-800">${user.displayName}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="material-icons-outlined text-slate-400 text-sm">wc</span>
+                                    <div class="text-sm">
+                                        <div class="text-xs text-slate-500">性別</div>
+                                        <div class="font-bold text-slate-800">${user.gender === 'male' ? '男性' : user.gender === 'female' ? '女性' : 'その他'}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="material-icons-outlined text-slate-400 text-sm">event</span>
+                                    <div class="text-sm">
+                                        <div class="text-xs text-slate-500">登録日</div>
+                                        <div class="font-bold text-slate-800">${user.registeredAt}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="material-icons-outlined text-slate-400 text-sm">schedule</span>
+                                    <div class="text-sm">
+                                        <div class="text-xs text-slate-500">最終ログイン</div>
+                                        <div class="font-bold text-slate-800">${user.lastLogin}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right: Tabbed Content -->
+                        <div class="lg:col-span-2">
+                            <!-- Tabs -->
+                            <div class="bg-white rounded-2xl shadow-card">
+                                <div class="border-b border-slate-200 px-6 pt-4">
+                                    <div class="flex space-x-4 overflow-x-auto">
+                                        <button onclick="switchUserDetailTab('info')" id="tab-info" class="px-4 py-2 text-sm font-bold border-b-2 border-primary text-primary whitespace-nowrap">基本情報</button>
+                                        <button onclick="switchUserDetailTab('inbox')" id="tab-inbox" class="px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">受信箱 (${user.inbox.filter(m => !m.read).length})</button>
+                                        <button onclick="switchUserDetailTab('interests')" id="tab-interests" class="px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">興味・関心</button>
+                                        <button onclick="switchUserDetailTab('events')" id="tab-events" class="px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">イベント管理</button>
+                                        <button onclick="switchUserDetailTab('tickets')" id="tab-tickets" class="px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">チケット購入</button>
+                                        <button onclick="switchUserDetailTab('verification')" id="tab-verification" class="px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">証明/同意</button>
+                                        <button onclick="switchUserDetailTab('support')" id="tab-support" class="px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap">サポート</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tab Content -->
+                                <div id="user-detail-content" class="p-6">
+                                    ${renderUserDetailTabContent('info', user)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function switchUserDetailTab(tabName) {
+            // Update tab buttons
+            ['info', 'inbox', 'interests', 'events', 'tickets', 'verification', 'support'].forEach(tab => {
+                const btn = document.getElementById(`tab-${tab}`);
+                if (btn) {
+                    if (tab === tabName) {
+                        btn.className = 'px-4 py-2 text-sm font-bold border-b-2 border-primary text-primary whitespace-nowrap';
+                    } else {
+                        btn.className = 'px-4 py-2 text-sm font-bold border-b-2 border-transparent text-slate-500 hover:text-slate-700 whitespace-nowrap';
+                    }
+                }
+            });
+            
+            // Mock user data for content rendering
+            const user = {
+                email: 'user@example.com',
+                phone: '090-1234-5678',
+                emailVerified: true,
+                phoneVerified: false,
+                kycStatus: 'pending',
+                personalInfoConsent: true,
+                termsConsent: true,
+                interests: {
+                    categories: ['Tech', 'Music', 'Art', 'Business', 'Sports'],
+                    tags: ['AI', 'Web Development', 'Classical Music', 'Digital Art', 'Marketing', 'Football']
+                },
+                favorites: [
+                    { id: 'evt-001', title: 'Tech Conference 2024', date: '2024-03-15' },
+                    { id: 'evt-002', title: 'Music Festival', date: '2024-04-20' }
+                ],
+                viewHistory: [
+                    { id: 'evt-003', title: 'Art Exhibition', viewedAt: '2024-02-03' }
+                ],
+                upcomingEvents: [
+                    { id: 'evt-005', title: 'Workshop', date: '2024-02-20' }
+                ],
+                tickets: [
+                    { id: 'tkt-001', eventTitle: 'Tech Conference 2024', purchaseDate: '2024-01-20', price: 5000, status: 'paid' }
+                ],
+                payments: [
+                    { id: 'pay-001', date: '2024-01-20', amount: 5000, method: 'クレジットカード', status: 'success' }
+                ],
+                inbox: [
+                    { id: 'msg-001', from: '管理者', subject: 'プラットフォームからのお知らせ', date: '2024-02-01', read: false },
+                    { id: 'msg-002', from: 'イベント主催者A', subject: '新イベントのご案内', date: '2024-01-28', read: true }
+                ],
+                supportTickets: [
+                    { id: 'sup-001', subject: 'チケットが表示されない', status: 'resolved', createdAt: '2024-01-22' }
+                ]
+            };
+            
+            // Update content
+            const contentEl = document.getElementById('user-detail-content');
+            if (contentEl) {
+                contentEl.innerHTML = renderUserDetailTabContent(tabName, user);
+            }
+        }
+        
+        function renderUserDetailTabContent(tabName, user) {
+            switch(tabName) {
+                case 'info':
+                    return `
+                        <div class="space-y-4">
+                            <h4 class="font-bold text-slate-800 mb-4">基本情報</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">メールアドレス</label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="email" value="${user.email}" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                                        <span class="material-icons-outlined text-sm ${user.emailVerified ? 'text-green-500' : 'text-slate-300'}">verified</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">携帯電話番号</label>
+                                    <div class="flex items-center space-x-2">
+                                        <input type="tel" value="${user.phone}" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm">
+                                        <span class="material-icons-outlined text-sm ${user.phoneVerified ? 'text-green-500' : 'text-slate-300'}">verified</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2 pt-4">
+                                <button onclick="saveUserInfo()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-bold">保存</button>
+                                <button onclick="resetUserPassword()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm font-bold">パスワードリセット</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'inbox':
+                    return `
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="font-bold text-slate-800">受信箱</h4>
+                                <button onclick="sendMessageToUser()" class="px-3 py-1 bg-primary text-white rounded-lg hover:bg-blue-600 text-xs font-bold flex items-center">
+                                    <span class="material-icons-outlined text-sm mr-1">send</span>
+                                    メッセージ送信
+                                </button>
+                            </div>
+                            <div class="space-y-2">
+                                ${user.inbox.map((msg, index) => `
+                                    <div class="p-3 border border-slate-200 rounded-lg ${msg.read ? 'bg-white' : 'bg-blue-50'} hover:shadow-sm transition">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-2 mb-1">
+                                                    ${!msg.read ? '<span class="w-2 h-2 bg-blue-500 rounded-full"></span>' : ''}
+                                                    <span class="text-xs font-bold text-slate-600">${msg.from}</span>
+                                                    <span class="text-xs text-slate-400">${msg.date}</span>
+                                                </div>
+                                                <div class="text-sm font-bold text-slate-800">${msg.subject}</div>
+                                            </div>
+                                            <button onclick="viewMessage('${msg.id}')" class="text-blue-600 hover:underline text-xs">開く</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'interests':
+                    return `
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-3">興味のあるカテゴリー (最大30件)</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    ${user.interests.categories.map(cat => `
+                                        <span class="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold flex items-center space-x-1">
+                                            <span>${cat}</span>
+                                            <button onclick="removeInterest('category', '${cat}')" class="ml-1 hover:text-blue-900">
+                                                <span class="material-icons-outlined text-xs">close</span>
+                                            </button>
+                                        </span>
+                                    `).join('')}
+                                    <button onclick="addInterestCategory()" class="px-3 py-2 border-2 border-dashed border-slate-300 text-slate-500 rounded-lg text-sm hover:border-blue-500 hover:text-blue-500">
+                                        + カテゴリー追加
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-3">興味のあるタグ (最大50件)</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    ${user.interests.tags.map(tag => `
+                                        <span class="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm flex items-center space-x-1">
+                                            <span>${tag}</span>
+                                            <button onclick="removeInterest('tag', '${tag}')" class="ml-1 hover:text-purple-900">
+                                                <span class="material-icons-outlined text-xs">close</span>
+                                            </button>
+                                        </span>
+                                    `).join('')}
+                                    <button onclick="addInterestTag()" class="px-3 py-2 border-2 border-dashed border-slate-300 text-slate-500 rounded-lg text-sm hover:border-purple-500 hover:text-purple-500">
+                                        + タグ追加
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="pt-4">
+                                <button onclick="saveUserInterests()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 text-sm font-bold">保存</button>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'events':
+                    return `
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-3">お気に入り (${user.favorites.length}件)</h4>
+                                <div class="space-y-2">
+                                    ${user.favorites.map(evt => `
+                                        <div class="p-3 border border-slate-200 rounded-lg hover:shadow-sm transition flex items-center justify-between">
+                                            <div>
+                                                <div class="text-sm font-bold text-slate-800">${evt.title}</div>
+                                                <div class="text-xs text-slate-500">${evt.date}</div>
+                                            </div>
+                                            <button class="text-blue-600 hover:underline text-xs">詳細</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-3">閲覧履歴 (最近${user.viewHistory.length}件)</h4>
+                                <div class="space-y-2">
+                                    ${user.viewHistory.map(evt => `
+                                        <div class="p-3 bg-slate-50 rounded-lg flex items-center justify-between">
+                                            <div>
+                                                <div class="text-sm font-bold text-slate-700">${evt.title}</div>
+                                                <div class="text-xs text-slate-500">閲覧: ${evt.viewedAt}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-3">予約カレンダー (参加予定: ${user.upcomingEvents.length}件)</h4>
+                                <div class="space-y-2">
+                                    ${user.upcomingEvents.map(evt => `
+                                        <div class="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                                            <div>
+                                                <div class="text-sm font-bold text-green-800">${evt.title}</div>
+                                                <div class="text-xs text-green-600">${evt.date}</div>
+                                            </div>
+                                            <span class="px-2 py-1 bg-green-600 text-white rounded text-xs font-bold">参加予定</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'tickets':
+                    return `
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-3">チケット購入履歴 (${user.tickets.length}件)</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                            <tr>
+                                                <th class="p-3">チケットID</th>
+                                                <th class="p-3">イベント名</th>
+                                                <th class="p-3">購入日</th>
+                                                <th class="p-3">金額</th>
+                                                <th class="p-3">ステータス</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${user.tickets.map((ticket, index) => `
+                                                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} border-b border-slate-100">
+                                                    <td class="p-3 font-mono text-xs">${ticket.id}</td>
+                                                    <td class="p-3 font-bold">${ticket.eventTitle}</td>
+                                                    <td class="p-3 text-slate-600">${ticket.purchaseDate}</td>
+                                                    <td class="p-3 font-bold">¥${ticket.price.toLocaleString()}</td>
+                                                    <td class="p-3">
+                                                        <span class="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">
+                                                            ${ticket.status === 'paid' ? '支払済' : 'キャンセル'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-3">決済履歴</h4>
+                                <div class="space-y-2">
+                                    ${user.payments.map(payment => `
+                                        <div class="p-3 border border-slate-200 rounded-lg flex items-center justify-between">
+                                            <div class="flex items-center space-x-3">
+                                                <span class="material-icons-outlined text-green-500">credit_card</span>
+                                                <div>
+                                                    <div class="text-sm font-bold text-slate-800">¥${payment.amount.toLocaleString()}</div>
+                                                    <div class="text-xs text-slate-500">${payment.method} • ${payment.date}</div>
+                                                </div>
+                                            </div>
+                                            <span class="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">成功</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'verification':
+                    return `
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-4">認証ステータス</h4>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="p-4 border border-slate-200 rounded-lg">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-sm font-bold text-slate-700">メール認証</span>
+                                            <span class="material-icons-outlined ${user.emailVerified ? 'text-green-500' : 'text-slate-300'}">
+                                                ${user.emailVerified ? 'check_circle' : 'cancel'}
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-slate-500">${user.emailVerified ? '認証済み' : '未認証'}</div>
+                                    </div>
+                                    <div class="p-4 border border-slate-200 rounded-lg">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-sm font-bold text-slate-700">携帯電話認証</span>
+                                            <span class="material-icons-outlined ${user.phoneVerified ? 'text-green-500' : 'text-slate-300'}">
+                                                ${user.phoneVerified ? 'check_circle' : 'cancel'}
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-slate-500">${user.phoneVerified ? '認証済み' : '未認証'}</div>
+                                    </div>
+                                    <div class="p-4 border border-slate-200 rounded-lg">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-sm font-bold text-slate-700">eKYC</span>
+                                            <span class="px-2 py-1 rounded text-xs font-bold ${user.kycStatus === 'verified' ? 'bg-green-100 text-green-600' : user.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}">
+                                                ${user.kycStatus === 'verified' ? '認証済' : user.kycStatus === 'pending' ? '審査中' : '未提出'}
+                                            </span>
+                                        </div>
+                                        ${user.kycStatus === 'pending' ? `
+                                            <button onclick="reviewUserEKYC()" class="text-xs text-blue-600 hover:underline mt-2">審査する</button>
+                                        ` : ''}
+                                    </div>
+                                    <div class="p-4 border border-slate-200 rounded-lg">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-sm font-bold text-slate-700">本人確認書類</span>
+                                            <span class="material-icons-outlined text-slate-400">description</span>
+                                        </div>
+                                        <button onclick="viewKYCDocuments()" class="text-xs text-blue-600 hover:underline mt-2">書類を確認</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-4">同意管理</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="material-icons-outlined ${user.personalInfoConsent ? 'text-green-500' : 'text-slate-300'}">
+                                                ${user.personalInfoConsent ? 'check_circle' : 'cancel'}
+                                            </span>
+                                            <span class="text-sm font-bold text-slate-700">個人情報取扱同意</span>
+                                        </div>
+                                        <span class="text-xs text-slate-500">${user.personalInfoConsent ? '同意済み' : '未同意'}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="material-icons-outlined ${user.termsConsent ? 'text-green-500' : 'text-slate-300'}">
+                                                ${user.termsConsent ? 'check_circle' : 'cancel'}
+                                            </span>
+                                            <span class="text-sm font-bold text-slate-700">利用規約同意</span>
+                                        </div>
+                                        <span class="text-xs text-slate-500">${user.termsConsent ? '同意済み' : '未同意'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'support':
+                    return `
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-4">サポート履歴</h4>
+                                <div class="space-y-2">
+                                    ${user.supportTickets.map(ticket => `
+                                        <div class="p-4 border border-slate-200 rounded-lg hover:shadow-sm transition">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <div>
+                                                    <div class="text-sm font-bold text-slate-800">${ticket.subject}</div>
+                                                    <div class="text-xs text-slate-500 mt-1">作成: ${ticket.createdAt}</div>
+                                                </div>
+                                                <span class="px-2 py-1 rounded text-xs font-bold ${ticket.status === 'resolved' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}">
+                                                    ${ticket.status === 'resolved' ? '解決済み' : '対応中'}
+                                                </span>
+                                            </div>
+                                            <button onclick="viewSupportTicket('${ticket.id}')" class="text-xs text-blue-600 hover:underline">詳細を見る</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 mb-4">サポートアクション</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="openUserSupportChat()" class="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-bold flex items-center">
+                                        <span class="material-icons-outlined text-sm mr-2">chat</span>
+                                        チャットを開始
+                                    </button>
+                                    <button onclick="sendSupportEmail()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm font-bold flex items-center">
+                                        <span class="material-icons-outlined text-sm mr-2">email</span>
+                                        メール送信
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                default:
+                    return '<div class="text-center text-slate-400 py-8">コンテンツがありません</div>';
+            }
+        }
+        
+        function exportUsersCSV() {
+            showToast('ユーザーデータをCSV出力しました', 'download');
+        }
+        
+        function openUserInviteModal() {
+            showToast('ユーザー招待機能は準備中です', 'info');
+        }
+        
+        function approveUserKYC(userId) {
+            if(confirm(`ユーザーID ${userId} のKYCを承認しますか？`)) {
+                showToast('KYCを承認しました', 'verified_user');
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'users');
+                }, 500);
+            }
+        }
+        
+        function saveUserInfo() {
+            showToast('ユーザー情報を保存しました', 'save');
+        }
+        
+        function resetUserPassword() {
+            if(confirm('このユーザーのパスワードをリセットしますか？')) {
+                showToast('パスワードリセットメールを送信しました', 'mail');
+            }
+        }
+        
+        function sendMessageToUser() {
+            showToast('メッセージ送信機能は準備中です', 'send');
+        }
+        
+        function viewMessage(msgId) {
+            showToast('メッセージ詳細は準備中です', 'mail');
+        }
+        
+        function addInterestCategory() {
+            showToast('カテゴリー追加機能は準備中です', 'add');
+        }
+        
+        function addInterestTag() {
+            showToast('タグ追加機能は準備中です', 'add');
+        }
+        
+        function removeInterest(type, value) {
+            showToast(`${type === 'category' ? 'カテゴリー' : 'タグ'} "${value}" を削除しました`, 'delete');
+        }
+        
+        function saveUserInterests() {
+            showToast('興味・関心を保存しました', 'save');
+        }
+        
+        function reviewUserEKYC() {
+            showToast('eKYC審査画面は準備中です', 'verified_user');
+        }
+        
+        function viewKYCDocuments() {
+            showToast('本人確認書類ビューアーは準備中です', 'description');
+        }
+        
+        function viewSupportTicket(ticketId) {
+            showToast('サポートチケット詳細は準備中です', 'support');
+        }
+        
+        function openUserSupportChat() {
+            showToast('サポートチャットは準備中です', 'chat');
+        }
+        
+        function sendSupportEmail() {
+            showToast('サポートメール送信機能は準備中です', 'email');
         }
         
         function approveKYC() {

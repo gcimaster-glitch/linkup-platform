@@ -23,6 +23,8 @@
     <!-- QR Code Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- API Client -->
+    <script src="assets/api-client.js"></script>
     <!-- Leaflet CSS & JS for Real Maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -366,28 +368,46 @@
 
         const API_URL = "https://linkup-backend.gcimaster.workers.dev";
 
+        // Minimal Store - All data from API
         const store = {
-            get user() { return JSON.parse(localStorage.getItem('user')); },
-            set user(v) { localStorage.setItem('user', JSON.stringify(v)); },
-            get tickets() { return JSON.parse(localStorage.getItem('tickets')) || []; },
-            set tickets(v) { localStorage.setItem('tickets', JSON.stringify(v)); },
+            _cachedEvents: [],
+            _cachedUser: null,
             
-            // Events is now a mix of memory and local storage
-            _events: [],
-            get events() { 
-                const events = this._events.length > 0 ? this._events : (JSON.parse(localStorage.getItem('events')) || MASTER_EVENTS);
-                // Ensure all tickets have purchaseLimit
-                return events.map(e => ({
-                    ...e,
-                    tickets: e.tickets ? e.tickets.map(t => ({
-                        ...t,
-                        purchaseLimit: t.purchaseLimit || 5
-                    })) : []
-                }));
+            get user() { 
+                if (!this._cachedUser) {
+                    this._cachedUser = JSON.parse(localStorage.getItem('user'));
+                }
+                return this._cachedUser;
             },
-            set events(v) { 
-                this._events = v;
-                localStorage.setItem('events', JSON.stringify(v)); 
+            set user(v) { 
+                this._cachedUser = v;
+                localStorage.setItem('user', JSON.stringify(v)); 
+            },
+            
+            async loadEvents() {
+                try {
+                    const response = await API.Event.list();
+                    this._cachedEvents = response.events || [];
+                    return this._cachedEvents;
+                } catch (error) {
+                    console.error('Failed to load events:', error);
+                    return MASTER_EVENTS; // Fallback only on error
+                }
+            },
+            
+            get events() {
+                return this._cachedEvents.length > 0 ? this._cachedEvents : MASTER_EVENTS;
+            },
+            
+            set events(v) {
+                this._cachedEvents = v;
+            },
+            
+            get tickets() { 
+                return JSON.parse(localStorage.getItem('tickets')) || []; 
+            },
+            set tickets(v) { 
+                localStorage.setItem('tickets', JSON.stringify(v)); 
             },
             
             get followedOrganizers() { return JSON.parse(localStorage.getItem('followedOrganizers')) || []; },
@@ -401,23 +421,39 @@
             },
             set venues(v) { localStorage.setItem('venues', JSON.stringify(v)); },
 
-            // Event CRUD
-            addEvent(newEvent) {
-                const updated = [newEvent, ...this.events];
-                this.events = updated;
-                showToast('イベントを作成しました', 'add_circle');
+            // Event CRUD - Now using API
+            async addEvent(newEvent) {
+                try {
+                    const result = await API.Event.create(newEvent);
+                    await this.loadEvents(); // Reload from API
+                    showToast('イベントを作成しました', 'add_circle');
+                    return result;
+                } catch (error) {
+                    showToast('イベント作成に失敗しました', 'error');
+                    throw error;
+                }
             },
             
-            updateEvent(id, updatedFields) {
-                const updated = this.events.map(e => e.event_id === id ? { ...e, ...updatedFields } : e);
-                this.events = updated;
-                showToast('イベントを更新しました', 'save');
+            async updateEvent(id, updatedFields) {
+                try {
+                    await API.Event.update(id, updatedFields);
+                    await this.loadEvents(); // Reload from API
+                    showToast('イベントを更新しました', 'save');
+                } catch (error) {
+                    showToast('イベント更新に失敗しました', 'error');
+                    throw error;
+                }
             },
             
-            deleteEvent(id) {
-                const updated = this.events.filter(e => e.event_id !== id);
-                this.events = updated;
-                showToast('イベントを削除しました', 'delete');
+            async deleteEvent(id) {
+                try {
+                    await API.Event.delete(id);
+                    await this.loadEvents(); // Reload from API
+                    showToast('イベントを削除しました', 'delete');
+                } catch (error) {
+                    showToast('イベント削除に失敗しました', 'error');
+                    throw error;
+                }
             },
             
             // Organizer Profile
@@ -6835,7 +6871,10 @@ function showCheckinMenu(eventId) {
 }
 
         // --- INIT ---
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Load events from API first
+            await store.loadEvents();
+            
             updateNav();
             
             // Parse URL and route to appropriate view

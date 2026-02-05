@@ -1,0 +1,18 @@
+# Cloudflare Pages SPA Redirects
+# All routes should serve index.html for client-side routing
+
+/events/* /index.html 200
+/organizers/* /index.html 200
+/category/* /index.html 200
+/pages/* /index.html 200
+/dashboard /index.html 200
+/organizer/* /index.html 200
+/admin /index.html 200
+
+# Static files
+/sitemap.xml /sitemap.xml 200
+/robots.txt /robots.txt 200
+/assets/* /assets/:splat 200
+
+# Fallback to index.html
+/* /index.html 200

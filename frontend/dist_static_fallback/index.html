@@ -244,45 +244,6 @@
         </div>
     </div>
 
-    <!-- Support Chat Widget -->
-    <div id="chat-widget" class="fixed bottom-6 right-6 z-[100] hidden">
-        <!-- Chat Button -->
-        <button id="chat-toggle-btn" onclick="toggleChatWindow()" class="w-14 h-14 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-105 transition transform">
-            <span class="material-icons-outlined text-2xl">smart_toy</span>
-        </button>
-
-        <!-- Chat Window -->
-        <div id="chat-window" class="absolute bottom-16 right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform scale-90 opacity-0 pointer-events-none transition-all duration-300 origin-bottom-right">
-            <div class="bg-slate-900 p-4 flex justify-between items-center text-white">
-                <div class="flex items-center">
-                    <span class="material-icons-outlined text-purple-400 mr-2">auto_awesome</span>
-                    <span class="font-bold">LinkUp AI Support</span>
-                </div>
-                <button onclick="toggleChatWindow()" class="text-slate-400 hover:text-white"><span class="material-icons-outlined">close</span></button>
-            </div>
-            
-            <div id="chat-messages" class="h-80 overflow-y-auto p-4 bg-slate-50 space-y-4">
-                <div class="flex items-start">
-                    <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-2 flex-shrink-0">
-                        <span class="material-icons-outlined text-sm">smart_toy</span>
-                    </div>
-                    <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[80%]">
-                        こんにちは！LinkUp AIサポートです。<br>イベント作成やチケット購入について、何かお手伝いできることはありますか？
-                    </div>
-                </div>
-            </div>
-            
-            <div class="p-3 bg-white border-t border-slate-100">
-                <form onsubmit="sendChatMessage(event)" class="flex items-center">
-                    <input type="text" id="chat-input" placeholder="質問を入力..." class="flex-1 bg-slate-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                    <button type="submit" class="ml-2 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition">
-                        <span class="material-icons-outlined text-sm">send</span>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
     <!-- Script -->
     <script>
         // --- DATA & STORE ---
@@ -10772,15 +10733,431 @@ C-1,C,1,自由席エリア,free,available`;
         }
         
         function viewSupportTicket(ticketId) {
-            showToast('サポートチケット詳細は準備中です', 'support');
+            // Mock ticket data with chat history
+            const tickets = {
+                't1': {
+                    id: 't1',
+                    user: '田中太郎',
+                    email: 'tanaka@example.com',
+                    subject: 'チケット購入の支払いエラー',
+                    status: 'open',
+                    priority: 'high',
+                    created: '2024-01-15 14:30',
+                    messages: [
+                        { sender: 'user', name: '田中太郎', time: '2024-01-15 14:30', text: 'クレジットカードで支払いしようとしたら、エラーが表示されました。' },
+                        { sender: 'user', name: '田中太郎', time: '2024-01-15 14:32', text: 'エラーコード: ERR_PAYMENT_DECLINED' },
+                        { sender: 'admin', name: 'サポートスタッフ', time: '2024-01-15 14:45', text: 'お問い合わせありがとうございます。カード会社側で決済が拒否されている可能性があります。別のカードでお試しいただけますか？' }
+                    ]
+                },
+                't2': {
+                    id: 't2',
+                    user: '佐藤花子',
+                    email: 'sato@example.com',
+                    subject: 'イベント作成方法について',
+                    status: 'in_progress',
+                    priority: 'medium',
+                    created: '2024-01-15 12:15',
+                    messages: [
+                        { sender: 'user', name: '佐藤花子', time: '2024-01-15 12:15', text: 'イベントを作成したいのですが、どこから作成できますか？' },
+                        { sender: 'admin', name: 'サポートスタッフ', time: '2024-01-15 12:20', text: '主催者ダッシュボードの「イベント管理」タブから作成できます。' },
+                        { sender: 'user', name: '佐藤花子', time: '2024-01-15 12:25', text: 'ありがとうございます。チケットの種類は複数設定できますか？' },
+                        { sender: 'admin', name: 'サポートスタッフ', time: '2024-01-15 12:30', text: 'はい、イベント作成画面で「チケット追加」ボタンをクリックすることで、複数のチケット種類を設定できます。' },
+                        { sender: 'user', name: '佐藤花子', time: '2024-01-15 12:35', text: 'わかりました！ありがとうございます。' }
+                    ]
+                },
+                't3': {
+                    id: 't3',
+                    user: '鈴木一郎',
+                    email: 'suzuki@example.com',
+                    subject: '返金処理の進捗確認',
+                    status: 'open',
+                    priority: 'high',
+                    created: '2024-01-15 10:00',
+                    messages: [
+                        { sender: 'user', name: '鈴木一郎', time: '2024-01-15 10:00', text: '先週リクエストした返金処理はどうなっていますか？' },
+                        { sender: 'admin', name: 'サポートスタッフ', time: '2024-01-15 10:15', text: '確認させていただきます。チケットIDをお教えいただけますか？' }
+                    ]
+                },
+                't4': {
+                    id: 't4',
+                    user: '山田次郎',
+                    email: 'yamada@example.com',
+                    subject: 'イベントページの画像が表示されない',
+                    status: 'resolved',
+                    priority: 'low',
+                    created: '2024-01-14 16:45',
+                    messages: [
+                        { sender: 'user', name: '山田次郎', time: '2024-01-14 16:45', text: 'イベントページの画像が表示されません。' },
+                        { sender: 'admin', name: 'サポートスタッフ', time: '2024-01-14 16:50', text: 'キャッシュをクリアしていただけますか？ブラウザのキャッシュをクリアして再読み込みしてください。' },
+                        { sender: 'user', name: '山田次郎', time: '2024-01-14 17:00', text: 'できました！ありがとうございます。' },
+                        { sender: 'admin', name: 'サポートスタッフ', time: '2024-01-14 17:05', text: '解決してよかったです。他にご不明点がございましたらお気軽にお問い合わせください。' }
+                    ]
+                }
+            };
+            
+            const ticket = tickets[ticketId];
+            if (!ticket) {
+                showToast('チケットが見つかりません', 'error');
+                return;
+            }
+            
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8 max-w-4xl mx-auto">
+                    <!-- Header -->
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                    ticket.status === 'open' ? 'bg-red-100 text-red-600' :
+                                    ticket.status === 'in_progress' ? 'bg-yellow-100 text-yellow-600' :
+                                    ticket.status === 'resolved' ? 'bg-green-100 text-green-600' :
+                                    'bg-slate-100 text-slate-600'
+                                }">
+                                    ${ticket.status === 'open' ? '未対応' : ticket.status === 'in_progress' ? '対応中' : ticket.status === 'resolved' ? '解決済' : 'クローズ'}
+                                </span>
+                                <span class="px-2 py-1 rounded text-xs font-bold ${
+                                    ticket.priority === 'high' ? 'bg-red-100 text-red-600' :
+                                    ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' :
+                                    'bg-blue-100 text-blue-600'
+                                }">
+                                    優先度: ${ticket.priority === 'high' ? '高' : ticket.priority === 'medium' ? '中' : '低'}
+                                </span>
+                            </div>
+                            <h2 class="text-2xl font-bold text-slate-800 mb-2">${ticket.subject}</h2>
+                            <div class="flex items-center space-x-4 text-sm text-slate-500">
+                                <span class="flex items-center"><span class="material-icons-outlined text-sm mr-1">person</span>${ticket.user}</span>
+                                <span class="flex items-center"><span class="material-icons-outlined text-sm mr-1">email</span>${ticket.email}</span>
+                                <span class="flex items-center"><span class="material-icons-outlined text-sm mr-1">access_time</span>${ticket.created}</span>
+                            </div>
+                        </div>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Chat History -->
+                    <div class="bg-slate-50 rounded-xl p-4 mb-4 max-h-96 overflow-y-auto space-y-4" id="support-chat-messages">
+                        ${ticket.messages.map(msg => {
+                            if (msg.sender === 'user') {
+                                return `
+                                    <div class="flex items-start">
+                                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-2 flex-shrink-0">
+                                            <span class="material-icons-outlined text-sm">person</span>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-2 mb-1">
+                                                <span class="text-xs font-bold text-slate-800">${msg.name}</span>
+                                                <span class="text-xs text-slate-400">${msg.time}</span>
+                                            </div>
+                                            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700">
+                                                ${msg.text}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                return `
+                                    <div class="flex items-start justify-end">
+                                        <div class="flex-1 text-right">
+                                            <div class="flex items-center justify-end space-x-2 mb-1">
+                                                <span class="text-xs text-slate-400">${msg.time}</span>
+                                                <span class="text-xs font-bold text-slate-800">${msg.name}</span>
+                                            </div>
+                                            <div class="bg-primary text-white p-3 rounded-2xl rounded-tr-none shadow-sm text-sm inline-block text-left">
+                                                ${msg.text}
+                                            </div>
+                                        </div>
+                                        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 ml-2 flex-shrink-0">
+                                            <span class="material-icons-outlined text-sm">support_agent</span>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        }).join('')}
+                    </div>
+                    
+                    <!-- Reply Form -->
+                    ${ticket.status !== 'resolved' && ticket.status !== 'closed' ? `
+                    <form onsubmit="sendSupportReply(event, '${ticketId}')" class="space-y-4">
+                        <div>
+                            <textarea id="support-reply-text" rows="4" placeholder="返信を入力..." class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"></textarea>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <div class="flex space-x-2">
+                                <button type="button" onclick="updateSupportTicketStatus('${ticketId}', 'in_progress')" class="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-bold hover:bg-yellow-200">
+                                    対応中にする
+                                </button>
+                                <button type="button" onclick="updateSupportTicketStatus('${ticketId}', 'resolved')" class="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-bold hover:bg-green-200">
+                                    解決済にする
+                                </button>
+                            </div>
+                            <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-blue-700 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-1">send</span>
+                                返信する
+                            </button>
+                        </div>
+                    </form>
+                    ` : `
+                    <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+                        <p class="text-sm text-green-700">このチケットは${ticket.status === 'resolved' ? '解決済' : 'クローズ'}です。</p>
+                    </div>
+                    `}
+                </div>
+            `;
+            
+            // Scroll to bottom of chat
+            setTimeout(() => {
+                const chatContainer = document.getElementById('support-chat-messages');
+                if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            }, 100);
         }
         
+        function sendSupportReply(e, ticketId) {
+            e.preventDefault();
+            const textarea = document.getElementById('support-reply-text');
+            const text = textarea.value.trim();
+            
+            if (!text) {
+                showToast('メッセージを入力してください', 'warning');
+                return;
+            }
+            
+            // Add message to chat (in real implementation, send to server)
+            const chatContainer = document.getElementById('support-chat-messages');
+            const newMessage = document.createElement('div');
+            newMessage.className = 'flex items-start justify-end';
+            newMessage.innerHTML = `
+                <div class="flex-1 text-right">
+                    <div class="flex items-center justify-end space-x-2 mb-1">
+                        <span class="text-xs text-slate-400">${new Date().toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span class="text-xs font-bold text-slate-800">サポートスタッフ</span>
+                    </div>
+                    <div class="bg-primary text-white p-3 rounded-2xl rounded-tr-none shadow-sm text-sm inline-block text-left">
+                        ${text.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 ml-2 flex-shrink-0">
+                    <span class="material-icons-outlined text-sm">support_agent</span>
+                </div>
+            `;
+            chatContainer.appendChild(newMessage);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Clear textarea
+            textarea.value = '';
+            
+            showToast('返信を送信しました', 'send');
+        }
+        
+        function updateSupportTicketStatus(ticketId, status) {
+            const statusText = status === 'in_progress' ? '対応中' : status === 'resolved' ? '解決済' : 'クローズ';
+            showToast(`チケットを${statusText}にしました`, 'check_circle');
+            
+            // In real implementation, update on server
+            setTimeout(() => {
+                closeModal();
+                renderAdmin(document.getElementById('app'), 'support-chat');
+            }, 1000);
+        }
+        
+        function respondToTicket(id) {
+            viewSupportTicket(id);
+        }
+        
+        // --- USER SUPPORT CHAT & EMAIL FUNCTIONS ---
         function openUserSupportChat() {
-            showToast('サポートチャットは準備中です', 'chat');
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">サポートチャット</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Chat Messages -->
+                    <div class="bg-slate-50 rounded-xl p-4 mb-4 h-96 overflow-y-auto space-y-4" id="user-chat-messages">
+                        <div class="flex items-start">
+                            <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-2 flex-shrink-0">
+                                <span class="material-icons-outlined text-sm">support_agent</span>
+                            </div>
+                            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[80%]">
+                                こんにちは！LinkUpサポートです。<br>どのようなご用件でしょうか？
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Input -->
+                    <form onsubmit="sendUserChatMessage(event)" class="flex items-center space-x-2">
+                        <input type="text" id="user-chat-input" placeholder="メッセージを入力..." class="flex-1 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm">
+                        <button type="submit" class="w-10 h-10 bg-primary text-white rounded-lg flex items-center justify-center hover:bg-blue-700 transition">
+                            <span class="material-icons-outlined text-sm">send</span>
+                        </button>
+                    </form>
+                    
+                    <p class="text-xs text-slate-400 text-center mt-4">
+                        <span class="material-icons-outlined text-xs align-middle">info</span>
+                        平均応答時間: 1-2時間
+                    </p>
+                </div>
+            `;
+        }
+        
+        function sendUserChatMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('user-chat-input');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            const chatContainer = document.getElementById('user-chat-messages');
+            
+            // Add user message
+            const userMessage = document.createElement('div');
+            userMessage.className = 'flex items-end justify-end';
+            userMessage.innerHTML = `
+                <div class="bg-primary text-white p-3 rounded-2xl rounded-tr-none shadow-sm text-sm max-w-[80%]">
+                    ${text.replace(/\n/g, '<br>')}
+                </div>
+            `;
+            chatContainer.appendChild(userMessage);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            input.value = '';
+            
+            // Simulate typing indicator
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'flex items-start';
+            typingIndicator.id = 'typing-indicator';
+            typingIndicator.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-2 flex-shrink-0">
+                    <span class="material-icons-outlined text-sm">support_agent</span>
+                </div>
+                <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700">
+                    <div class="flex space-x-1">
+                        <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                        <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(typingIndicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // Simulate AI response
+            setTimeout(() => {
+                const indicator = document.getElementById('typing-indicator');
+                if (indicator) indicator.remove();
+                
+                let response = "ご質問ありがとうございます。担当者が確認して折り返しご連絡いたします。";
+                
+                if (text.includes('チケット') || text.includes('購入')) {
+                    response = "チケット購入に関するお問い合わせですね。イベント詳細ページから「チケット選択」ボタンをクリックして、希望のチケットをお選びください。決済方法はクレジットカードとコンビニ決済がご利用いただけます。";
+                } else if (text.includes('イベント') && text.includes('作')) {
+                    response = "イベント作成に関するお問い合わせですね。主催者ダッシュボードの「イベント管理」タブから「新規作成」ボタンをクリックすることで作成できます。必要事項を入力して保存してください。";
+                } else if (text.includes('キャンセル') || text.includes('返金')) {
+                    response = "キャンセル・返金に関するお問い合わせですね。イベント主催者のキャンセルポリシーをご確認の上、主催者へ直接お問い合わせください。";
+                }
+                
+                const aiMessage = document.createElement('div');
+                aiMessage.className = 'flex items-start';
+                aiMessage.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-2 flex-shrink-0">
+                        <span class="material-icons-outlined text-sm">support_agent</span>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[80%]">
+                        ${response}
+                    </div>
+                `;
+                chatContainer.appendChild(aiMessage);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 2000);
         }
         
         function sendSupportEmail() {
-            showToast('サポートメール送信機能は準備中です', 'email');
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">サポートメール送信</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <form onsubmit="submitSupportEmail(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">件名</label>
+                            <input type="text" id="support-email-subject" required placeholder="例: チケット購入について" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">カテゴリ</label>
+                            <select id="support-email-category" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm">
+                                <option value="ticket">チケット購入</option>
+                                <option value="event">イベント作成</option>
+                                <option value="payment">決済・返金</option>
+                                <option value="account">アカウント</option>
+                                <option value="other">その他</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">優先度</label>
+                            <select id="support-email-priority" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm">
+                                <option value="low">低</option>
+                                <option value="medium">中</option>
+                                <option value="high">高</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">詳細</label>
+                            <textarea id="support-email-message" required rows="6" placeholder="お問い合わせ内容を詳しくご記入ください" class="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"></textarea>
+                        </div>
+                        
+                        <div class="bg-blue-50 p-3 rounded-lg flex items-start text-xs text-blue-800">
+                            <span class="material-icons-outlined text-sm mr-2">info</span>
+                            <p>ご返信までに1-2営業日かかる場合がございます。緊急のお問い合わせはチャットをご利用ください。</p>
+                        </div>
+                        
+                        <div class="flex space-x-3">
+                            <button type="button" onclick="closeModal()" class="flex-1 py-3 bg-slate-100 text-slate-700 rounded-lg font-bold hover:bg-slate-200">
+                                キャンセル
+                            </button>
+                            <button type="submit" class="flex-1 py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-700 flex items-center justify-center">
+                                <span class="material-icons-outlined text-sm mr-1">send</span>
+                                送信する
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+        
+        function submitSupportEmail(e) {
+            e.preventDefault();
+            
+            const subject = document.getElementById('support-email-subject').value;
+            const category = document.getElementById('support-email-category').value;
+            const priority = document.getElementById('support-email-priority').value;
+            const message = document.getElementById('support-email-message').value;
+            
+            // In real implementation, send to server
+            console.log('Support email:', { subject, category, priority, message });
+            
+            showToast('サポートメールを送信しました', 'send');
+            closeModal();
         }
         
         function approveKYC() {
@@ -12034,12 +12411,8 @@ C-1,C,1,自由席エリア,free,available`;
         // --- CHAT WIDGET ---
         function toggleChatWidget() {
             const widget = document.getElementById('chat-widget');
-            const enabled = store.adminSettings.aiEnabled && store.adminSettings.aiFeatures.supportChat;
-            if (enabled) {
-                widget.classList.remove('hidden');
-            } else {
-                widget.classList.add('hidden');
-            }
+            // Always show chat widget
+            widget.classList.remove('hidden');
         }
 
         function toggleChatWindow() {

@@ -372,7 +372,15 @@
             // Events is now a mix of memory and local storage
             _events: [],
             get events() { 
-                return this._events.length > 0 ? this._events : (JSON.parse(localStorage.getItem('events')) || MASTER_EVENTS); 
+                const events = this._events.length > 0 ? this._events : (JSON.parse(localStorage.getItem('events')) || MASTER_EVENTS);
+                // Ensure all tickets have purchaseLimit
+                return events.map(e => ({
+                    ...e,
+                    tickets: e.tickets ? e.tickets.map(t => ({
+                        ...t,
+                        purchaseLimit: t.purchaseLimit || 5
+                    })) : []
+                }));
             },
             set events(v) { 
                 this._events = v;
@@ -1711,7 +1719,8 @@
                                                 <span class="font-bold text-slate-800 group-hover:text-primary">${tkt.name}</span>
                                                 <span class="font-bold text-lg text-slate-900">¥${tkt.price.toLocaleString()}</span>
                                             </div>
-                                            <p class="text-xs text-slate-500 mb-3">${tkt.desc}</p>
+                                            <p class="text-xs text-slate-500 mb-2">${tkt.desc || ''}</p>
+                                            ${tkt.purchaseLimit ? `<p class="text-xs text-slate-400 mb-3 flex items-center"><span class="material-icons-outlined text-xs mr-1">info</span>お一人様${tkt.purchaseLimit}枚まで</p>` : ''}
                                             <button class="w-full py-2 bg-primary text-white border border-transparent rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm">選択する</button>
                                         </div>
                                     `).join('')}
@@ -2061,7 +2070,7 @@
                         <!-- Footer Action -->
                         <div class="bg-white text-slate-900 rounded-xl p-4 flex items-center justify-between shadow-lg sticky bottom-4 z-30">
                             <div>
-                                <p class="text-xs text-slate-500">選択した座席 (最大4席)</p>
+                                <p class="text-xs text-slate-500">選択した座席 (最大${ticket.purchaseLimit || 4}席)</p>
                                 <p class="font-bold text-lg" id="selected-seats-display">なし</p>
                             </div>
                             <button onclick="confirmSeats()" id="confirm-seats-btn" disabled class="px-8 py-3 bg-primary text-white font-bold rounded-lg opacity-50 cursor-not-allowed transition">
@@ -2084,9 +2093,10 @@
                 store.cart.seats = currentSeats.filter(s => s !== seatId);
                 btn.className = btn.className.replace('bg-primary text-white', 'bg-slate-600 text-slate-300');
             } else {
-                // Select (Limit to 4)
-                if (currentSeats.length >= 4) {
-                    showToast('一度に購入できるのは4席までです', 'warning');
+                // Select (Check purchase limit from ticket)
+                const maxPurchase = store.cart.ticket.purchaseLimit || 4;
+                if (currentSeats.length >= maxPurchase) {
+                    showToast(`一度に購入できるのは${maxPurchase}席までです`, 'warning');
                     return;
                 }
                 
@@ -3441,7 +3451,7 @@
                                     <div id="ticket-list" class="space-y-4">
                                         ${event && event.tickets ? event.tickets.map((ticket, idx) => `
                                             <div class="border border-slate-200 rounded-lg p-4">
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div>
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
                                                         <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.name}" placeholder="一般参加">
@@ -3454,16 +3464,24 @@
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
                                                         <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.capacity || 100}" placeholder="100">
                                                     </div>
-                                                    <div class="flex items-end">
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                                                            一人あたり購入制限
+                                                            <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                                                        </label>
+                                                        <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.purchaseLimit || 5}" placeholder="5" min="1" max="10">
+                                                    </div>
+                                                    <div class="md:col-span-2 flex items-end">
                                                         <button onclick="removeTicketType(${idx})" class="text-red-500 hover:text-red-700">
                                                             <span class="material-icons-outlined">delete</span>
+                                                            削除
                                                         </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         `).join('') : `
                                             <div class="border border-slate-200 rounded-lg p-4">
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                     <div>
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
                                                         <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="一般参加" placeholder="一般参加">
@@ -3475,6 +3493,13 @@
                                                     <div>
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
                                                         <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="100" placeholder="100">
+                                                    </div>
+                                                    <div class="md:col-span-3">
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                                                            一人あたり購入制限
+                                                            <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                                                        </label>
+                                                        <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="5" placeholder="5" min="1" max="10">
                                                     </div>
                                                 </div>
                                             </div>
@@ -5391,7 +5416,7 @@ C-1,C,1,自由席エリア,free,available`;
             const newTicket = document.createElement('div');
             newTicket.className = 'border border-slate-200 rounded-lg p-4';
             newTicket.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
                         <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="VIP席">
@@ -5403,6 +5428,21 @@ C-1,C,1,自由席エリア,free,available`;
                     <div>
                         <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
                         <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">一人あたり購入制限</label>
+                        <select class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg">
+                            <option value="1">1枚まで</option>
+                            <option value="2">2枚まで</option>
+                            <option value="3">3枚まで</option>
+                            <option value="4" selected>4枚まで</option>
+                            <option value="5">5枚まで</option>
+                            <option value="6">6枚まで</option>
+                            <option value="7">7枚まで</option>
+                            <option value="8">8枚まで</option>
+                            <option value="9">9枚まで</option>
+                            <option value="10">10枚まで</option>
+                        </select>
                     </div>
                     <div class="flex items-end">
                         <button onclick="this.closest('.border').remove()" class="text-red-500 hover:text-red-700">
@@ -5497,13 +5537,17 @@ C-1,C,1,自由席エリア,free,available`;
             
             // チケット情報取得
             const ticketElements = document.querySelectorAll('#ticket-list > div');
-            const tickets = Array.from(ticketElements).map((el, idx) => ({
-                id: `ticket-${Date.now()}-${idx}`,
-                name: el.querySelector('.ticket-name').value,
-                price: parseInt(el.querySelector('.ticket-price').value) || 0,
-                capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,
-                available: parseInt(el.querySelector('.ticket-capacity').value) || 100
-            }));
+            const tickets = Array.from(ticketElements).map((el, idx) => {
+                const purchaseLimit = parseInt(el.querySelector('.ticket-limit').value) || 5;
+                return {
+                    id: `ticket-${Date.now()}-${idx}`,
+                    name: el.querySelector('.ticket-name').value,
+                    price: parseInt(el.querySelector('.ticket-price').value) || 0,
+                    capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,
+                    available: parseInt(el.querySelector('.ticket-capacity').value) || 100,
+                    purchaseLimit: Math.max(1, Math.min(10, purchaseLimit)) // 1-10の範囲に制限
+                };
+            });
             
             // イベントオブジェクト作成
             const eventData = {

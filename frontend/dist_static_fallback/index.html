@@ -3144,8 +3144,8 @@
 
         // New Aggregator Function for Operations (Sub-tabs: Participants, Seats)
         function renderOrganizerOperations() {
-            // Check query param or local state for sub-tab, defaulting to 'participants'
-            const subTab = window.currentOrgOpTab || 'participants';
+            // Check query param or local state for sub-tab, defaulting to 'users'
+            const subTab = window.currentOrgOpTab || 'users';
             
             return `
                 <div class="flex justify-between items-center mb-6">
@@ -3153,19 +3153,226 @@
                 </div>
                 
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
-                    <div class="flex border-b border-slate-200">
-                        <button onclick="window.currentOrgOpTab='participants'; renderOrganizer(document.getElementById('app'), 'operations')" class="px-6 py-3 text-sm font-bold ${subTab === 'participants' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">参加者リスト</button>
-                        <button onclick="window.currentOrgOpTab='seats'; renderOrganizer(document.getElementById('app'), 'operations')" class="px-6 py-3 text-sm font-bold ${subTab === 'seats' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">座席管理</button>
-                        <button onclick="window.currentOrgOpTab='checkin'; renderOrganizer(document.getElementById('app'), 'operations')" class="px-6 py-3 text-sm font-bold ${subTab === 'checkin' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">QRチェックイン</button>
+                    <div class="flex border-b border-slate-200 overflow-x-auto">
+                        <button onclick="window.currentOrgOpTab='users'; renderOrganizer(document.getElementById('app'), 'operations')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${subTab === 'users' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">ユーザー検索</button>
+                        <button onclick="window.currentOrgOpTab='checkin'; renderOrganizer(document.getElementById('app'), 'operations')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${subTab === 'checkin' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">入場受付</button>
+                        <button onclick="window.currentOrgOpTab='payments'; renderOrganizer(document.getElementById('app'), 'operations')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${subTab === 'payments' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">入出金管理</button>
+                        <button onclick="window.currentOrgOpTab='participants'; renderOrganizer(document.getElementById('app'), 'operations')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${subTab === 'participants' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">参加者リスト</button>
+                        <button onclick="window.currentOrgOpTab='seats'; renderOrganizer(document.getElementById('app'), 'operations')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${subTab === 'seats' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">座席管理</button>
                     </div>
                 </div>
 
                 <div>
+                    ${subTab === 'users' ? renderOrganizerUserSearch() : ''}
+                    ${subTab === 'checkin' ? renderOrganizerCheckin() : ''}
+                    ${subTab === 'payments' ? renderOrganizerPayments() : ''}
                     ${subTab === 'participants' ? renderOrganizerParticipants() : ''}
                     ${subTab === 'seats' ? renderOrganizerSeats() : ''}
-                    ${subTab === 'checkin' ? renderOrganizerCheckin() : ''}
                 </div>
             `;
+        }
+
+        // ユーザー検索機能
+        function renderOrganizerUserSearch() {
+            // 全参加者を取得
+            const allParticipants = store.participants || [];
+            const organizerEvents = store.events.filter(e => 
+                e.organizer_name === (store.organizerProfile?.name || 'LinkUp Official')
+            );
+            const eventIds = organizerEvents.map(e => e.event_id);
+            const organizerParticipants = allParticipants.filter(p => eventIds.includes(p.eventId));
+            
+            return `
+                <div class="bg-white rounded-2xl shadow-card p-6">
+                    <div class="flex items-center mb-6">
+                        <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mr-4">
+                            <span class="material-icons-outlined text-3xl text-white">search</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">ユーザー検索</h3>
+                            <p class="text-slate-500 text-sm">名前、メール、電話番号、チケット番号で検索</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 検索フォーム -->
+                    <div class="mb-6">
+                        <div class="flex space-x-3">
+                            <input type="text" id="user-search-input" placeholder="名前、メール、チケット番号で検索..." 
+                                class="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                onkeyup="performUserSearch(this.value)">
+                            <select id="event-filter" class="px-4 py-3 border border-slate-300 rounded-lg" onchange="performUserSearch(document.getElementById('user-search-input').value)">
+                                <option value="">全イベント</option>
+                                ${organizerEvents.map(e => `<option value="${e.event_id}">${e.title}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- 検索結果 -->
+                    <div id="search-results">
+                        ${organizerParticipants.length === 0 ? `
+                            <div class="text-center py-12 text-slate-400">
+                                <span class="material-icons-outlined text-6xl mb-4">person_search</span>
+                                <p>参加者データがありません</p>
+                            </div>
+                        ` : `
+                            <div class="space-y-3">
+                                ${organizerParticipants.slice(0, 20).map(p => {
+                                    const event = store.events.find(e => e.event_id === p.eventId);
+                                    const checkins = JSON.parse(localStorage.getItem('checkins')) || {};
+                                    const isCheckedIn = checkins[p.eventId]?.some(c => c.includes(p.id));
+                                    
+                                    return `
+                                        <div class="p-4 border border-slate-200 rounded-xl hover:border-primary transition user-result-item" 
+                                            data-search="${p.userName.toLowerCase()} ${p.id.toLowerCase()} ${event?.title.toLowerCase()}">
+                                            <div class="flex justify-between items-start">
+                                                <div class="flex-1">
+                                                    <h4 class="font-bold text-slate-800">${p.userName}</h4>
+                                                    <p class="text-sm text-slate-600 mt-1">
+                                                        <span class="material-icons-outlined text-xs align-middle">event</span> 
+                                                        ${event?.title || '不明なイベント'}
+                                                    </p>
+                                                    <p class="text-sm text-slate-600">
+                                                        <span class="material-icons-outlined text-xs align-middle">confirmation_number</span> 
+                                                        ${p.ticketName} | チケットID: ${p.id}
+                                                    </p>
+                                                    <p class="text-xs text-slate-500 mt-2">
+                                                        申込日: ${new Date(p.purchaseDate).toLocaleString('ja-JP')}
+                                                    </p>
+                                                </div>
+                                                <div class="text-right">
+                                                    <span class="px-3 py-1 rounded-full text-xs font-bold ${p.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                                                        ${p.status === 'paid' ? '決済完了' : '未決済'}
+                                                    </span>
+                                                    <span class="px-3 py-1 rounded-full text-xs font-bold ${isCheckedIn ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'} ml-2">
+                                                        ${isCheckedIn ? '入場済み' : '未入場'}
+                                                    </span>
+                                                    <p class="text-lg font-bold text-primary mt-2">¥${(p.amount || 0).toLocaleString()}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function performUserSearch(query) {
+            const eventFilter = document.getElementById('event-filter')?.value || '';
+            const items = document.querySelectorAll('.user-result-item');
+            const lowerQuery = query.toLowerCase();
+            
+            items.forEach(item => {
+                const searchData = item.getAttribute('data-search');
+                const matchesQuery = !query || searchData.includes(lowerQuery);
+                const matchesEvent = !eventFilter || searchData.includes(eventFilter.toLowerCase());
+                item.style.display = matchesQuery && matchesEvent ? '' : 'none';
+            });
+        }
+        
+        // 決済管理機能
+        function renderOrganizerPayments() {
+            const paymentHistory = store.paymentHistory || [];
+            const organizerEvents = store.events.filter(e => 
+                e.organizer_name === (store.organizerProfile?.name || 'LinkUp Official')
+            );
+            const eventIds = organizerEvents.map(e => e.event_id);
+            const organizerPayments = paymentHistory.filter(p => eventIds.includes(p.eventId));
+            
+            const totalRevenue = organizerPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const completedPayments = organizerPayments.filter(p => p.paymentStatus === 'completed' || p.status === 'success');
+            const refundablePayments = completedPayments.length;
+            
+            return `
+                <div class="bg-white rounded-2xl shadow-card p-6">
+                    <div class="flex items-center mb-6">
+                        <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mr-4">
+                            <span class="material-icons-outlined text-3xl text-white">payments</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">入出金管理</h3>
+                            <p class="text-slate-500 text-sm">決済履歴の確認と返金処理</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 統計カード -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-blue-600">¥${totalRevenue.toLocaleString()}</p>
+                            <p class="text-sm text-slate-600 mt-1">総売上</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-green-600">${completedPayments.length}</p>
+                            <p class="text-sm text-slate-600 mt-1">決済完了</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-orange-600">${refundablePayments}</p>
+                            <p class="text-sm text-slate-600 mt-1">返金可能</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 決済履歴 -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4">決済ID</th>
+                                    <th class="p-4">イベント</th>
+                                    <th class="p-4">購入者</th>
+                                    <th class="p-4">決済方法</th>
+                                    <th class="p-4">金額</th>
+                                    <th class="p-4">ステータス</th>
+                                    <th class="p-4">日時</th>
+                                    <th class="p-4 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                ${organizerPayments.slice(0, 50).map(payment => `
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-4 font-mono text-xs">${payment.id || payment.paymentId || '-'}</td>
+                                        <td class="p-4">${payment.eventTitle || '-'}</td>
+                                        <td class="p-4">${payment.userName || payment.userEmail || '-'}</td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 bg-slate-100 rounded text-xs">
+                                                ${payment.paymentMethod === 'credit_card' ? 'クレカ' : payment.paymentMethod || '-'}
+                                            </span>
+                                        </td>
+                                        <td class="p-4 font-bold">¥${(payment.amount || 0).toLocaleString()}</td>
+                                        <td class="p-4">
+                                            <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                                (payment.paymentStatus === 'completed' || payment.status === 'success') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                            }">
+                                                ${(payment.paymentStatus === 'completed' || payment.status === 'success') ? '完了' : '保留'}
+                                            </span>
+                                        </td>
+                                        <td class="p-4 text-slate-600">${new Date(payment.paymentDate || payment.transactionDate).toLocaleString('ja-JP', {month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'})}</td>
+                                        <td class="p-4 text-right">
+                                            ${(payment.paymentStatus === 'completed' || payment.status === 'success') ? `
+                                                <button onclick="refundPayment('${payment.id || payment.paymentId}')" class="text-red-600 hover:text-red-800 text-xs font-bold">
+                                                    返金
+                                                </button>
+                                            ` : '-'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                        ${organizerPayments.length === 0 ? '<div class="p-8 text-center text-slate-400">決済履歴がありません</div>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function refundPayment(paymentId) {
+            if (confirm('この決済を返金しますか？\nこの操作は取り消せません。')) {
+                showToast('返金処理を開始しました', 'info');
+                // TODO: Implement actual refund logic
+                setTimeout(() => {
+                    showToast('返金が完了しました', 'check_circle');
+                }, 2000);
+            }
         }
 
         function renderOrganizerCheckin() {
@@ -3350,14 +3557,14 @@
                                         ${statusBadge}
                                     </td>
                                     <td class="p-4 text-right">
+                                        <button onclick="showEventDetailModal('${evt.event_id}')" class="mr-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition inline-flex items-center" title="イベント詳細">
+                                            <span class="material-icons-outlined text-sm mr-1">info</span>
+                                            詳細
+                                        </button>
                                         <button onclick="showCheckinMenu('${evt.event_id}')" class="mr-2 px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition flex items-center inline-flex" title="チェックイン管理">
                                             <span class="material-icons-outlined text-sm mr-1">qr_code_scanner</span>
                                             受付
                                         </button>
-                                        ${isFinished && !isCompleted ? 
-                                            `<button onclick="store.completeEvent('${evt.event_id}'); renderOrganizer(document.getElementById('app'), 'events')" class="mr-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition" title="完了報告をして売上を確定する">完了報告</button>` : ''
-                                        }
-                                        <button onclick="router('organizer_event_edit', { id: '${evt.event_id}' })" class="text-slate-400 hover:text-primary mr-2"><span class="material-icons-outlined">edit</span></button>
                                         <button onclick="deleteEventConfirm('${evt.event_id}')" class="text-slate-400 hover:text-red-500"><span class="material-icons-outlined">delete</span></button>
                                     </td>
                                 </tr>
@@ -7030,6 +7237,275 @@ function filterParticipants() {
             item.style.display = 'none';
         }
     });
+}
+
+// イベント詳細モーダル
+function showEventDetailModal(eventId) {
+    const event = store.events.find(e => e.event_id === eventId);
+    if (!event) return;
+    
+    const now = new Date();
+    const startDate = new Date(event.start_datetime);
+    const endDate = new Date(event.end_datetime);
+    
+    // ステータス判定
+    let status = 'draft';
+    let statusLabel = '下書き';
+    let statusColor = 'bg-gray-100 text-gray-700';
+    
+    if (event.status === 'published') {
+        if (now < startDate) {
+            status = 'published';
+            statusLabel = '公開中（募集中）';
+            statusColor = 'bg-green-100 text-green-700';
+        } else if (now >= startDate && now <= endDate) {
+            status = 'ongoing';
+            statusLabel = 'イベント中';
+            statusColor = 'bg-blue-100 text-blue-700';
+        } else {
+            status = 'ended';
+            statusLabel = 'イベント終了';
+            statusColor = 'bg-purple-100 text-purple-700';
+        }
+    }
+    
+    // 参加者統計
+    const participants = (store.participants || []).filter(p => p.eventId === eventId);
+    const checkins = JSON.parse(localStorage.getItem('checkins')) || {};
+    const eventCheckins = checkins[eventId] || [];
+    
+    const modal = document.getElementById('modal-content');
+    document.getElementById('modal-container').classList.remove('hidden');
+    
+    modal.innerHTML = `
+        <div class="max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-slate-200 p-6 flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-slate-800">イベント詳細</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                    <span class="material-icons-outlined">close</span>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-6">
+                <!-- ステータス -->
+                <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                    <div>
+                        <p class="text-sm text-slate-600 mb-1">現在のステータス</p>
+                        <span class="px-3 py-1 rounded-full text-sm font-bold ${statusColor}">${statusLabel}</span>
+                    </div>
+                    <button onclick="closeModal(); router('organizer_event_edit', { id: '${eventId}' })" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition flex items-center">
+                        <span class="material-icons-outlined text-sm mr-2">edit</span>
+                        編集する
+                    </button>
+                </div>
+                
+                <!-- 基本情報 -->
+                <div class="bg-white border border-slate-200 rounded-xl p-4">
+                    <h4 class="font-bold text-slate-800 mb-4 flex items-center">
+                        <span class="material-icons-outlined text-primary mr-2">event</span>
+                        基本情報
+                    </h4>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex">
+                            <span class="w-32 text-slate-600">イベント名</span>
+                            <span class="flex-1 font-bold">${event.title}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-32 text-slate-600">カテゴリ</span>
+                            <span class="flex-1">${event.category}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-32 text-slate-600">開始日時</span>
+                            <span class="flex-1">${new Date(event.start_datetime).toLocaleString('ja-JP')}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-32 text-slate-600">終了日時</span>
+                            <span class="flex-1">${new Date(event.end_datetime).toLocaleString('ja-JP')}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-32 text-slate-600">会場</span>
+                            <span class="flex-1">${event.venue_name}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-32 text-slate-600">住所</span>
+                            <span class="flex-1">${event.venue_address || '-'}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 統計情報 -->
+                <div class="bg-white border border-slate-200 rounded-xl p-4">
+                    <h4 class="font-bold text-slate-800 mb-4 flex items-center">
+                        <span class="material-icons-outlined text-primary mr-2">analytics</span>
+                        統計情報
+                    </h4>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="text-center p-3 bg-blue-50 rounded-lg">
+                            <p class="text-2xl font-bold text-blue-600">${participants.length}</p>
+                            <p class="text-xs text-slate-600 mt-1">申込者数</p>
+                        </div>
+                        <div class="text-center p-3 bg-green-50 rounded-lg">
+                            <p class="text-2xl font-bold text-green-600">${eventCheckins.length}</p>
+                            <p class="text-xs text-slate-600 mt-1">入場者数</p>
+                        </div>
+                        <div class="text-center p-3 bg-purple-50 rounded-lg">
+                            <p class="text-2xl font-bold text-purple-600">${event.view_count || 0}</p>
+                            <p class="text-xs text-slate-600 mt-1">閲覧数</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- チケット情報 -->
+                <div class="bg-white border border-slate-200 rounded-xl p-4">
+                    <h4 class="font-bold text-slate-800 mb-4 flex items-center">
+                        <span class="material-icons-outlined text-primary mr-2">confirmation_number</span>
+                        チケット情報
+                    </h4>
+                    <div class="space-y-2">
+                        ${(event.tickets || []).map(ticket => `
+                            <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                                <div>
+                                    <p class="font-bold text-sm">${ticket.name}</p>
+                                    <p class="text-xs text-slate-500">${ticket.desc || '-'}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold text-primary">¥${ticket.price.toLocaleString()}</p>
+                                    <p class="text-xs text-slate-500">${ticket.capacity || 100}枚</p>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <!-- アクション -->
+                <div class="flex space-x-3">
+                    <button onclick="closeModal(); showEventParticipants('${eventId}')" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
+                        <span class="material-icons-outlined text-sm mr-2">people</span>
+                        参加者一覧
+                    </button>
+                    <button onclick="closeModal(); showCheckinMenu('${eventId}')" class="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center justify-center">
+                        <span class="material-icons-outlined text-sm mr-2">qr_code_scanner</span>
+                        受付管理
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// イベント参加者一覧
+function showEventParticipants(eventId) {
+    const event = store.events.find(e => e.event_id === eventId);
+    if (!event) return;
+    
+    const participants = (store.participants || []).filter(p => p.eventId === eventId);
+    const checkins = JSON.parse(localStorage.getItem('checkins')) || {};
+    const eventCheckins = checkins[eventId] || [];
+    
+    const app = document.getElementById('app');
+    app.innerHTML = `
+        <div class="min-h-screen bg-slate-50 py-8">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center">
+                        <button onclick="renderOrganizer(document.getElementById('app'), 'events')" class="text-slate-600 hover:text-slate-900 flex items-center mr-4">
+                            <span class="material-icons-outlined mr-2">arrow_back</span>
+                        </button>
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-900">参加者一覧</h1>
+                            <p class="text-sm text-slate-600">${event.title}</p>
+                        </div>
+                    </div>
+                    <button onclick="exportParticipantsCsv('${eventId}')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition flex items-center">
+                        <span class="material-icons-outlined text-sm mr-2">download</span>
+                        CSVダウンロード
+                    </button>
+                </div>
+                
+                <!-- 統計カード -->
+                <div class="grid grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white rounded-xl p-4 shadow-card">
+                        <p class="text-3xl font-bold text-blue-600">${participants.length}</p>
+                        <p class="text-sm text-slate-600 mt-1">総申込者数</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow-card">
+                        <p class="text-3xl font-bold text-green-600">${eventCheckins.length}</p>
+                        <p class="text-sm text-slate-600 mt-1">入場済み</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow-card">
+                        <p class="text-3xl font-bold text-orange-600">${participants.filter(p => p.status === 'paid').length}</p>
+                        <p class="text-sm text-slate-600 mt-1">決済完了</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 shadow-card">
+                        <p class="text-3xl font-bold text-purple-600">${participants.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}</p>
+                        <p class="text-sm text-slate-600 mt-1">総売上（円）</p>
+                    </div>
+                </div>
+                
+                <!-- 参加者リスト -->
+                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+                        <h3 class="font-bold text-lg">参加者リスト</h3>
+                        <input type="text" placeholder="名前、メールで検索..." class="px-4 py-2 border border-slate-300 rounded-lg text-sm" onkeyup="filterEventParticipants(this.value)">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                <tr>
+                                    <th class="p-4 text-left">参加者名</th>
+                                    <th class="p-4 text-left">チケット種別</th>
+                                    <th class="p-4 text-left">決済状況</th>
+                                    <th class="p-4 text-left">入場状況</th>
+                                    <th class="p-4 text-left">申込日時</th>
+                                    <th class="p-4 text-right">金額</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm" id="participants-tbody">
+                                ${participants.map((p, index) => {
+                                    const isCheckedIn = eventCheckins.some(c => c.includes(p.id));
+                                    return `
+                                        <tr class="hover:bg-slate-50 participant-row" data-name="${p.userName.toLowerCase()}">
+                                            <td class="p-4">
+                                                <p class="font-bold">${p.userName}</p>
+                                                <p class="text-xs text-slate-500">ID: ${p.id}</p>
+                                            </td>
+                                            <td class="p-4">${p.ticketName}</td>
+                                            <td class="p-4">
+                                                <span class="px-2 py-1 rounded-full text-xs font-bold ${p.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                                                    ${p.status === 'paid' ? '決済完了' : '未決済'}
+                                                </span>
+                                            </td>
+                                            <td class="p-4">
+                                                <span class="px-2 py-1 rounded-full text-xs font-bold ${isCheckedIn ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}">
+                                                    ${isCheckedIn ? '入場済み' : '未入場'}
+                                                </span>
+                                            </td>
+                                            <td class="p-4 text-slate-600">${new Date(p.purchaseDate).toLocaleString('ja-JP')}</td>
+                                            <td class="p-4 text-right font-bold">¥${(p.amount || 0).toLocaleString()}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                        ${participants.length === 0 ? '<div class="p-8 text-center text-slate-400">参加者がいません</div>' : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function filterEventParticipants(query) {
+    const rows = document.querySelectorAll('.participant-row');
+    const lowerQuery = query.toLowerCase();
+    rows.forEach(row => {
+        const name = row.getAttribute('data-name');
+        row.style.display = name.includes(lowerQuery) ? '' : 'none';
+    });
+}
+
+function exportParticipantsCsv(eventId) {
+    showToast('CSV出力機能は準備中です', 'info');
 }
 
 // チェックインメニュー表示

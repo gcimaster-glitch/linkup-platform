@@ -20,11 +20,6 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- QR Code Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <!-- API Client -->
-    <script src="assets/api-client.js"></script>
     <!-- Leaflet CSS & JS for Real Maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -6495,16 +6490,15 @@ async function generateTicketQR(ticketId) {
     const qrData = `LINKUP:${ticketId}:${Date.now()}`;
     
     try {
-        // Wait for QRCode library to load
+        // Wait for QRCode library to load (up to 3 seconds)
         let attempts = 0;
-        while (typeof QRCode === 'undefined' && attempts < 10) {
+        while (typeof QRCode === 'undefined' && attempts < 30) {
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
         
         if (typeof QRCode === 'undefined') {
-            console.error('QRCode library failed to load');
-            // Fallback: create simple data URL
+            console.error('QRCode library failed to load after 3 seconds');
             return createFallbackQR(qrData);
         }
         
@@ -6528,22 +6522,37 @@ async function generateTicketQR(ticketId) {
 
 // Fallback QR generator
 function createFallbackQR(data) {
-    // Create a simple SVG QR placeholder
-    const svg = `
-        <svg width="300" height="300" xmlns="http://www.w3.org/2000/svg">
-            <rect width="300" height="300" fill="#f0f0f0"/>
-            <text x="150" y="140" text-anchor="middle" font-size="14" fill="#333">
-                QRコード
-            </text>
-            <text x="150" y="160" text-anchor="middle" font-size="10" fill="#666">
-                ${data.substring(0, 20)}...
-            </text>
-            <text x="150" y="180" text-anchor="middle" font-size="9" fill="#999">
-                会場で提示してください
-            </text>
-        </svg>
-    `;
-    return 'data:image/svg+xml;base64,' + btoa(svg);
+    // Create a simple canvas-based QR placeholder
+    const canvas = document.createElement('canvas');
+    canvas.width = 300;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    
+    // Background
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, 300, 300);
+    
+    // Border
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, 280, 280);
+    
+    // Text
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('QR Code', 150, 130);
+    
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#666';
+    ctx.fillText('Ticket ID:', 150, 160);
+    
+    // Safely encode ticket ID (only ASCII)
+    const ticketId = data.split(':')[1] || 'TICKET';
+    ctx.font = '12px monospace';
+    ctx.fillText(ticketId.substring(0, 20), 150, 180);
+    
+    return canvas.toDataURL();
 }
 
 // QRコード表示モーダル
@@ -6953,5 +6962,11 @@ function showCheckinMenu(eventId) {
         });
 
     </script>
+    
+    <!-- Load QR libraries after main content -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- API Client -->
+    <script src="assets/api-client.js"></script>
 </body>
 </html>

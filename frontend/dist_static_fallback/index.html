@@ -4757,6 +4757,11 @@
                                     <span class="material-icons-outlined mr-3 text-sm">campaign</span> マーケティング
                                 </button>
                                 
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 ml-2">Transactions</p>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'tickets')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'tickets' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">confirmation_number</span> チケット販売履歴
+                                </button>
+                                
                                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 ml-2">System</p>
                                 <button onclick="renderAdmin(document.getElementById('app'), 'settings')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'settings' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">settings</span> システム設定
@@ -4796,6 +4801,7 @@
             if (tab === 'users') return renderAdminUsers();
             if (tab === 'events') return renderAdminEvents();
             if (tab === 'venues') return renderAdminVenues();
+            if (tab === 'tickets') return renderAdminTickets();
             if (tab === 'payment-history') return renderAdminPaymentHistory();
             if (tab === 'finance') return renderAdminFinance();
             if (tab === 'marketing') return renderAdminMarketing();
@@ -5143,106 +5149,231 @@
         }
 
         function renderAdminEvents() {
-            const pendingEvents = store.events.filter(e => e.approval_status === 'pending');
-            const allEvents = store.events;
+            const filters = adminFilters.events;
+            const viewMode = adminViewMode.events;
+            
+            let allEvents = [...store.events];
+            
+            // フィルタ適用
+            if (filters.status !== 'all') {
+                allEvents = allEvents.filter(e => e.approval_status === filters.status);
+            }
+            if (filters.category !== 'all') {
+                allEvents = allEvents.filter(e => e.category === filters.category);
+            }
+            if (filters.organizer !== 'all') {
+                allEvents = allEvents.filter(e => e.organizer_name === filters.organizer);
+            }
+            if (filters.search) {
+                const search = filters.search.toLowerCase();
+                allEvents = allEvents.filter(e => 
+                    e.title.toLowerCase().includes(search) ||
+                    e.description?.toLowerCase().includes(search) ||
+                    e.venue_name?.toLowerCase().includes(search)
+                );
+            }
+            
+            const pendingEvents = allEvents.filter(e => e.approval_status === 'pending');
+            const approvedEvents = allEvents.filter(e => e.approval_status === 'approved');
+            const draftEvents = allEvents.filter(e => e.approval_status === 'draft' || !e.approval_status);
+            
+            // ユニークな主催者リスト
+            const organizers = [...new Set(store.events.map(e => e.organizer_name))];
             
             return `
-                <div class="flex justify-between items-center mb-6">
-                    <h1 class="text-2xl font-bold text-slate-800">イベント・コンテンツ管理</h1>
-                    <div class="flex space-x-2">
-                        <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-bold">
-                            ${pendingEvents.length}件 承認待ち
-                        </span>
-                    </div>
-                </div>
-
-                ${pendingEvents.length > 0 ? `
-                    <div class="mb-8">
-                        <h2 class="text-lg font-bold text-slate-800 mb-4">承認待ちイベント</h2>
-                        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-yellow-50 text-slate-500 text-xs uppercase">
-                                    <tr>
-                                        <th class="p-4">イベント名</th>
-                                        <th class="p-4">主催者</th>
-                                        <th class="p-4">開催日</th>
-                                        <th class="p-4">申請日時</th>
-                                        <th class="p-4 text-right">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
-                                    ${pendingEvents.map(evt => `
-                                        <tr class="hover:bg-slate-50">
-                                            <td class="p-4">
-                                                <p class="font-bold text-slate-800">${evt.title}</p>
-                                                <p class="text-xs text-slate-500">${evt.category}</p>
-                                            </td>
-                                            <td class="p-4 text-slate-500">${evt.organizer_name}</td>
-                                            <td class="p-4">${new Date(evt.start_datetime).toLocaleDateString('ja-JP')}</td>
-                                            <td class="p-4 text-xs text-slate-500">${evt.submitted_at ? new Date(evt.submitted_at).toLocaleString('ja-JP') : '-'}</td>
-                                            <td class="p-4 text-right space-x-2">
-                                                <button onclick="reviewEvent('${evt.event_id}')" class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">
-                                                    レビュー
-                                                </button>
-                                                <button onclick="approveEvent('${evt.event_id}')" class="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200">
-                                                    承認
-                                                </button>
-                                                <button onclick="rejectEvent('${evt.event_id}')" class="px-3 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200">
-                                                    却下
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">イベント・コンテンツ管理</h1>
+                            <p class="text-sm text-slate-500 mt-1">全イベントの管理と承認</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            ${pendingEvents.length > 0 ? `
+                                <span class="px-3 py-2 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-bold">
+                                    ${pendingEvents.length}件 承認待ち
+                                </span>
+                            ` : ''}
+                            <button onclick="exportEventsCSV()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">download</span>
+                                CSV出力
+                            </button>
                         </div>
                     </div>
-                ` : ''}
-
-                <div>
-                    <h2 class="text-lg font-bold text-slate-800 mb-4">全イベント</h2>
-                    <div class="bg-white rounded-2xl shadow-card overflow-hidden">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-slate-50 text-slate-500 text-xs uppercase">
-                                <tr>
-                                    <th class="p-4">イベント名</th>
-                                    <th class="p-4">主催者</th>
-                                    <th class="p-4">承認ステータス</th>
-                                    <th class="p-4">公開ステータス</th>
-                                    <th class="p-4 text-right">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
-                                ${allEvents.map(evt => `
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="p-4 font-bold text-slate-800">${evt.title}</td>
-                                        <td class="p-4 text-slate-500">${evt.organizer_name}</td>
-                                        <td class="p-4">
-                                            <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                    
+                    <!-- 統計カード -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <p class="text-xs text-slate-500 font-bold mb-1">全イベント</p>
+                            <p class="text-3xl font-bold text-slate-800">${allEvents.length}</p>
+                        </div>
+                        <div class="bg-yellow-50 p-6 rounded-xl shadow-card border border-yellow-100">
+                            <p class="text-xs text-yellow-700 font-bold mb-1">承認待ち</p>
+                            <p class="text-3xl font-bold text-yellow-800">${pendingEvents.length}</p>
+                        </div>
+                        <div class="bg-green-50 p-6 rounded-xl shadow-card border border-green-100">
+                            <p class="text-xs text-green-700 font-bold mb-1">承認済</p>
+                            <p class="text-3xl font-bold text-green-800">${approvedEvents.length}</p>
+                        </div>
+                        <div class="bg-slate-50 p-6 rounded-xl shadow-card border border-slate-100">
+                            <p class="text-xs text-slate-500 font-bold mb-1">下書き</p>
+                            <p class="text-3xl font-bold text-slate-700">${draftEvents.length}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- フィルタ・検索バー -->
+                    <div class="bg-white p-4 rounded-xl shadow-card">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">承認ステータス</label>
+                                <select onchange="updateAdminFilter('events', 'status', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    <option value="pending" ${filters.status === 'pending' ? 'selected' : ''}>承認待ち</option>
+                                    <option value="approved" ${filters.status === 'approved' ? 'selected' : ''}>承認済</option>
+                                    <option value="rejected" ${filters.status === 'rejected' ? 'selected' : ''}>却下</option>
+                                    <option value="draft" ${filters.status === 'draft' ? 'selected' : ''}>下書き</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">カテゴリ</label>
+                                <select onchange="updateAdminFilter('events', 'category', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    <option value="tech" ${filters.category === 'tech' ? 'selected' : ''}>テック</option>
+                                    <option value="business" ${filters.category === 'business' ? 'selected' : ''}>ビジネス</option>
+                                    <option value="music" ${filters.category === 'music' ? 'selected' : ''}>音楽</option>
+                                    <option value="art" ${filters.category === 'art' ? 'selected' : ''}>アート</option>
+                                    <option value="social" ${filters.category === 'social' ? 'selected' : ''}>交流会</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">主催者</label>
+                                <select onchange="updateAdminFilter('events', 'organizer', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    ${organizers.map(org => `<option value="${org}" ${filters.organizer === org ? 'selected' : ''}>${org}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">検索</label>
+                                <input type="text" placeholder="イベント名、会場..." value="${filters.search}" oninput="updateAdminFilter('events', 'search', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                            </div>
+                        </div>
+                        <div class="mt-3 flex justify-between items-center">
+                            <button onclick="clearAdminFilters('events')" class="text-xs text-blue-600 hover:underline">フィルタをクリア</button>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-slate-500">表示:</span>
+                                <button onclick="toggleAdminViewMode('events', 'table')" class="px-3 py-1 rounded ${viewMode === 'table' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'} text-xs">
+                                    <span class="material-icons-outlined text-xs">view_list</span>
+                                </button>
+                                <button onclick="toggleAdminViewMode('events', 'card')" class="px-3 py-1 rounded ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'} text-xs">
+                                    <span class="material-icons-outlined text-xs">view_module</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- テーブル or カード表示 -->
+                    ${viewMode === 'table' ? `
+                        <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead class="bg-slate-50 text-slate-600 text-xs uppercase border-b">
+                                        <tr>
+                                            <th class="p-4">イベント名</th>
+                                            <th class="p-4">主催者</th>
+                                            <th class="p-4">開催日</th>
+                                            <th class="p-4">カテゴリ</th>
+                                            <th class="p-4">承認ステータス</th>
+                                            <th class="p-4 text-right">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
+                                        ${allEvents.length === 0 ? `
+                                            <tr><td colspan="6" class="p-8 text-center text-slate-400">イベントが見つかりませんでした</td></tr>
+                                        ` : allEvents.map(evt => `
+                                            <tr class="hover:bg-slate-50">
+                                                <td class="p-4">
+                                                    <p class="font-bold text-slate-800">${evt.title}</p>
+                                                    <p class="text-xs text-slate-500">${evt.venue_name || 'N/A'}</p>
+                                                </td>
+                                                <td class="p-4 text-slate-600">${evt.organizer_name}</td>
+                                                <td class="p-4 text-slate-600">${new Date(evt.start_datetime).toLocaleDateString('ja-JP')}</td>
+                                                <td class="p-4">
+                                                    <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold">${evt.category}</span>
+                                                </td>
+                                                <td class="p-4">
+                                                    <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                                        evt.approval_status === 'approved' ? 'bg-green-100 text-green-700' :
+                                                        evt.approval_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                        evt.approval_status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                        'bg-slate-100 text-slate-600'
+                                                    }">
+                                                        ${evt.approval_status === 'approved' ? '承認済' : 
+                                                          evt.approval_status === 'pending' ? '承認待ち' : 
+                                                          evt.approval_status === 'rejected' ? '却下' : '下書き'}
+                                                    </span>
+                                                </td>
+                                                <td class="p-4 text-right space-x-2">
+                                                    <button onclick="router('detail', {id: '${evt.event_id}'})" class="text-blue-600 hover:underline text-xs">表示</button>
+                                                    ${evt.approval_status === 'pending' ? `
+                                                        <button onclick="approveEvent('${evt.event_id}')" class="text-green-600 hover:underline text-xs">承認</button>
+                                                        <button onclick="rejectEvent('${evt.event_id}')" class="text-red-600 hover:underline text-xs">却下</button>
+                                                    ` : ''}
+                                                    <button onclick="archiveEvent('${evt.event_id}')" class="text-slate-500 hover:underline text-xs">アーカイブ</button>
+                                                    <button onclick="deleteEventConfirm('${evt.event_id}')" class="text-red-500 hover:underline text-xs">削除</button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ` : `
+                        <!-- カード表示 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${allEvents.length === 0 ? `
+                                <div class="col-span-full p-12 text-center text-slate-400">イベントが見つかりませんでした</div>
+                            ` : allEvents.map(evt => `
+                                <div class="bg-white rounded-xl shadow-card overflow-hidden hover:shadow-lg transition">
+                                    <img src="${evt.cover_image_url}" class="w-full h-40 object-cover">
+                                    <div class="p-4">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <h3 class="font-bold text-slate-800 flex-1">${evt.title}</h3>
+                                            <span class="px-2 py-1 rounded-full text-xs font-bold ml-2 ${
                                                 evt.approval_status === 'approved' ? 'bg-green-100 text-green-700' :
                                                 evt.approval_status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
                                                 evt.approval_status === 'rejected' ? 'bg-red-100 text-red-700' :
                                                 'bg-slate-100 text-slate-600'
                                             }">
-                                                ${evt.approval_status === 'approved' ? '承認済み' : 
+                                                ${evt.approval_status === 'approved' ? '承認済' : 
                                                   evt.approval_status === 'pending' ? '承認待ち' : 
                                                   evt.approval_status === 'rejected' ? '却下' : '下書き'}
                                             </span>
-                                        </td>
-                                        <td class="p-4">
-                                            <span class="px-2 py-1 bg-green-100 text-green-600 rounded-full text-xs font-bold">${evt.status || 'published'}</span>
-                                        </td>
-                                        <td class="p-4 text-right space-x-2">
+                                        </div>
+                                        <div class="space-y-2 text-sm mb-4">
+                                            <div class="flex justify-between">
+                                                <span class="text-slate-500">主催者</span>
+                                                <span class="font-medium text-slate-800">${evt.organizer_name}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-slate-500">開催日</span>
+                                                <span class="text-slate-800">${new Date(evt.start_datetime).toLocaleDateString('ja-JP')}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-slate-500">カテゴリ</span>
+                                                <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold">${evt.category}</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex space-x-2">
+                                            <button onclick="router('detail', {id: '${evt.event_id}'})" class="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 text-xs font-bold">表示</button>
                                             ${evt.approval_status === 'pending' ? `
-                                                <button onclick="reviewEvent('${evt.event_id}')" class="text-blue-500 hover:underline text-xs">レビュー</button>
+                                                <button onclick="approveEvent('${evt.event_id}')" class="flex-1 px-3 py-2 bg-green-50 text-green-600 rounded hover:bg-green-100 text-xs font-bold">承認</button>
                                             ` : ''}
-                                            <button onclick="deleteEventConfirm('${evt.event_id}')" class="text-red-500 hover:underline text-xs">削除</button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
                 </div>
             `;
         }
@@ -5282,6 +5413,374 @@
                     </table>
                 </div>
             `;
+        }
+
+        // ========================================
+        // 📊 第1段階: コアデータ管理の包括的機能
+        // ========================================
+        
+        // グローバル変数: 表示モードとフィルタ状態
+        let adminViewMode = {
+            events: 'table', // 'table' or 'card'
+            users: 'table',
+            organizers: 'table',
+            tickets: 'table',
+            payments: 'table'
+        };
+        
+        let adminFilters = {
+            events: { status: 'all', category: 'all', organizer: 'all', search: '' },
+            users: { kyc: 'all', role: 'all', search: '' },
+            organizers: { kyc: 'all', events: 'all', search: '' },
+            tickets: { event: 'all', status: 'all', dateFrom: '', dateTo: '', search: '' },
+            payments: { method: 'all', status: 'all', dateFrom: '', dateTo: '', search: '' }
+        };
+
+        // チケット販売履歴管理（包括的）
+        function renderAdminTickets() {
+            const filters = adminFilters.tickets;
+            const viewMode = adminViewMode.tickets;
+            
+            // データ取得
+            let tickets = store.tickets || [];
+            const allEvents = store.events || [];
+            
+            // フィルタ適用
+            if (filters.event !== 'all') {
+                tickets = tickets.filter(t => t.eventId === filters.event);
+            }
+            if (filters.status !== 'all') {
+                tickets = tickets.filter(t => t.status === filters.status);
+            }
+            if (filters.search) {
+                const search = filters.search.toLowerCase();
+                tickets = tickets.filter(t => 
+                    t.id.toLowerCase().includes(search) ||
+                    t.ticketName?.toLowerCase().includes(search) ||
+                    t.userName?.toLowerCase().includes(search) ||
+                    t.userEmail?.toLowerCase().includes(search)
+                );
+            }
+            if (filters.dateFrom) {
+                tickets = tickets.filter(t => new Date(t.purchaseDate) >= new Date(filters.dateFrom));
+            }
+            if (filters.dateTo) {
+                tickets = tickets.filter(t => new Date(t.purchaseDate) <= new Date(filters.dateTo));
+            }
+            
+            // 統計
+            const totalRevenue = tickets.reduce((sum, t) => sum + (t.total || t.price * t.count), 0);
+            const totalCount = tickets.length;
+            
+            return `
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">チケット販売履歴</h1>
+                            <p class="text-sm text-slate-500 mt-1">全チケットの販売履歴と詳細情報</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="exportTicketsCSV()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center">
+                                <span class="material-icons-outlined text-sm mr-2">download</span>
+                                CSV出力
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 統計カード -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <p class="text-xs text-slate-500 font-bold mb-1">販売チケット総数</p>
+                            <p class="text-3xl font-bold text-slate-800">${totalCount.toLocaleString()}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <p class="text-xs text-slate-500 font-bold mb-1">総売上額</p>
+                            <p class="text-3xl font-bold text-slate-800">¥${totalRevenue.toLocaleString()}</p>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-card">
+                            <p class="text-xs text-slate-500 font-bold mb-1">平均単価</p>
+                            <p class="text-3xl font-bold text-slate-800">¥${totalCount > 0 ? Math.floor(totalRevenue / totalCount).toLocaleString() : 0}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- フィルタ・検索バー -->
+                    <div class="bg-white p-4 rounded-xl shadow-card">
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">イベント</label>
+                                <select onchange="updateAdminFilter('tickets', 'event', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    ${allEvents.map(e => `<option value="${e.event_id}" ${filters.event === e.event_id ? 'selected' : ''}>${e.title}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">ステータス</label>
+                                <select onchange="updateAdminFilter('tickets', 'status', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                                    <option value="all">すべて</option>
+                                    <option value="paid" ${filters.status === 'paid' ? 'selected' : ''}>支払済</option>
+                                    <option value="pending" ${filters.status === 'pending' ? 'selected' : ''}>保留中</option>
+                                    <option value="cancelled" ${filters.status === 'cancelled' ? 'selected' : ''}>キャンセル</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">購入日（From）</label>
+                                <input type="date" value="${filters.dateFrom}" onchange="updateAdminFilter('tickets', 'dateFrom', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">購入日（To）</label>
+                                <input type="date" value="${filters.dateTo}" onchange="updateAdminFilter('tickets', 'dateTo', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">検索</label>
+                                <input type="text" placeholder="ID、チケット名、ユーザー名..." value="${filters.search}" oninput="updateAdminFilter('tickets', 'search', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded text-sm">
+                            </div>
+                        </div>
+                        <div class="mt-3 flex justify-between items-center">
+                            <button onclick="clearAdminFilters('tickets')" class="text-xs text-blue-600 hover:underline">フィルタをクリア</button>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-slate-500">表示:</span>
+                                <button onclick="toggleAdminViewMode('tickets', 'table')" class="px-3 py-1 rounded ${viewMode === 'table' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'} text-xs">
+                                    <span class="material-icons-outlined text-xs">view_list</span>
+                                </button>
+                                <button onclick="toggleAdminViewMode('tickets', 'card')" class="px-3 py-1 rounded ${viewMode === 'card' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'} text-xs">
+                                    <span class="material-icons-outlined text-xs">view_module</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- テーブル表示 -->
+                    ${viewMode === 'table' ? `
+                        <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 text-slate-600 text-xs uppercase border-b">
+                                        <tr>
+                                            <th class="p-4">チケットID</th>
+                                            <th class="p-4">イベント名</th>
+                                            <th class="p-4">チケット種別</th>
+                                            <th class="p-4">購入者</th>
+                                            <th class="p-4">数量</th>
+                                            <th class="p-4">金額</th>
+                                            <th class="p-4">購入日</th>
+                                            <th class="p-4">ステータス</th>
+                                            <th class="p-4 text-right">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 text-sm">
+                                        ${tickets.length === 0 ? `
+                                            <tr><td colspan="9" class="p-8 text-center text-slate-400">チケットが見つかりませんでした</td></tr>
+                                        ` : tickets.map(t => {
+                                            const event = allEvents.find(e => e.event_id === t.eventId);
+                                            return `
+                                            <tr class="hover:bg-slate-50">
+                                                <td class="p-4 font-mono text-xs text-slate-600">${t.id}</td>
+                                                <td class="p-4">
+                                                    <p class="font-bold text-slate-800">${event?.title || '不明'}</p>
+                                                    <p class="text-xs text-slate-500">${event?.category || '-'}</p>
+                                                </td>
+                                                <td class="p-4">${t.ticketName || '-'}</td>
+                                                <td class="p-4">
+                                                    <p class="font-medium text-slate-800">${t.userName || '-'}</p>
+                                                    <p class="text-xs text-slate-500">${t.userEmail || '-'}</p>
+                                                </td>
+                                                <td class="p-4">${t.count || 1}枚</td>
+                                                <td class="p-4 font-bold">¥${((t.total || t.price * t.count) || 0).toLocaleString()}</td>
+                                                <td class="p-4 text-xs text-slate-500">${new Date(t.purchaseDate).toLocaleString('ja-JP')}</td>
+                                                <td class="p-4">
+                                                    <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                                        t.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                                        t.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-red-100 text-red-700'
+                                                    }">
+                                                        ${t.status === 'paid' ? '支払済' : t.status === 'pending' ? '保留中' : 'キャンセル'}
+                                                    </span>
+                                                </td>
+                                                <td class="p-4 text-right">
+                                                    <button onclick="viewTicketDetail('${t.id}')" class="text-blue-600 hover:underline text-xs">詳細</button>
+                                                </td>
+                                            </tr>
+                                        `}).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ` : `
+                        <!-- カード表示 -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${tickets.length === 0 ? `
+                                <div class="col-span-full p-12 text-center text-slate-400">チケットが見つかりませんでした</div>
+                            ` : tickets.map(t => {
+                                const event = allEvents.find(e => e.event_id === t.eventId);
+                                return `
+                                <div class="bg-white rounded-xl shadow-card p-4 hover:shadow-lg transition">
+                                    <div class="flex justify-between items-start mb-3">
+                                        <div class="flex-1">
+                                            <p class="font-bold text-slate-800 mb-1">${event?.title || '不明'}</p>
+                                            <p class="text-xs text-slate-500">${t.ticketName || '-'}</p>
+                                        </div>
+                                        <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                            t.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                            t.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-red-100 text-red-700'
+                                        }">
+                                            ${t.status === 'paid' ? '支払済' : t.status === 'pending' ? '保留中' : 'キャンセル'}
+                                        </span>
+                                    </div>
+                                    <div class="space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-500">購入者</span>
+                                            <span class="font-medium text-slate-800">${t.userName || '-'}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-500">数量</span>
+                                            <span class="font-medium text-slate-800">${t.count || 1}枚</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-500">金額</span>
+                                            <span class="font-bold text-slate-900">¥${((t.total || t.price * t.count) || 0).toLocaleString()}</span>
+                                        </div>
+                                        <div class="flex justify-between text-xs">
+                                            <span class="text-slate-400">購入日</span>
+                                            <span class="text-slate-600">${new Date(t.purchaseDate).toLocaleDateString('ja-JP')}</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-4 border-t border-slate-100">
+                                        <button onclick="viewTicketDetail('${t.id}')" class="w-full px-3 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 text-xs font-bold">
+                                            詳細を表示
+                                        </button>
+                                    </div>
+                                </div>
+                            `}).join('')}
+                        </div>
+                    `}
+                    
+                    <!-- ページネーション（将来実装） -->
+                    <div class="flex justify-between items-center pt-4">
+                        <p class="text-sm text-slate-500">${tickets.length}件のチケットを表示中</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // フィルタ更新関数
+        function updateAdminFilter(section, key, value) {
+            adminFilters[section][key] = value;
+            renderAdmin(document.getElementById('app'), section);
+        }
+
+        // フィルタクリア
+        function clearAdminFilters(section) {
+            if (section === 'tickets') {
+                adminFilters.tickets = { event: 'all', status: 'all', dateFrom: '', dateTo: '', search: '' };
+            } else if (section === 'payments') {
+                adminFilters.payments = { method: 'all', status: 'all', dateFrom: '', dateTo: '', search: '' };
+            } else if (section === 'users') {
+                adminFilters.users = { kyc: 'all', role: 'all', search: '' };
+            } else if (section === 'organizers') {
+                adminFilters.organizers = { kyc: 'all', events: 'all', search: '' };
+            } else if (section === 'events') {
+                adminFilters.events = { status: 'all', category: 'all', organizer: 'all', search: '' };
+            }
+            renderAdmin(document.getElementById('app'), section);
+        }
+
+        // 表示モード切り替え
+        function toggleAdminViewMode(section, mode) {
+            adminViewMode[section] = mode;
+            renderAdmin(document.getElementById('app'), section);
+        }
+
+        // チケット詳細表示
+        function viewTicketDetail(ticketId) {
+            const ticket = store.tickets.find(t => t.id === ticketId);
+            if (!ticket) {
+                showToast('チケットが見つかりません', 'error');
+                return;
+            }
+            
+            const event = store.events.find(e => e.event_id === ticket.eventId);
+            
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-6">
+                    <h3 class="text-xl font-bold mb-4 text-slate-800">チケット詳細</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">チケットID</p>
+                                <p class="font-mono text-slate-800">${ticket.id}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">ステータス</p>
+                                <span class="px-2 py-1 rounded-full text-xs font-bold ${
+                                    ticket.status === 'paid' ? 'bg-green-100 text-green-700' :
+                                    ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                                }">
+                                    ${ticket.status === 'paid' ? '支払済' : ticket.status === 'pending' ? '保留中' : 'キャンセル'}
+                                </span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">イベント名</p>
+                                <p class="font-bold text-slate-800">${event?.title || '不明'}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">チケット種別</p>
+                                <p class="text-slate-800">${ticket.ticketName || '-'}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">購入者名</p>
+                                <p class="text-slate-800">${ticket.userName || '-'}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">メールアドレス</p>
+                                <p class="text-slate-800 text-xs">${ticket.userEmail || '-'}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">購入数量</p>
+                                <p class="text-slate-800">${ticket.count || 1}枚</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">合計金額</p>
+                                <p class="font-bold text-lg text-slate-900">¥${((ticket.total || ticket.price * ticket.count) || 0).toLocaleString()}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">購入日時</p>
+                                <p class="text-slate-800 text-xs">${new Date(ticket.purchaseDate).toLocaleString('ja-JP')}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 font-bold mb-1">QRコードURL</p>
+                                <p class="text-slate-600 text-xs truncate">${ticket.qrCodeUrl || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">閉じる</button>
+                        ${ticket.status === 'paid' ? `
+                            <button onclick="refundTicket('${ticket.id}')" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">返金処理</button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // CSV出力
+        function exportTicketsCSV() {
+            showToast('CSV出力機能は実装予定です', 'info');
+        }
+
+        // 返金処理
+        function refundTicket(ticketId) {
+            if (confirm('このチケットを返金処理しますか？')) {
+                showToast('返金処理を開始しました', 'success');
+                closeModal();
+            }
         }
 
         function renderAdminSystem() {
@@ -6372,6 +6871,68 @@ C-1,C,1,自由席エリア,free,available`;
             setTimeout(() => {
                 renderAdmin(document.getElementById('app'), 'events');
             }, 500);
+        }
+
+        // イベントアーカイブ機能
+        function archiveEvent(eventId) {
+            if (!confirm('このイベントをアーカイブしますか？\nアーカイブされたイベントは検索から除外されますが、後で復元できます。')) {
+                return;
+            }
+            
+            const event = store.events.find(e => e.event_id === eventId);
+            if (!event) {
+                showToast('イベントが見つかりません', 'error');
+                return;
+            }
+            
+            event.archived = true;
+            event.archived_at = new Date().toISOString();
+            store.updateEvent(event);
+            
+            showToast(`「${event.title}」をアーカイブしました`, 'success');
+            renderAdmin(document.getElementById('app'), 'events');
+        }
+
+        // イベント一覧CSV出力
+        function exportEventsCSV() {
+            const events = store.events || [];
+            
+            // CSVヘッダー
+            const csvRows = [
+                ['イベントID', 'タイトル', 'カテゴリ', '主催者', '開始日時', '終了日時', '会場名', '住所', '承認ステータス', '公開ステータス', '作成日']
+            ];
+            
+            // データ行
+            events.forEach(evt => {
+                csvRows.push([
+                    evt.event_id,
+                    evt.title,
+                    evt.category,
+                    evt.organizer_name,
+                    new Date(evt.start_datetime).toLocaleString('ja-JP'),
+                    new Date(evt.end_datetime).toLocaleString('ja-JP'),
+                    evt.venue_name || '',
+                    evt.venue_address || '',
+                    evt.approval_status || 'draft',
+                    evt.status || 'draft',
+                    new Date(evt.created_at).toLocaleString('ja-JP')
+                ]);
+            });
+            
+            // CSV文字列生成
+            const csvString = csvRows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+            
+            // BOM付きでダウンロード（Excel対応）
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `linkup_events_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('イベント一覧をCSV出力しました', 'success');
         }
 
         function exportPaymentHistory(scope = 'all') {

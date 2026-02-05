@@ -4878,6 +4878,11 @@
         }
 
         function renderAdminPartners() {
+            const partners = [
+                { id: 1, name: 'LinkUp Official', email: 'official@linkup.com', events: 12, sales: 4500000, status: 'verified' },
+                { id: 2, name: 'NextGen Creators', email: 'contact@nextgen.com', events: 5, sales: 1200000, status: 'kyc_pending' }
+            ];
+            
             return `
                 <div class="flex justify-between items-center mb-6">
                     <h1 class="text-2xl font-bold text-slate-800">パートナー (主催者) 管理</h1>
@@ -4887,6 +4892,7 @@
                     <table class="w-full text-left">
                         <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
                             <tr>
+                                <th class="p-4 w-20">NO</th>
                                 <th class="p-4">パートナー名</th>
                                 <th class="p-4">イベント数</th>
                                 <th class="p-4">総売上</th>
@@ -4894,27 +4900,26 @@
                                 <th class="p-4 text-right">操作</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 text-sm">
-                            <tr>
-                                <td class="p-4">
-                                    <div class="font-bold text-slate-800">LinkUp Official</div>
-                                    <div class="text-xs text-slate-500">official@linkup.com</div>
-                                </td>
-                                <td class="p-4">12 件 (公開中)</td>
-                                <td class="p-4">¥4,500,000</td>
-                                <td class="p-4"><span class="bg-green-100 text-green-600 px-2 py-1 rounded text-xs font-bold">認証済み</span></td>
-                                <td class="p-4 text-right"><button class="text-blue-600 hover:underline">管理</button></td>
-                            </tr>
-                            <tr>
-                                <td class="p-4">
-                                    <div class="font-bold text-slate-800">NextGen Creators</div>
-                                    <div class="text-xs text-slate-500">contact@nextgen.com</div>
-                                </td>
-                                <td class="p-4">5 件 (公開中)</td>
-                                <td class="p-4">¥1,200,000</td>
-                                <td class="p-4"><span class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs font-bold">KYC審査中</span></td>
-                                <td class="p-4 text-right"><button class="text-blue-600 hover:underline">審査</button></td>
-                            </tr>
+                        <tbody class="text-sm">
+                            ${partners.map((partner, index) => `
+                                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100">
+                                    <td class="p-4 font-bold text-slate-500">${partner.id}</td>
+                                    <td class="p-4">
+                                        <div class="font-bold text-slate-800">${partner.name}</div>
+                                        <div class="text-xs text-slate-500">${partner.email}</div>
+                                    </td>
+                                    <td class="p-4">${partner.events} 件 (公開中)</td>
+                                    <td class="p-4">¥${partner.sales.toLocaleString()}</td>
+                                    <td class="p-4">
+                                        <span class="px-2 py-1 rounded-full text-xs font-bold ${partner.status === 'verified' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}">
+                                            ${partner.status === 'verified' ? '認証済み' : 'KYC審査中'}
+                                        </span>
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <button class="text-blue-600 hover:underline">${partner.status === 'verified' ? '管理' : '審査'}</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -4992,6 +4997,7 @@
                         <table class="w-full text-left">
                             <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
                                 <tr>
+                                    <th class="py-4 px-6 w-20">NO</th>
                                     <th class="py-4 px-6">決済ID</th>
                                     <th class="py-4 px-6">日時</th>
                                     <th class="py-4 px-6">ユーザー</th>
@@ -5003,16 +5009,17 @@
                                     <th class="py-4 px-6 text-center">操作</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100">
+                            <tbody>
                                 ${paymentHistory.length === 0 ? `
                                     <tr>
-                                        <td colspan="9" class="py-12 text-center text-slate-500">
+                                        <td colspan="10" class="py-12 text-center text-slate-500">
                                             <span class="material-icons-outlined text-6xl text-slate-300 mb-4">receipt_long</span>
                                             <p>決済履歴はありません</p>
                                         </td>
                                     </tr>
-                                ` : paymentHistory.map(payment => `
-                                    <tr class="hover:bg-slate-50">
+                                ` : paymentHistory.map((payment, index) => `
+                                    <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100">
+                                        <td class="py-4 px-6 font-bold text-slate-500">${index + 1}</td>
                                         <td class="py-4 px-6">
                                             <span class="font-mono text-xs text-slate-600">${payment.id}</span>
                                         </td>
@@ -5182,34 +5189,42 @@
         }
 
         function renderAdminUsers() {
+            const mockUsers = [
+                { id: 1, name: store.user?.name || 'Guest User', email: store.user?.email || 'guest@example.com', kycStatus: store.user?.kycStatus || 'pending' }
+            ];
+            
             return `
                 <h1 class="text-2xl font-bold text-slate-800 mb-6">ユーザー管理</h1>
-                <div class="bg-white rounded-2xl shadow-card p-6">
+                <div class="bg-white rounded-2xl shadow-card overflow-hidden">
                     <table class="w-full text-left">
-                        <thead>
-                            <tr class="text-slate-500 text-sm border-b">
-                                <th class="pb-2">氏名</th>
-                                <th class="pb-2">本人確認 (KYC)</th>
-                                <th class="pb-2 text-right">操作</th>
+                        <thead class="bg-slate-50 text-slate-600 text-xs uppercase border-b">
+                            <tr>
+                                <th class="p-4 w-20">NO</th>
+                                <th class="p-4">氏名</th>
+                                <th class="p-4">本人確認 (KYC)</th>
+                                <th class="p-4 text-right">操作</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr class="border-b text-sm">
-                                <td class="py-3">
-                                    <div class="font-bold">${store.user ? store.user.name : 'Guest'}</div>
-                                    <div class="text-xs text-slate-400">${store.user ? store.user.email : '-'}</div>
-                                </td>
-                                <td>
-                                    <span class="px-2 py-1 rounded text-xs font-bold 
-                                        ${store.user && store.user.kycStatus === 'verified' ? 'bg-green-100 text-green-600' : 
-                                          (store.user && store.user.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500')}">
-                                        ${store.user ? (store.user.kycStatus === 'verified' ? '認証済' : (store.user.kycStatus === 'pending' ? '審査中' : '未提出')) : '-'}
-                                    </span>
-                                </td>
-                                <td class="text-right">
-                                    <button class="text-blue-500 hover:underline text-xs" onclick="approveKYC()">承認する</button>
-                                </td>
-                            </tr>
+                            ${mockUsers.map((user, index) => `
+                                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100 text-sm">
+                                    <td class="p-4 font-bold text-slate-500">${user.id}</td>
+                                    <td class="p-4">
+                                        <div class="font-bold text-slate-800">${user.name}</div>
+                                        <div class="text-xs text-slate-500">${user.email}</div>
+                                    </td>
+                                    <td class="p-4">
+                                        <span class="px-2 py-1 rounded-full text-xs font-bold 
+                                            ${user.kycStatus === 'verified' ? 'bg-green-100 text-green-600' : 
+                                              user.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}">
+                                            ${user.kycStatus === 'verified' ? '認証済' : user.kycStatus === 'pending' ? '審査中' : '未提出'}
+                                        </span>
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <button class="text-blue-600 hover:underline text-xs" onclick="approveKYC()">承認する</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -5346,6 +5361,7 @@
                                 <table class="w-full text-left border-collapse">
                                     <thead class="bg-slate-50 text-slate-600 text-xs uppercase border-b">
                                         <tr>
+                                            <th class="p-4 w-20">NO</th>
                                             <th class="p-4">イベント名</th>
                                             <th class="p-4">主催者</th>
                                             <th class="p-4">開催日</th>
@@ -5354,11 +5370,12 @@
                                             <th class="p-4 text-right">操作</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="text-sm text-slate-700 divide-y divide-slate-100">
+                                    <tbody class="text-sm text-slate-700">
                                         ${allEvents.length === 0 ? `
-                                            <tr><td colspan="6" class="p-8 text-center text-slate-400">イベントが見つかりませんでした</td></tr>
-                                        ` : allEvents.map(evt => `
-                                            <tr class="hover:bg-slate-50">
+                                            <tr><td colspan="7" class="p-8 text-center text-slate-400">イベントが見つかりませんでした</td></tr>
+                                        ` : allEvents.map((evt, index) => `
+                                            <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100">
+                                                <td class="p-4 font-bold text-slate-500">${index + 1}</td>
                                                 <td class="p-4">
                                                     <p class="font-bold text-slate-800">${evt.title}</p>
                                                     <p class="text-xs text-slate-500">${evt.venue_name || 'N/A'}</p>
@@ -5625,6 +5642,7 @@
                                 <table class="w-full text-left">
                                     <thead class="bg-slate-50 text-slate-600 text-xs uppercase border-b">
                                         <tr>
+                                            <th class="p-4 w-20">NO</th>
                                             <th class="p-4">チケットID</th>
                                             <th class="p-4">イベント名</th>
                                             <th class="p-4">チケット種別</th>
@@ -5636,13 +5654,14 @@
                                             <th class="p-4 text-right">操作</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-slate-100 text-sm">
+                                    <tbody class="text-sm">
                                         ${tickets.length === 0 ? `
-                                            <tr><td colspan="9" class="p-8 text-center text-slate-400">チケットが見つかりませんでした</td></tr>
-                                        ` : tickets.map(t => {
+                                            <tr><td colspan="10" class="p-8 text-center text-slate-400">チケットが見つかりませんでした</td></tr>
+                                        ` : tickets.map((t, index) => {
                                             const event = allEvents.find(e => e.event_id === t.eventId);
                                             return `
-                                            <tr class="hover:bg-slate-50">
+                                            <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100">
+                                                <td class="p-4 font-bold text-slate-500">${index + 1}</td>
                                                 <td class="p-4 font-mono text-xs text-slate-600">${t.id}</td>
                                                 <td class="p-4">
                                                     <p class="font-bold text-slate-800">${event?.title || '不明'}</p>

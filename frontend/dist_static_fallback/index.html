@@ -6490,71 +6490,69 @@ async function generateTicketQR(ticketId) {
     const qrData = `LINKUP:${ticketId}:${Date.now()}`;
     
     try {
-        // Wait for QRCode library to load (up to 3 seconds)
+        // Create a temporary container for QR code
+        const tempDiv = document.createElement('div');
+        tempDiv.style.display = 'none';
+        document.body.appendChild(tempDiv);
+        
+        // Wait for QRCode library (using different approach)
         let attempts = 0;
         while (typeof QRCode === 'undefined' && attempts < 30) {
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
         
-        if (typeof QRCode === 'undefined') {
-            console.error('QRCode library failed to load after 3 seconds');
-            return createFallbackQR(qrData);
+        if (typeof QRCode !== 'undefined') {
+            try {
+                // Use QRCode.js library
+                const qrcode = new QRCode(tempDiv, {
+                    text: qrData,
+                    width: 300,
+                    height: 300,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                
+                // Wait for QR code to be generated
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Get the canvas or image
+                const canvas = tempDiv.querySelector('canvas');
+                const img = tempDiv.querySelector('img');
+                
+                let dataUrl;
+                if (canvas) {
+                    dataUrl = canvas.toDataURL();
+                } else if (img) {
+                    dataUrl = img.src;
+                }
+                
+                document.body.removeChild(tempDiv);
+                
+                if (dataUrl) {
+                    return dataUrl;
+                }
+            } catch (error) {
+                console.error('QRCode.js error:', error);
+                document.body.removeChild(tempDiv);
+            }
         }
         
-        // Generate QR code as Data URL
-        const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
-            width: 300,
-            margin: 2,
-            errorCorrectionLevel: 'H',
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
-        });
+        // Fallback to Google Chart API
+        console.log('Using Google Chart API as fallback');
+        const encodedData = encodeURIComponent(qrData);
+        return `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodedData}&choe=UTF-8`;
         
-        return qrCodeDataUrl;
     } catch (error) {
         console.error('QR generation error:', error);
-        return createFallbackQR(qrData);
+        // Final fallback: Google Chart API
+        const encodedData = encodeURIComponent(qrData);
+        return `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodedData}&choe=UTF-8`;
     }
 }
 
 // Fallback QR generator
-function createFallbackQR(data) {
-    // Create a simple canvas-based QR placeholder
-    const canvas = document.createElement('canvas');
-    canvas.width = 300;
-    canvas.height = 300;
-    const ctx = canvas.getContext('2d');
-    
-    // Background
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, 300, 300);
-    
-    // Border
-    ctx.strokeStyle = '#999';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, 10, 280, 280);
-    
-    // Text
-    ctx.fillStyle = '#333';
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('QR Code', 150, 130);
-    
-    ctx.font = '14px Arial';
-    ctx.fillStyle = '#666';
-    ctx.fillText('Ticket ID:', 150, 160);
-    
-    // Safely encode ticket ID (only ASCII)
-    const ticketId = data.split(':')[1] || 'TICKET';
-    ctx.font = '12px monospace';
-    ctx.fillText(ticketId.substring(0, 20), 150, 180);
-    
-    return canvas.toDataURL();
-}
-
 // QRコード表示モーダル
 async function showTicketQR(ticketId) {
     const ticket = store.tickets.find(t => t.id === ticketId);
@@ -6964,7 +6962,7 @@ function showCheckinMenu(eventId) {
     </script>
     
     <!-- Load QR libraries after main content -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- API Client -->
     <script src="assets/api-client.js"></script>

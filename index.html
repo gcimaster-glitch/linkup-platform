@@ -5522,6 +5522,9 @@
                                 <button onclick="renderAdmin(document.getElementById('app'), 'tickets')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'tickets' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
                                     <span class="material-icons-outlined mr-3 text-sm">confirmation_number</span> チケット販売履歴
                                 </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'ticket-verification')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'ticket-verification' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
+                                    <span class="material-icons-outlined mr-3 text-sm">qr_code_scanner</span> チケット検証
+                                </button>
                                 
                                 <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 ml-2">Monitoring & Logs</p>
                                 <button onclick="renderAdmin(document.getElementById('app'), 'access-logs')" class="w-full text-left flex items-center py-2.5 px-4 rounded-lg transition ${activeTab === 'access-logs' ? 'bg-primary text-white font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}">
@@ -5615,6 +5618,7 @@
             if (tab === 'events') return renderAdminEvents();
             if (tab === 'venues') return renderAdminVenues();
             if (tab === 'tickets') return renderAdminTickets();
+            if (tab === 'ticket-verification') return renderAdminTicketVerification();
             if (tab === 'payment-history') return renderAdminPaymentHistory();
             if (tab === 'finance') return renderAdminFinance();
             if (tab === 'marketing') return renderAdminMarketing();
@@ -7374,6 +7378,201 @@
                 showToast('返金処理を開始しました', 'success');
                 closeModal();
             }
+        }
+
+        // ========================================
+        // チケット検証管理
+        // ========================================
+        
+        function renderAdminTicketVerification() {
+            // 入場記録の取得（localStorageから）
+            const entryLogs = JSON.parse(localStorage.getItem('entryLogs') || '[]');
+            const todayEntries = entryLogs.filter(log => {
+                const logDate = new Date(log.timestamp);
+                const today = new Date();
+                return logDate.toDateString() === today.toDateString();
+            });
+            
+            // 統計
+            const totalEntries = todayEntries.length;
+            const validEntries = todayEntries.filter(log => log.status === 'valid').length;
+            const invalidEntries = todayEntries.filter(log => log.status === 'invalid').length;
+            const duplicateEntries = todayEntries.filter(log => log.status === 'duplicate').length;
+            
+            return `
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h1 class="text-2xl font-bold text-slate-800">チケット検証 (QRスキャナー)</h1>
+                            <p class="text-sm text-slate-500 mt-1">イベント入場時のチケット検証とスキャン</p>
+                        </div>
+                        <button onclick="openQRScanner()" class="px-6 py-3 bg-primary text-white rounded-xl hover:bg-blue-700 flex items-center font-bold shadow-lg">
+                            <span class="material-icons-outlined mr-2">qr_code_scanner</span>
+                            QRスキャナーを起動
+                        </button>
+                    </div>
+                    
+                    <!-- 統計カード -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="bg-white p-6 rounded-xl shadow-card border-l-4 border-blue-500">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-slate-500 font-bold mb-1">今日の入場者数</p>
+                                    <p class="text-3xl font-bold text-slate-800">${totalEntries}</p>
+                                </div>
+                                <span class="material-icons-outlined text-4xl text-blue-500">people</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-card border-l-4 border-green-500">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-slate-500 font-bold mb-1">有効チケット</p>
+                                    <p class="text-3xl font-bold text-green-600">${validEntries}</p>
+                                </div>
+                                <span class="material-icons-outlined text-4xl text-green-500">check_circle</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-card border-l-4 border-red-500">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-slate-500 font-bold mb-1">無効チケット</p>
+                                    <p class="text-3xl font-bold text-red-600">${invalidEntries}</p>
+                                </div>
+                                <span class="material-icons-outlined text-4xl text-red-500">cancel</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-card border-l-4 border-yellow-500">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs text-slate-500 font-bold mb-1">重複入場</p>
+                                    <p class="text-3xl font-bold text-yellow-600">${duplicateEntries}</p>
+                                </div>
+                                <span class="material-icons-outlined text-4xl text-yellow-500">warning</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 手動検証セクション -->
+                    <div class="bg-white p-6 rounded-xl shadow-card">
+                        <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                            <span class="material-icons-outlined mr-2 text-primary">fact_check</span>
+                            手動チケット検証
+                        </h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold text-slate-700 mb-2">チケットID</label>
+                                <input type="text" id="manual-ticket-id" placeholder="例: TKT-1707123456789" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="verifyTicketManually()" class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold flex items-center justify-center">
+                                    <span class="material-icons-outlined mr-2">verified</span>
+                                    検証する
+                                </button>
+                            </div>
+                        </div>
+                        <div id="manual-verification-result" class="mt-4"></div>
+                    </div>
+                    
+                    <!-- 入場記録 -->
+                    <div class="bg-white rounded-xl shadow-card overflow-hidden">
+                        <div class="p-6 border-b border-slate-200">
+                            <div class="flex justify-between items-center">
+                                <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                                    <span class="material-icons-outlined mr-2 text-primary">history</span>
+                                    本日の入場記録 (${todayEntries.length}件)
+                                </h2>
+                                <button onclick="clearEntryLogs()" class="text-sm text-red-600 hover:text-red-700 font-bold">
+                                    記録をクリア
+                                </button>
+                            </div>
+                        </div>
+                        
+                        ${todayEntries.length === 0 ? `
+                            <div class="p-12 text-center text-slate-400">
+                                <span class="material-icons-outlined text-6xl mb-4">receipt_long</span>
+                                <p class="text-lg font-bold">まだ入場記録がありません</p>
+                                <p class="text-sm mt-2">QRスキャナーでチケットを検証すると、こちらに表示されます</p>
+                            </div>
+                        ` : `
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-100">
+                                        <tr>
+                                            <th class="p-4">時刻</th>
+                                            <th class="p-4">チケットID</th>
+                                            <th class="p-4">イベント</th>
+                                            <th class="p-4">ユーザー</th>
+                                            <th class="p-4">座席</th>
+                                            <th class="p-4">ステータス</th>
+                                            <th class="p-4">検証者</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        ${todayEntries.slice(0, 50).reverse().map(log => {
+                                            const statusConfig = {
+                                                valid: { color: 'green', icon: 'check_circle', text: '有効' },
+                                                invalid: { color: 'red', icon: 'cancel', text: '無効' },
+                                                duplicate: { color: 'yellow', icon: 'warning', text: '重複' },
+                                                expired: { color: 'orange', icon: 'event_busy', text: '期限切れ' }
+                                            };
+                                            const status = statusConfig[log.status] || statusConfig.invalid;
+                                            
+                                            return `
+                                                <tr class="hover:bg-slate-50">
+                                                    <td class="p-4">
+                                                        <p class="text-sm text-slate-600">${new Date(log.timestamp).toLocaleTimeString('ja-JP')}</p>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <p class="text-sm font-mono text-slate-800">${log.ticketId}</p>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <p class="text-sm text-slate-800">${log.eventTitle || 'N/A'}</p>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <p class="text-sm text-slate-800">${log.userName || 'N/A'}</p>
+                                                        <p class="text-xs text-slate-500">${log.userEmail || ''}</p>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <p class="text-sm text-slate-600">${log.seats || '-'}</p>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-${status.color}-100 text-${status.color}-700">
+                                                            <span class="material-icons-outlined text-sm mr-1">${status.icon}</span>
+                                                            ${status.text}
+                                                        </span>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <p class="text-sm text-slate-600">${log.verifiedBy || 'システム'}</p>
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        `}
+                    </div>
+                    
+                    <!-- 使い方ガイド -->
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                        <h3 class="text-lg font-bold text-blue-900 mb-3 flex items-center">
+                            <span class="material-icons-outlined mr-2">info</span>
+                            使い方ガイド
+                        </h3>
+                        <div class="space-y-2 text-sm text-blue-800">
+                            <p><strong>1. QRスキャナー起動:</strong> 「QRスキャナーを起動」ボタンをクリック</p>
+                            <p><strong>2. カメラ許可:</strong> ブラウザのカメラアクセス許可を承認</p>
+                            <p><strong>3. QRコードスキャン:</strong> ユーザーのチケットQRコードをカメラに映す</p>
+                            <p><strong>4. 自動検証:</strong> システムが自動的にチケットを検証し、結果を表示</p>
+                            <p><strong>5. 手動検証:</strong> カメラがない場合は、チケットIDを手動入力して検証可能</p>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         // ========================================
@@ -14562,8 +14761,311 @@ function showCheckinMenu(eventId) {
             const { view, params } = parseURL();
             router(view, params, false);
             
+            // Initialize ticket verification system
+            initializeTicketVerification();
+            
             toggleChatWidget(); // Init chat visibility
         });
+        
+        // ========================================
+        // Ticket Verification System
+        // ========================================
+        
+        let html5QrCode = null;
+        
+        function initializeTicketVerification() {
+            // Initialize entry logs in localStorage if not exists
+            if (!localStorage.getItem('entryLogs')) {
+                localStorage.setItem('entryLogs', JSON.stringify([]));
+            }
+        }
+        
+        function openQRScanner() {
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl p-8 max-w-2xl w-full relative">
+                    <button onclick="closeQRScanner()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                        <span class="material-icons-outlined">close</span>
+                    </button>
+                    
+                    <div class="text-center mb-6">
+                        <span class="material-icons-outlined text-6xl text-primary mb-4">qr_code_scanner</span>
+                        <h2 class="text-2xl font-bold text-slate-800">チケットQRスキャナー</h2>
+                        <p class="text-sm text-slate-500 mt-2">チケットのQRコードをカメラに映してください</p>
+                    </div>
+                    
+                    <div id="qr-reader" class="w-full rounded-xl overflow-hidden border-4 border-primary shadow-lg"></div>
+                    
+                    <div id="scan-result" class="mt-6"></div>
+                    
+                    <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-sm text-blue-800">
+                            <strong>ヒント:</strong> QRコードをカメラの中央に配置し、明るい場所でスキャンしてください。
+                        </p>
+                    </div>
+                </div>
+            `;
+            
+            // Start QR scanner
+            startQRScanner();
+        }
+        
+        async function startQRScanner() {
+            try {
+                // Wait for html5-qrcode library to load
+                let attempts = 0;
+                while (typeof Html5Qrcode === 'undefined' && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                
+                if (typeof Html5Qrcode === 'undefined') {
+                    showToast('QRスキャナーライブラリの読み込みに失敗しました', 'error');
+                    closeQRScanner();
+                    return;
+                }
+                
+                html5QrCode = new Html5Qrcode("qr-reader");
+                
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+                
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText, decodedResult) => {
+                        // QR Code successfully scanned
+                        handleScannedQR(decodedText);
+                    },
+                    (errorMessage) => {
+                        // Scanning error (ignore frequent errors)
+                    }
+                ).catch(err => {
+                    console.error('Failed to start QR scanner:', err);
+                    document.getElementById('scan-result').innerHTML = `
+                        <div class="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+                            <span class="material-icons-outlined text-4xl text-red-500 mb-2">error</span>
+                            <p class="text-red-700 font-bold">カメラにアクセスできません</p>
+                            <p class="text-sm text-red-600 mt-2">ブラウザのカメラ許可を確認してください</p>
+                            <button onclick="closeQRScanner()" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                閉じる
+                            </button>
+                        </div>
+                    `;
+                });
+                
+            } catch (error) {
+                console.error('QR Scanner error:', error);
+                showToast('QRスキャナーの起動に失敗しました', 'error');
+            }
+        }
+        
+        function closeQRScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    html5QrCode = null;
+                }).catch(err => {
+                    console.error('Failed to stop QR scanner:', err);
+                });
+            }
+            closeModal();
+        }
+        
+        function handleScannedQR(qrData) {
+            // Stop scanner
+            if (html5QrCode) {
+                html5QrCode.stop().catch(err => console.error(err));
+            }
+            
+            // Parse QR data
+            // Expected format: "LINKUP:{ticketId}:{timestamp}"
+            let ticketId;
+            if (qrData.startsWith('LINKUP:')) {
+                const parts = qrData.split(':');
+                ticketId = parts[1];
+            } else {
+                ticketId = qrData;
+            }
+            
+            // Verify ticket
+            verifyTicket(ticketId, 'qr-scan');
+        }
+        
+        function verifyTicketManually() {
+            const ticketId = document.getElementById('manual-ticket-id').value.trim();
+            if (!ticketId) {
+                showToast('チケットIDを入力してください', 'warning');
+                return;
+            }
+            
+            verifyTicket(ticketId, 'manual');
+        }
+        
+        function verifyTicket(ticketId, method = 'manual') {
+            // Find ticket in store
+            const ticket = store.tickets.find(t => t.id === ticketId);
+            
+            if (!ticket) {
+                const resultDiv = method === 'manual' ? 
+                    document.getElementById('manual-verification-result') : 
+                    document.getElementById('scan-result');
+                
+                resultDiv.innerHTML = `
+                    <div class="p-6 bg-red-50 border-2 border-red-300 rounded-xl text-center animate-pulse">
+                        <span class="material-icons-outlined text-6xl text-red-500 mb-3">cancel</span>
+                        <h3 class="text-xl font-bold text-red-700 mb-2">無効なチケット</h3>
+                        <p class="text-red-600">チケットID: ${ticketId}</p>
+                        <p class="text-sm text-red-500 mt-2">このチケットは存在しません</p>
+                    </div>
+                `;
+                
+                logEntry(ticketId, null, null, 'invalid', method);
+                showToast('無効なチケットです', 'error');
+                
+                if (method === 'qr-scan') {
+                    setTimeout(() => {
+                        closeQRScanner();
+                    }, 3000);
+                }
+                return;
+            }
+            
+            // Get event info
+            const event = store.events.find(e => e.event_id === ticket.eventId);
+            
+            // Check if ticket is already used today
+            const entryLogs = JSON.parse(localStorage.getItem('entryLogs') || '[]');
+            const todayUsed = entryLogs.find(log => {
+                const logDate = new Date(log.timestamp);
+                const today = new Date();
+                return log.ticketId === ticketId && 
+                       logDate.toDateString() === today.toDateString() &&
+                       log.status === 'valid';
+            });
+            
+            if (todayUsed) {
+                const resultDiv = method === 'manual' ? 
+                    document.getElementById('manual-verification-result') : 
+                    document.getElementById('scan-result');
+                
+                resultDiv.innerHTML = `
+                    <div class="p-6 bg-yellow-50 border-2 border-yellow-300 rounded-xl text-center">
+                        <span class="material-icons-outlined text-6xl text-yellow-500 mb-3">warning</span>
+                        <h3 class="text-xl font-bold text-yellow-700 mb-2">重複入場</h3>
+                        <p class="text-yellow-600">チケットID: ${ticketId}</p>
+                        <p class="text-sm text-yellow-600 mt-2">このチケットは既に本日使用されています</p>
+                        <p class="text-xs text-yellow-500 mt-1">最初の入場: ${new Date(todayUsed.timestamp).toLocaleTimeString('ja-JP')}</p>
+                    </div>
+                `;
+                
+                logEntry(ticketId, event, ticket, 'duplicate', method);
+                showToast('このチケットは既に使用されています', 'warning');
+                
+                if (method === 'qr-scan') {
+                    setTimeout(() => {
+                        closeQRScanner();
+                    }, 3000);
+                }
+                return;
+            }
+            
+            // Valid ticket
+            const resultDiv = method === 'manual' ? 
+                document.getElementById('manual-verification-result') : 
+                document.getElementById('scan-result');
+            
+            const seatsDisplay = ticket.seats && ticket.seats.length > 0 ? 
+                ticket.seats.join(', ') : '自由席';
+            
+            resultDiv.innerHTML = `
+                <div class="p-6 bg-green-50 border-2 border-green-300 rounded-xl text-center">
+                    <span class="material-icons-outlined text-6xl text-green-500 mb-3 animate-bounce">check_circle</span>
+                    <h3 class="text-2xl font-bold text-green-700 mb-2">有効なチケット ✓</h3>
+                    
+                    <div class="mt-4 space-y-2 text-left">
+                        <div class="flex justify-between">
+                            <span class="text-sm font-bold text-slate-700">イベント:</span>
+                            <span class="text-sm text-slate-800">${event?.title || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-bold text-slate-700">チケット:</span>
+                            <span class="text-sm text-slate-800">${ticket.ticketName}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-bold text-slate-700">枚数:</span>
+                            <span class="text-sm text-slate-800">${ticket.count}枚</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-bold text-slate-700">座席:</span>
+                            <span class="text-sm text-slate-800">${seatsDisplay}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm font-bold text-slate-700">購入者:</span>
+                            <span class="text-sm text-slate-800">${store.user?.name || 'ゲスト'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-3 bg-white rounded-lg">
+                        <p class="text-xs text-green-600 font-bold">入場を許可してください</p>
+                    </div>
+                </div>
+            `;
+            
+            logEntry(ticketId, event, ticket, 'valid', method);
+            showToast('✓ 有効なチケットです - 入場OK', 'check_circle');
+            
+            if (method === 'qr-scan') {
+                setTimeout(() => {
+                    closeQRScanner();
+                    // Refresh admin panel if open
+                    const app = document.getElementById('app');
+                    if (app && app.innerHTML.includes('チケット検証')) {
+                        renderAdmin(app, 'ticket-verification');
+                    }
+                }, 3000);
+            } else {
+                // Refresh manual verification view
+                setTimeout(() => {
+                    document.getElementById('manual-ticket-id').value = '';
+                    renderAdmin(document.getElementById('app'), 'ticket-verification');
+                }, 2000);
+            }
+        }
+        
+        function logEntry(ticketId, event, ticket, status, method) {
+            const entryLogs = JSON.parse(localStorage.getItem('entryLogs') || '[]');
+            
+            const logEntry = {
+                ticketId: ticketId,
+                eventId: event?.event_id || null,
+                eventTitle: event?.title || 'Unknown',
+                ticketName: ticket?.ticketName || 'Unknown',
+                userName: store.user?.name || 'Guest',
+                userEmail: store.user?.email || 'guest@example.com',
+                seats: ticket?.seats ? ticket.seats.join(', ') : '-',
+                status: status, // valid, invalid, duplicate, expired
+                method: method, // qr-scan, manual
+                verifiedBy: store.user?.name || 'System',
+                timestamp: new Date().toISOString()
+            };
+            
+            entryLogs.push(logEntry);
+            localStorage.setItem('entryLogs', JSON.stringify(entryLogs));
+        }
+        
+        function clearEntryLogs() {
+            if (confirm('本当に入場記録をすべて削除しますか？')) {
+                localStorage.setItem('entryLogs', JSON.stringify([]));
+                showToast('入場記録をクリアしました', 'delete');
+                renderAdmin(document.getElementById('app'), 'ticket-verification');
+            }
+        }
 
     </script>
     

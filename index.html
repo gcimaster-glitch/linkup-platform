@@ -5166,23 +5166,277 @@
         function renderAdminDashboard() {
             // Stats
             const totalUsers = 1240; // Mock
+            const totalUsersLastMonth = 1185; // Mock
+            const userGrowth = ((totalUsers - totalUsersLastMonth) / totalUsersLastMonth * 100).toFixed(1);
+            
+            const totalPartners = 127; // Mock
+            const totalPartnersLastMonth = 118; // Mock
+            const partnerGrowth = ((totalPartners - totalPartnersLastMonth) / totalPartnersLastMonth * 100).toFixed(1);
+            
             const totalEvents = store.events.length;
+            const totalTicketsSold = 8542; // Mock
+            const totalRevenue = 42750000; // Mock ¥42,750,000
             const totalSales = store.participants.reduce((sum, p) => sum + p.amount, 0);
+            const platformFee = totalRevenue * 0.05; // 5% platform fee
+            
+            // Recent events (last 10)
+            const recentEvents = [...store.events].sort((a, b) => 
+                new Date(b.created_at || b.start_datetime) - new Date(a.created_at || a.start_datetime)
+            ).slice(0, 10);
+            
+            // Mock error logs
+            const errorLogs = [
+                { id: 1, type: 'error', message: '決済処理でタイムアウトが発生しました', time: '2024-01-15 14:23', status: 'resolved' },
+                { id: 2, type: 'warning', message: 'API レート制限に近づいています', time: '2024-01-15 13:45', status: 'monitoring' },
+                { id: 3, type: 'critical', message: 'データベース接続エラー', time: '2024-01-15 12:30', status: 'investigating' }
+            ];
+            
+            // Mock announcements
+            const announcements = [
+                { id: 1, title: '新機能リリースのお知らせ', date: '2024-01-15', priority: 'high' },
+                { id: 2, title: 'メンテナンス予定（1/20）', date: '2024-01-14', priority: 'medium' },
+                { id: 3, title: '年末年始の営業時間について', date: '2024-01-10', priority: 'low' }
+            ];
             
             return `
-                <h1 class="text-2xl font-bold text-slate-800 mb-6">ダッシュボード</h1>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
-                        <p class="text-xs text-slate-400 font-bold mb-1">総ユーザー数</p>
-                        <p class="text-2xl font-bold text-slate-800">${totalUsers.toLocaleString()}人</p>
+                <div class="space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-2xl font-bold text-slate-800">ダッシュボード</h1>
+                        <div class="text-xs text-slate-500">
+                            最終更新: ${new Date().toLocaleString('ja-JP')}
+                        </div>
                     </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
-                        <p class="text-xs text-slate-400 font-bold mb-1">公開イベント数</p>
-                        <p class="text-2xl font-bold text-slate-800">${totalEvents}件</p>
+                    
+                    <!-- Main Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Users -->
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl shadow-card text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="material-icons-outlined text-3xl opacity-80">people</span>
+                                <span class="text-xs font-bold px-2 py-1 rounded-full ${userGrowth >= 0 ? 'bg-green-500/30' : 'bg-red-500/30'}">
+                                    ${userGrowth >= 0 ? '↑' : '↓'} ${Math.abs(userGrowth)}%
+                                </span>
+                            </div>
+                            <p class="text-sm opacity-90 mb-1">総ユーザー数</p>
+                            <p class="text-3xl font-bold">${totalUsers.toLocaleString()}</p>
+                            <p class="text-xs opacity-75 mt-2">前月比 ${userGrowth >= 0 ? '+' : ''}${userGrowth}%</p>
+                        </div>
+                        
+                        <!-- Partners -->
+                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl shadow-card text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="material-icons-outlined text-3xl opacity-80">business</span>
+                                <span class="text-xs font-bold px-2 py-1 rounded-full ${partnerGrowth >= 0 ? 'bg-green-500/30' : 'bg-red-500/30'}">
+                                    ${partnerGrowth >= 0 ? '↑' : '↓'} ${Math.abs(partnerGrowth)}%
+                                </span>
+                            </div>
+                            <p class="text-sm opacity-90 mb-1">パートナー数</p>
+                            <p class="text-3xl font-bold">${totalPartners.toLocaleString()}</p>
+                            <p class="text-xs opacity-75 mt-2">前月比 ${partnerGrowth >= 0 ? '+' : ''}${partnerGrowth}%</p>
+                        </div>
+                        
+                        <!-- Ticket Sales -->
+                        <div class="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl shadow-card text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="material-icons-outlined text-3xl opacity-80">confirmation_number</span>
+                                <span class="text-xs font-bold px-2 py-1 rounded-full bg-white/20">今月</span>
+                            </div>
+                            <p class="text-sm opacity-90 mb-1">チケット売上数</p>
+                            <p class="text-3xl font-bold">${totalTicketsSold.toLocaleString()}</p>
+                            <p class="text-xs opacity-75 mt-2">売上高 ¥${totalRevenue.toLocaleString()}</p>
+                        </div>
+                        
+                        <!-- Platform Revenue -->
+                        <div class="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-2xl shadow-card text-white">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="material-icons-outlined text-3xl opacity-80">account_balance_wallet</span>
+                                <span class="text-xs font-bold px-2 py-1 rounded-full bg-white/20">収益</span>
+                            </div>
+                            <p class="text-sm opacity-90 mb-1">プラットフォーム収益</p>
+                            <p class="text-3xl font-bold">¥${platformFee.toLocaleString()}</p>
+                            <p class="text-xs opacity-75 mt-2">手数料率 5%</p>
+                        </div>
                     </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-card border border-slate-100">
-                        <p class="text-xs text-slate-400 font-bold mb-1">プラットフォーム総流通額</p>
-                        <p class="text-2xl font-bold text-slate-800">¥${totalSales.toLocaleString()}</p>
+                    
+                    <!-- Quick Menu Buttons -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Operations Menu -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                <span class="material-icons-outlined mr-2 text-blue-600">dashboard</span>
+                                クイックメニュー（運営系）
+                            </h2>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="renderAdmin(document.getElementById('app'), 'events')" class="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-blue-600 mr-2 group-hover:scale-110 transition">event</span>
+                                    <span class="text-sm font-bold text-blue-700">イベント管理</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'tickets')" class="flex items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-green-600 mr-2 group-hover:scale-110 transition">confirmation_number</span>
+                                    <span class="text-sm font-bold text-green-700">チケット管理</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'users')" class="flex items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-purple-600 mr-2 group-hover:scale-110 transition">people</span>
+                                    <span class="text-sm font-bold text-purple-700">ユーザー管理</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'organizers')" class="flex items-center justify-center p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-orange-600 mr-2 group-hover:scale-110 transition">business</span>
+                                    <span class="text-sm font-bold text-orange-700">主催者管理</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'payment-history')" class="flex items-center justify-center p-4 bg-pink-50 hover:bg-pink-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-pink-600 mr-2 group-hover:scale-110 transition">payment</span>
+                                    <span class="text-sm font-bold text-pink-700">決済履歴</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'support-chat')" class="flex items-center justify-center p-4 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-indigo-600 mr-2 group-hover:scale-110 transition">support_agent</span>
+                                    <span class="text-sm font-bold text-indigo-700">サポート</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Settings Menu -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                <span class="material-icons-outlined mr-2 text-slate-600">settings</span>
+                                クイックメニュー（設定系）
+                            </h2>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="renderAdmin(document.getElementById('app'), 'server-status')" class="flex items-center justify-center p-4 bg-slate-50 hover:bg-slate-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-slate-600 mr-2 group-hover:scale-110 transition">dns</span>
+                                    <span class="text-sm font-bold text-slate-700">サーバー監視</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'access-logs')" class="flex items-center justify-center p-4 bg-slate-50 hover:bg-slate-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-slate-600 mr-2 group-hover:scale-110 transition">visibility</span>
+                                    <span class="text-sm font-bold text-slate-700">アクセスログ</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'error-logs')" class="flex items-center justify-center p-4 bg-red-50 hover:bg-red-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-red-600 mr-2 group-hover:scale-110 transition">error</span>
+                                    <span class="text-sm font-bold text-red-700">エラーログ</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'backups')" class="flex items-center justify-center p-4 bg-teal-50 hover:bg-teal-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-teal-600 mr-2 group-hover:scale-110 transition">backup</span>
+                                    <span class="text-sm font-bold text-teal-700">バックアップ</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'ai-settings')" class="flex items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-purple-600 mr-2 group-hover:scale-110 transition">auto_awesome</span>
+                                    <span class="text-sm font-bold text-purple-700">AI設定</span>
+                                </button>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'settings')" class="flex items-center justify-center p-4 bg-slate-50 hover:bg-slate-100 rounded-lg transition group">
+                                    <span class="material-icons-outlined text-slate-600 mr-2 group-hover:scale-110 transition">tune</span>
+                                    <span class="text-sm font-bold text-slate-700">システム設定</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Events & Error Logs -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Recent Events -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                                    <span class="material-icons-outlined mr-2 text-blue-600">event</span>
+                                    新着イベント
+                                </h2>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'events')" class="text-xs text-blue-600 hover:underline">すべて表示</button>
+                            </div>
+                            <div class="space-y-3 max-h-96 overflow-y-auto">
+                                ${recentEvents.length === 0 ? `
+                                    <p class="text-center text-slate-400 py-8">イベントがありません</p>
+                                ` : recentEvents.map((evt, index) => `
+                                    <div class="flex items-start p-3 border border-slate-100 rounded-lg hover:bg-slate-50 transition cursor-pointer" onclick="router('detail', {id: '${evt.event_id}'})">
+                                        <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-400 to-purple-500 flex-shrink-0 flex items-center justify-center text-white font-bold mr-3">
+                                            ${index + 1}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="font-bold text-slate-800 text-sm truncate">${evt.title}</p>
+                                            <div class="flex items-center space-x-2 text-xs text-slate-500 mt-1">
+                                                <span class="flex items-center">
+                                                    <span class="material-icons-outlined text-xs mr-1">calendar_today</span>
+                                                    ${new Date(evt.start_datetime).toLocaleDateString('ja-JP')}
+                                                </span>
+                                                <span class="px-2 py-0.5 rounded text-xs font-bold ${
+                                                    evt.approval_status === 'approved' ? 'bg-green-100 text-green-600' :
+                                                    evt.approval_status === 'pending' ? 'bg-yellow-100 text-yellow-600' :
+                                                    'bg-slate-100 text-slate-600'
+                                                }">
+                                                    ${evt.approval_status === 'approved' ? '承認済' : evt.approval_status === 'pending' ? '承認待ち' : '下書き'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <!-- Error Logs -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                                    <span class="material-icons-outlined mr-2 text-red-600">error</span>
+                                    エラーログ
+                                </h2>
+                                <button onclick="renderAdmin(document.getElementById('app'), 'error-logs')" class="text-xs text-blue-600 hover:underline">すべて表示</button>
+                            </div>
+                            <div class="space-y-3">
+                                ${errorLogs.map(log => `
+                                    <div class="flex items-start p-3 border-l-4 ${
+                                        log.type === 'critical' ? 'border-red-500 bg-red-50' :
+                                        log.type === 'error' ? 'border-orange-500 bg-orange-50' :
+                                        'border-yellow-500 bg-yellow-50'
+                                    } rounded-r-lg">
+                                        <span class="material-icons-outlined text-2xl ${
+                                            log.type === 'critical' ? 'text-red-600' :
+                                            log.type === 'error' ? 'text-orange-600' :
+                                            'text-yellow-600'
+                                        } mr-3">
+                                            ${log.type === 'critical' ? 'cancel' : log.type === 'error' ? 'error' : 'warning'}
+                                        </span>
+                                        <div class="flex-1">
+                                            <p class="font-bold text-slate-800 text-sm">${log.message}</p>
+                                            <div class="flex items-center justify-between mt-1">
+                                                <span class="text-xs text-slate-500">${log.time}</span>
+                                                <span class="px-2 py-0.5 rounded-full text-xs font-bold ${
+                                                    log.status === 'resolved' ? 'bg-green-100 text-green-600' :
+                                                    log.status === 'monitoring' ? 'bg-blue-100 text-blue-600' :
+                                                    'bg-orange-100 text-orange-600'
+                                                }">
+                                                    ${log.status === 'resolved' ? '解決済' : log.status === 'monitoring' ? '監視中' : '調査中'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Announcements -->
+                    <div class="bg-white rounded-2xl shadow-card p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                                <span class="material-icons-outlined mr-2 text-blue-600">campaign</span>
+                                お知らせ
+                            </h2>
+                            <button onclick="renderAdmin(document.getElementById('app'), 'announcements')" class="text-xs text-blue-600 hover:underline">すべて表示</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            ${announcements.map(announcement => `
+                                <div class="p-4 border border-slate-200 rounded-lg hover:shadow-md transition cursor-pointer">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="px-2 py-1 rounded text-xs font-bold ${
+                                            announcement.priority === 'high' ? 'bg-red-100 text-red-600' :
+                                            announcement.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' :
+                                            'bg-blue-100 text-blue-600'
+                                        }">
+                                            ${announcement.priority === 'high' ? '重要' : announcement.priority === 'medium' ? '通常' : '情報'}
+                                        </span>
+                                        <span class="text-xs text-slate-500">${announcement.date}</span>
+                                    </div>
+                                    <p class="font-bold text-slate-800 text-sm">${announcement.title}</p>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </div>
             `;

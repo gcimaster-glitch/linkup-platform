@@ -1703,10 +1703,41 @@
                                     ${isFollowing ? '<span class="material-icons-outlined text-sm mr-1">check</span>フォロー中' : '<span class="material-icons-outlined text-sm mr-1">person_add</span>フォロー'}
                                 </button>
                             </div>
+                            
+                            <!-- Recommendation (Mobile: Before Ticket. PC: Left column bottom) -->
+                            <div class="lg:block">
+                                <div class="border-t border-slate-200 pt-12">
+                                    <h3 class="font-bold text-xl text-slate-800 mb-6 flex items-center">
+                                        <span class="material-icons-outlined mr-2 text-accent">recommend</span>
+                                        こちらもおすすめ
+                                    </h3>
+                                    <div class="bg-slate-100 rounded-2xl p-6 border border-slate-200">
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            ${recommendations.map(rec => `
+                                                <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition cursor-pointer group" onclick="router('detail', {id:'${rec.event_id}'})">
+                                                    <div class="relative h-32 overflow-hidden">
+                                                        <img src="${rec.cover_image_url}" class="w-full h-full object-cover group-hover:scale-105 transition">
+                                                        <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur-sm">
+                                                            ${rec.category}
+                                                        </div>
+                                                    </div>
+                                                    <div class="p-3">
+                                                        <h4 class="font-bold text-sm mb-1 truncate text-slate-800 group-hover:text-primary">${rec.title}</h4>
+                                                        <div class="flex items-center justify-between mt-2">
+                                                            <span class="text-xs text-slate-500">${new Date(rec.start_datetime).toLocaleDateString()}</span>
+                                                            <span class="text-xs font-bold text-slate-700">¥${rec.price.toLocaleString()}~</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Ticket (Mobile: Comes 3rd. PC: Right column) -->
-                        <div class="lg:col-span-1 lg:row-span-2 h-fit lg:sticky lg:top-24">
+                        <!-- Ticket (Mobile: Last. PC: Right column sticky) -->
+                        <div class="lg:col-span-1 lg:row-span-2 h-fit lg:sticky lg:top-24 order-last lg:order-none">
                             <div class="bg-blue-50/50 rounded-2xl shadow-float p-6 border-2 border-blue-100">
                                 <h3 class="font-bold text-lg mb-6 flex items-center text-slate-800">
                                     <span class="material-icons-outlined text-primary mr-2">confirmation_number</span>チケット選択
@@ -1730,37 +1761,6 @@
                                     <span class="material-icons-outlined text-sm mr-1">lock</span>
                                     安全な決済処理
                                 </p>
-                            </div>
-                        </div>
-
-                        <!-- Recommendation (Mobile: Last. PC: Left column bottom) -->
-                        <div class="lg:col-span-2">
-                            <div class="border-t border-slate-200 pt-12">
-                                <h3 class="font-bold text-xl text-slate-800 mb-6 flex items-center">
-                                    <span class="material-icons-outlined mr-2 text-accent">recommend</span>
-                                    こちらもおすすめ
-                                </h3>
-                                <div class="bg-slate-100 rounded-2xl p-6 border border-slate-200">
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        ${recommendations.map(rec => `
-                                            <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition cursor-pointer group" onclick="router('detail', {id:'${rec.event_id}'})">
-                                                <div class="relative h-32 overflow-hidden">
-                                                    <img src="${rec.cover_image_url}" class="w-full h-full object-cover group-hover:scale-105 transition">
-                                                    <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded backdrop-blur-sm">
-                                                        ${rec.category}
-                                                    </div>
-                                                </div>
-                                                <div class="p-3">
-                                                    <h4 class="font-bold text-sm mb-1 truncate text-slate-800 group-hover:text-primary">${rec.title}</h4>
-                                                    <div class="flex items-center justify-between mt-2">
-                                                        <span class="text-xs text-slate-500">${new Date(rec.start_datetime).toLocaleDateString()}</span>
-                                                        <span class="text-xs font-bold text-slate-700">¥${rec.price.toLocaleString()}~</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>

@@ -2853,6 +2853,279 @@
                         </div>
                     `;
                     
+                case 'interests':
+                    const allCategories = ['Tech', 'Business', 'Music', 'Art', 'Sports', 'Food', 'Travel', 'Fashion', 'Health', 'Education', 
+                                          'Finance', 'Entertainment', 'Science', 'Politics', 'Environment', 'Gaming', 'Books', 'Movies', 
+                                          'Photography', 'Design', 'Marketing', 'Startup', 'AI', 'Blockchain', 'VR/AR', 'IoT', 'Cloud', 
+                                          'Security', 'Data Science', 'Mobile'];
+                    const allTags = ['AI', 'Machine Learning', 'Web Development', 'Mobile Apps', 'UI/UX', 'Cloud Computing', 'DevOps', 
+                                    'Blockchain', 'IoT', 'Cybersecurity', 'Data Analytics', 'Big Data', 'Automation', 'SaaS', 'E-commerce',
+                                    'Digital Marketing', 'SEO', 'Content Creation', 'Social Media', 'Branding', 'Product Management', 
+                                    'Agile', 'Scrum', 'Remote Work', 'Freelancing', 'Entrepreneurship', 'Investment', 'Cryptocurrency', 
+                                    'NFT', 'Metaverse', 'Sustainability', 'Wellness', 'Meditation', 'Yoga', 'Fitness', 'Nutrition',
+                                    'Classical Music', 'Jazz', 'Rock', 'Pop', 'Electronic', 'Hip Hop', 'Indie', 'Folk', 'Dance', 
+                                    'Theater', 'Contemporary Art', 'Photography', 'Sculpture', 'Digital Art', 'Animation', 'Film'];
+                    
+                    return `
+                        <div class="space-y-6">
+                            <!-- Categories -->
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 class="text-lg font-bold text-slate-800">興味のあるカテゴリ</h3>
+                                        <p class="text-sm text-slate-500">最大30個まで選択できます</p>
+                                    </div>
+                                    <span class="text-sm font-bold text-primary">${store.userInterests.categories.length}/30</span>
+                                </div>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    ${store.userInterests.categories.map(cat => `
+                                        <span class="px-3 py-1 bg-primary text-white rounded-full text-sm font-bold flex items-center space-x-1">
+                                            <span>${cat}</span>
+                                            <button onclick="removeUserCategory('${cat}')" class="ml-1 hover:bg-white/20 rounded-full p-0.5">
+                                                <span class="material-icons-outlined text-xs">close</span>
+                                            </button>
+                                        </span>
+                                    `).join('')}
+                                </div>
+                                ${store.userInterests.categories.length < 30 ? `
+                                <div class="border-t border-slate-100 pt-4">
+                                    <p class="text-sm font-bold text-slate-700 mb-2">カテゴリを追加</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${allCategories.filter(cat => !store.userInterests.categories.includes(cat)).slice(0, 15).map(cat => `
+                                            <button onclick="addUserCategory('${cat}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-primary hover:text-white transition">
+                                                ${cat}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- Tags -->
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h3 class="text-lg font-bold text-slate-800">興味のあるタグ</h3>
+                                        <p class="text-sm text-slate-500">最大50個まで選択できます</p>
+                                    </div>
+                                    <span class="text-sm font-bold text-primary">${store.userInterests.tags.length}/50</span>
+                                </div>
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    ${store.userInterests.tags.map(tag => `
+                                        <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold flex items-center space-x-1">
+                                            <span>${tag}</span>
+                                            <button onclick="removeUserTag('${tag}')" class="ml-1 hover:bg-purple-200 rounded-full p-0.5">
+                                                <span class="material-icons-outlined text-xs">close</span>
+                                            </button>
+                                        </span>
+                                    `).join('')}
+                                </div>
+                                ${store.userInterests.tags.length < 50 ? `
+                                <div class="border-t border-slate-100 pt-4">
+                                    <p class="text-sm font-bold text-slate-700 mb-2">タグを追加</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${allTags.filter(tag => !store.userInterests.tags.includes(tag)).slice(0, 20).map(tag => `
+                                            <button onclick="addUserTag('${tag}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-purple-100 hover:text-purple-700 transition">
+                                                ${tag}
+                                            </button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- Recommendation Notice -->
+                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                                <div class="flex items-start">
+                                    <span class="material-icons-outlined text-blue-500 mr-3">lightbulb</span>
+                                    <div>
+                                        <p class="font-bold text-blue-800 mb-1">レコメンド機能</p>
+                                        <p class="text-sm text-blue-700">選択したカテゴリとタグに基づいて、おすすめのイベントが表示されます。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'events':
+                    // Mock event data
+                    const favoriteEvents = [
+                        { id: 'evt-001', title: 'Tech Conference 2024', date: '2024-03-15', image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400' },
+                        { id: 'evt-002', title: 'Music Festival', date: '2024-04-20', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400' }
+                    ];
+                    const viewHistory = [
+                        { id: 'evt-003', title: 'Art Exhibition', viewedAt: '2024-02-03', image: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=400' },
+                        { id: 'evt-004', title: 'Business Seminar', viewedAt: '2024-02-01', image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=400' }
+                    ];
+                    const upcomingEvents = [
+                        { id: 'evt-005', title: 'Workshop', date: '2024-02-20', time: '14:00', venue: '渋谷ホール', image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=400' }
+                    ];
+                    
+                    return `
+                        <div class="space-y-6">
+                            <!-- Upcoming Events Calendar -->
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                    <span class="material-icons-outlined mr-2 text-primary">event</span>
+                                    参加予定のイベント
+                                </h3>
+                                ${upcomingEvents.length > 0 ? upcomingEvents.map(evt => `
+                                    <div class="flex items-start space-x-4 mb-4 pb-4 border-b border-slate-100 last:border-0">
+                                        <img src="${evt.image}" class="w-20 h-20 rounded-lg object-cover">
+                                        <div class="flex-1">
+                                            <h4 class="font-bold text-slate-800 mb-1">${evt.title}</h4>
+                                            <p class="text-sm text-slate-500 flex items-center mb-1">
+                                                <span class="material-icons-outlined text-xs mr-1">event</span>
+                                                ${evt.date} ${evt.time}
+                                            </p>
+                                            <p class="text-sm text-slate-500 flex items-center">
+                                                <span class="material-icons-outlined text-xs mr-1">place</span>
+                                                ${evt.venue}
+                                            </p>
+                                        </div>
+                                        <button onclick="addToGoogleCalendar(store.events.find(e => e.event_id === '${evt.id}'))" class="px-3 py-1 bg-blue-100 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-200">
+                                            カレンダー
+                                        </button>
+                                    </div>
+                                `).join('') : '<p class="text-slate-400 text-sm">参加予定のイベントはありません</p>'}
+                            </div>
+                            
+                            <!-- Favorites -->
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                    <span class="material-icons-outlined mr-2 text-pink-500">favorite</span>
+                                    お気に入りイベント
+                                </h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${favoriteEvents.map(evt => `
+                                        <div class="border border-slate-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer" onclick="router('detail', {id:'${evt.id}'})">
+                                            <img src="${evt.image}" class="w-full h-32 object-cover">
+                                            <div class="p-4">
+                                                <h4 class="font-bold text-slate-800 mb-1">${evt.title}</h4>
+                                                <p class="text-xs text-slate-500">${evt.date}</p>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <!-- View History -->
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                    <span class="material-icons-outlined mr-2 text-slate-500">history</span>
+                                    閲覧履歴
+                                </h3>
+                                <div class="space-y-3">
+                                    ${viewHistory.map(evt => `
+                                        <div class="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-primary transition cursor-pointer" onclick="router('detail', {id:'${evt.id}'})">
+                                            <img src="${evt.image}" class="w-16 h-16 rounded-lg object-cover">
+                                            <div class="flex-1">
+                                                <h4 class="font-bold text-slate-800 text-sm">${evt.title}</h4>
+                                                <p class="text-xs text-slate-400">閲覧: ${evt.viewedAt}</p>
+                                            </div>
+                                            <span class="material-icons-outlined text-slate-300">chevron_right</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                case 'support':
+                    return `
+                        <div class="space-y-6">
+                            <!-- Support Options -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Chat Support -->
+                                <div class="bg-white rounded-2xl shadow-card p-6 hover:shadow-lg transition cursor-pointer" onclick="openUserSupportChat()">
+                                    <div class="flex items-center mb-4">
+                                        <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mr-4">
+                                            <span class="material-icons-outlined text-purple-600 text-2xl">chat</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-slate-800">チャットサポート</h3>
+                                            <p class="text-xs text-slate-500">リアルタイム対応</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-slate-600 mb-4">AIアシスタントが即座に対応します。複雑な問い合わせはスタッフが対応します。</p>
+                                    <div class="flex items-center text-xs text-slate-500">
+                                        <span class="material-icons-outlined text-sm mr-1">schedule</span>
+                                        平均応答時間: 1-2時間
+                                    </div>
+                                </div>
+                                
+                                <!-- Email Support -->
+                                <div class="bg-white rounded-2xl shadow-card p-6 hover:shadow-lg transition cursor-pointer" onclick="sendSupportEmail()">
+                                    <div class="flex items-center mb-4">
+                                        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
+                                            <span class="material-icons-outlined text-blue-600 text-2xl">email</span>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-slate-800">メールサポート</h3>
+                                            <p class="text-xs text-slate-500">詳細な問い合わせ</p>
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-slate-600 mb-4">詳しい内容を記入して送信できます。添付ファイルにも対応しています。</p>
+                                    <div class="flex items-center text-xs text-slate-500">
+                                        <span class="material-icons-outlined text-sm mr-1">schedule</span>
+                                        応答: 1-2営業日
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Support Ticket History -->
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4">サポート履歴</h3>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between p-4 border border-slate-200 rounded-lg">
+                                        <div class="flex items-start space-x-3">
+                                            <span class="material-icons-outlined text-green-500">check_circle</span>
+                                            <div>
+                                                <p class="text-sm font-bold text-slate-800">チケットが表示されない</p>
+                                                <p class="text-xs text-slate-500">作成: 2024-01-22 • 解決済</p>
+                                            </div>
+                                        </div>
+                                        <button onclick="showToast('サポート履歴詳細は準備中です', 'info')" class="text-primary text-xs hover:underline">詳細</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- FAQ -->
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4">よくある質問</h3>
+                                <div class="space-y-3">
+                                    <details class="group">
+                                        <summary class="flex justify-between items-center cursor-pointer p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                                            <span class="text-sm font-bold text-slate-700">チケットの購入方法は？</span>
+                                            <span class="material-icons-outlined text-slate-400 group-open:rotate-180 transition">expand_more</span>
+                                        </summary>
+                                        <div class="p-3 text-sm text-slate-600">
+                                            イベント詳細ページから「チケット選択」ボタンをクリックし、希望のチケットを選んで購入手続きへ進んでください。
+                                        </div>
+                                    </details>
+                                    <details class="group">
+                                        <summary class="flex justify-between items-center cursor-pointer p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                                            <span class="text-sm font-bold text-slate-700">キャンセル・返金は可能ですか？</span>
+                                            <span class="material-icons-outlined text-slate-400 group-open:rotate-180 transition">expand_more</span>
+                                        </summary>
+                                        <div class="p-3 text-sm text-slate-600">
+                                            イベント主催者のキャンセルポリシーによります。詳細はイベント詳細ページをご確認ください。
+                                        </div>
+                                    </details>
+                                    <details class="group">
+                                        <summary class="flex justify-between items-center cursor-pointer p-3 bg-slate-50 rounded-lg hover:bg-slate-100">
+                                            <span class="text-sm font-bold text-slate-700">本人確認（KYC）は必須ですか？</span>
+                                            <span class="material-icons-outlined text-slate-400 group-open:rotate-180 transition">expand_more</span>
+                                        </summary>
+                                        <div class="p-3 text-sm text-slate-600">
+                                            一部の高額チケットや特定のイベントでは本人確認が必要な場合があります。マイページから手続きできます。
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                
                 default:
                     return '';
             }
@@ -2906,7 +3179,10 @@
                         </div>
                     </div>
 
-                    ${activeTab === 'tickets' ? `
+                    <!-- Tab Content -->
+                    ${['overview', 'inbox', 'profile', 'interests', 'events', 'support'].includes(activeTab) 
+                        ? renderUserDashboardTab(activeTab)
+                        : activeTab === 'tickets' ? `
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <div class="bg-white p-5 rounded-2xl shadow-card border border-slate-100 flex items-center">
                             <div class="w-12 h-12 rounded-full bg-blue-100 text-primary flex items-center justify-center mr-4">
@@ -11385,6 +11661,92 @@ C-1,C,1,自由席エリア,free,available`;
             
             showToast('サポートメールを送信しました', 'send');
             closeModal();
+        }
+        
+        // --- USER DASHBOARD HELPER FUNCTIONS ---
+        
+        function viewUserMessage(msgId) {
+            const message = store.userInbox.find(m => m.id === msgId);
+            if (!message) return;
+            
+            // Mark as read
+            message.read = true;
+            
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">${message.subject}</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <div class="flex items-center space-x-2 mb-4">
+                            <div class="w-10 h-10 rounded-full ${message.fromType === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center">
+                                <span class="material-icons-outlined text-sm">${message.fromType === 'admin' ? 'shield' : 'event'}</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">${message.from}</p>
+                                <p class="text-xs text-slate-500">${message.date}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="prose prose-sm max-w-none">
+                            <p>${message.preview}</p>
+                            <p class="mt-4">LinkUpをご利用いただきありがとうございます。新機能の追加や重要なお知らせがある場合は、こちらからご連絡いたします。</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3">
+                        <button onclick="closeModal()" class="flex-1 py-3 bg-slate-100 text-slate-700 rounded-lg font-bold hover:bg-slate-200">
+                            閉じる
+                        </button>
+                        <button onclick="showToast('返信機能は準備中です', 'reply')" class="flex-1 py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-700">
+                            返信する
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Refresh dashboard to update unread count
+            renderDashboard(document.getElementById('app'), 'inbox');
+        }
+        
+        function saveUserProfile(e) {
+            e.preventDefault();
+            showToast('プロフィールを保存しました', 'check_circle');
+        }
+        
+        function addUserCategory(category) {
+            if (!store.userInterests.categories.includes(category) && store.userInterests.categories.length < 30) {
+                store.userInterests.categories.push(category);
+                renderDashboard(document.getElementById('app'), 'interests');
+                showToast(`「${category}」を追加しました`, 'add');
+            }
+        }
+        
+        function removeUserCategory(category) {
+            store.userInterests.categories = store.userInterests.categories.filter(c => c !== category);
+            renderDashboard(document.getElementById('app'), 'interests');
+            showToast(`「${category}」を削除しました`, 'remove');
+        }
+        
+        function addUserTag(tag) {
+            if (!store.userInterests.tags.includes(tag) && store.userInterests.tags.length < 50) {
+                store.userInterests.tags.push(tag);
+                renderDashboard(document.getElementById('app'), 'interests');
+                showToast(`「${tag}」を追加しました`, 'add');
+            }
+        }
+        
+        function removeUserTag(tag) {
+            store.userInterests.tags = store.userInterests.tags.filter(t => t !== tag);
+            renderDashboard(document.getElementById('app'), 'interests');
+            showToast(`「${tag}」を削除しました`, 'remove');
         }
         
         function approveKYC() {

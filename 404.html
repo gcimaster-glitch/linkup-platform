@@ -10802,83 +10802,54 @@ ${pages.map(page => `  &lt;url&gt;
         
         // Demo Data Functions
         function generateDemoUsers() {
-            if (confirm('100件のデモユーザーを生成しますか？')) {
-                showToast('デモユーザーを生成中...', 'info');
-                setTimeout(() => {
-                    showToast('100件のデモユーザーを生成しました', 'success');
-                    renderAdmin(document.getElementById('app'), 'demo-data');
-                }, 2000);
-            }
+            console.log('[DEMO] generateDemoUsers is disabled');
+            showToast('デモユーザー生成機能は無効化されています', 'info');
+            return;
         }
         
         function clearDemoUsers() {
-            if (confirm('全てのデモユーザーを削除しますか？')) {
-                showToast('デモユーザーを削除中...', 'info');
-                setTimeout(() => {
-                    showToast('デモユーザーを削除しました', 'success');
-                    renderAdmin(document.getElementById('app'), 'demo-data');
-                }, 1500);
-            }
+            console.log('[DEMO] clearDemoUsers is disabled');
+            showToast('デモユーザー削除機能は無効化されています', 'info');
+            return;
         }
         
         function generateDemoEvents() {
-            if (confirm('50件のデモイベントを生成しますか？')) {
-                showToast('デモイベントを生成中...', 'info');
-                setTimeout(() => {
-                    showToast('50件のデモイベントを生成しました', 'success');
-                    renderAdmin(document.getElementById('app'), 'demo-data');
-                }, 2000);
-            }
+            // DISABLED: Demo event generation is disabled
+            console.log('[DEMO] generateDemoEvents is disabled');
+            showToast('デモイベント生成機能は無効化されています', 'info');
+            return;
         }
         
         function clearDemoEvents() {
-            if (confirm('全てのデモイベントを削除しますか？')) {
-                showToast('デモイベントを削除中...', 'info');
-                setTimeout(() => {
-                    showToast('デモイベントを削除しました', 'success');
-                    renderAdmin(document.getElementById('app'), 'demo-data');
-                }, 1500);
-            }
+            // DISABLED: Demo event clearing is disabled
+            console.log('[DEMO] clearDemoEvents is disabled');
+            showToast('デモイベント削除機能は無効化されています', 'info');
+            return;
         }
         
         function generateDemoTickets() {
-            if (confirm('200件のデモチケット販売履歴を生成しますか？')) {
-                showToast('デモチケット販売履歴を生成中...', 'info');
-                setTimeout(() => {
-                    showToast('200件のデモチケット販売履歴を生成しました', 'success');
-                    renderAdmin(document.getElementById('app'), 'demo-data');
-                }, 2000);
-            }
+            // DISABLED: Demo ticket generation is disabled
+            console.log('[DEMO] generateDemoTickets is disabled');
+            showToast('デモチケット生成機能は無効化されています', 'info');
+            return;
         }
         
         function clearDemoTickets() {
-            if (confirm('全てのデモチケット販売履歴を削除しますか？')) {
-                showToast('デモチケット販売履歴を削除中...', 'info');
-                setTimeout(() => {
-                    showToast('デモチケット販売履歴を削除しました', 'success');
-                    renderAdmin(document.getElementById('app'), 'demo-data');
-                }, 1500);
-            }
+            console.log('[DEMO] clearDemoTickets is disabled');
+            showToast('デモチケット削除機能は無効化されています', 'info');
+            return;
         }
         
         function generateDemoPayments() {
-            if (confirm('200件のデモ決済履歴を生成しますか？')) {
-                showToast('デモ決済履歴を生成中...', 'info');
-                setTimeout(() => {
-                    showToast('200件のデモ決済履歴を生成しました', 'success');
-                    renderAdmin(document.getElementById('app'), 'demo-data');
-                }, 2000);
-            }
+            console.log('[DEMO] generateDemoPayments is disabled');
+            showToast('デモ決済履歴生成機能は無効化されています', 'info');
+            return;
         }
         
         function clearDemoPayments() {
-            if (confirm('全てのデモ決済履歴を削除しますか？')) {
-                showToast('デモ決済履歴を削除中...', 'info');
-                setTimeout(() => {
-                    showToast('デモ決済履歴を削除しました', 'success');
-                    renderAdmin(document.getElementById('app'), 'demo-data');
-                }, 1500);
-            }
+            console.log('[DEMO] clearDemoPayments is disabled');
+            showToast('デモ決済履歴削除機能は無効化されています', 'info');
+            return;
         }
         
         function clearAllDemoData() {

@@ -26,6 +26,27 @@
     <link rel="canonical" href="https://link-up.live">
     <link rel="icon" type="image/png" href="assets/logo.png">
     
+    <!-- Performance: Inline critical CSS to prevent FOUC -->
+    <style>
+        /* Critical styles for initial render */
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }
+        #app { min-height: 100vh; }
+        .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s ease-in-out infinite; }
+        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        /* Hide content until Tailwind loads */
+        .tw-loading { opacity: 0; transition: opacity 0.3s; }
+        .tw-loaded { opacity: 1; }
+    </style>
+    
+    <!-- Performance: Critical resource hints -->
+    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+    <link rel="dns-prefetch" href="https://images.unsplash.com">
+    <link rel="dns-prefetch" href="https://linkup-backend.gcimaster.workers.dev">
+    
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#2563EB">
@@ -34,16 +55,23 @@
     <meta name="apple-mobile-web-app-title" content="LinkUp">
     <link rel="apple-touch-icon" href="/assets/logo.png">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Leaflet CSS & JS for Real Maps -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Performance: Async loading of non-critical resources -->
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <!-- Leaflet CSS & JS for Real Maps - Load only when needed -->
+    <link rel="preload" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></noscript>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
     
+    <!-- Performance: Async font loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    </noscript>
     <script>
         tailwind.config = {
             theme: {
@@ -1194,7 +1222,7 @@
                                 ${store.events.slice(0,5).map(evt => `
                                     <div class="bg-white w-72 rounded-xl shadow-xl overflow-hidden flex-shrink-0 cursor-pointer hover:-translate-y-1 transition transform" onclick="router('detail', {id:'${evt.event_id}'})">
                                         <div class="h-32 relative">
-                                            <img src="${evt.cover_image_url}" class="w-full h-full object-cover">
+                                            <img src="${evt.cover_image_url}" loading="lazy" loading="lazy" class="w-full h-full object-cover">
                                             <div class="absolute top-2 right-2 bg-white/90 px-2 py-1 rounded text-[10px] font-bold shadow-sm">${evt.category}</div>
                                         </div>
                                         <div class="p-3">
@@ -1248,7 +1276,7 @@
                             ${store.events.slice(1, 5).map(evt => `
                                 <div class="bg-white rounded-2xl overflow-hidden shadow-card hover:shadow-xl transition group cursor-pointer flex flex-col" onclick="router('detail', {id: '${evt.event_id}'})">
                                     <div class="h-40 relative overflow-hidden">
-                                        <img src="${evt.cover_image_url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                        <img src="${evt.cover_image_url}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                                         <div class="absolute top-2 right-2 bg-white/90 px-2 py-1 rounded text-[10px] font-bold shadow-sm">${evt.category}</div>
                                     </div>
                                     <div class="p-4 flex-1 flex flex-col">
@@ -1318,7 +1346,7 @@
                             ${store.events.slice(5, 12).sort((a,b) => new Date(b.start_datetime) - new Date(a.start_datetime)).map(evt => `
                                 <div class="min-w-[280px] md:min-w-[320px] snap-start bg-white rounded-2xl shadow-card hover:shadow-xl transition cursor-pointer group flex flex-col" onclick="router('detail', {id: '${evt.event_id}'})">
                                     <div class="h-44 relative overflow-hidden rounded-t-2xl">
-                                        <img src="${evt.cover_image_url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                        <img src="${evt.cover_image_url}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                                         <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4">
                                             <span class="text-white text-xs font-bold flex items-center">
                                                 <span class="material-icons-outlined text-sm mr-1">schedule</span> ${new Date(evt.start_datetime).toLocaleDateString()}
@@ -1353,7 +1381,7 @@
                                 ${store.events.slice(12, 16).map(evt => `
                                     <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100 flex hover:shadow-md transition cursor-pointer group" onclick="router('detail', {id: '${evt.event_id}'})">
                                         <div class="w-32 h-24 flex-shrink-0 rounded-lg overflow-hidden relative">
-                                            <img src="${evt.cover_image_url}" class="w-full h-full object-cover group-hover:scale-105 transition">
+                                            <img src="${evt.cover_image_url}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition">
                                         </div>
                                         <div class="ml-4 flex-1 flex flex-col justify-between">
                                             <div>
@@ -1475,7 +1503,7 @@
                             ${categoryEvents.map(event => `
                                 <div class="bg-white rounded-2xl shadow-card overflow-hidden hover:shadow-float transition cursor-pointer" onclick="router('detail', {id: '${event.event_id}'})">
                                     <div class="relative h-48 overflow-hidden">
-                                        <img src="${event.cover_image_url}" class="w-full h-full object-cover hover:scale-105 transition duration-300">
+                                        <img src="${event.cover_image_url}" loading="lazy" class="w-full h-full object-cover hover:scale-105 transition duration-300">
                                         <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-primary">
                                             ${event.category}
                                         </div>
@@ -1562,7 +1590,7 @@
                             const marker = L.marker([lat, lng], {icon: icon}).addTo(map);
                             marker.bindPopup(`
                                 <div class="p-0 w-48">
-                                    <img src="${evt.cover_image_url}" class="w-full h-24 object-cover rounded-t-lg">
+                                    <img src="${evt.cover_image_url}" loading="lazy" class="w-full h-24 object-cover rounded-t-lg">
                                     <div class="p-3">
                                         <h4 class="font-bold text-sm mb-1 line-clamp-1">${evt.title}</h4>
                                         <p class="text-xs text-slate-500 mb-2">${new Date(evt.start_datetime).toLocaleDateString()}</p>
@@ -1619,7 +1647,7 @@
             container.innerHTML = events.map(evt => `
                 <div class="bg-white rounded-xl shadow-card overflow-hidden hover:shadow-xl transition duration-300 group cursor-pointer border border-slate-100 flex flex-col h-full" onclick="router('detail', {id: '${evt.event_id}'})">
                     <div class="relative h-48 overflow-hidden">
-                        <img src="${evt.cover_image_url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                        <img src="${evt.cover_image_url}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                         <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-slate-700 shadow-sm uppercase tracking-wide">
                             ${evt.category}
                         </div>
@@ -1739,7 +1767,7 @@
                         <!-- Main Content (Detail + Organizer) -->
                         <div class="lg:col-span-2">
                             <div class="bg-white rounded-2xl shadow-card overflow-hidden mb-8">
-                                <img src="${event.cover_image_url}" class="w-full h-64 md:h-96 object-cover">
+                                <img src="${event.cover_image_url}" loading="lazy" class="w-full h-64 md:h-96 object-cover">
                                 <div class="p-6 md:p-8">
                                     <span class="inline-block px-3 py-1 mb-4 text-xs font-bold tracking-wider text-primary bg-blue-50 rounded-full uppercase">${event.category}</span>
                                     <h1 class="text-3xl font-bold text-slate-900 mb-4 leading-tight">${event.title}</h1>
@@ -1974,7 +2002,7 @@
                                     ${orgEvents.map(evt => `
                                         <div class="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition cursor-pointer group" onclick="router('detail', {id:'${evt.event_id}'})">
                                             <div class="relative h-48 overflow-hidden">
-                                                <img src="${evt.cover_image_url}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                                                <img src="${evt.cover_image_url}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
                                                 <div class="absolute top-3 right-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-xs font-bold text-slate-700 shadow-sm uppercase tracking-wide">
                                                     ${evt.category}
                                                 </div>
@@ -2455,7 +2483,7 @@
                                     </div>
                                     <div class="p-6">
                                         <div class="flex flex-col sm:flex-row sm:items-start mb-6">
-                                            <img src="${event.cover_image_url}" class="w-full sm:w-32 h-32 object-cover rounded-xl mb-4 sm:mb-0 sm:mr-6">
+                                            <img src="${event.cover_image_url}" loading="lazy" class="w-full sm:w-32 h-32 object-cover rounded-xl mb-4 sm:mb-0 sm:mr-6">
                                             <div class="flex-1">
                                                 <span class="inline-block px-2 py-1 mb-2 text-[10px] font-bold tracking-wider text-slate-500 bg-slate-100 rounded uppercase">${event.category}</span>
                                                 <h3 class="font-bold text-xl text-slate-800 mb-2 leading-snug">${event.title}</h3>
@@ -2685,7 +2713,7 @@
                             <div class="lg:col-span-1">
                                 <div class="bg-white rounded-2xl shadow-card p-6 sticky top-24">
                                     <div class="flex items-start mb-6 pb-6 border-b border-slate-100">
-                                        <img src="${event.cover_image_url}" class="w-16 h-16 rounded-lg object-cover mr-4">
+                                        <img src="${event.cover_image_url}" loading="lazy" class="w-16 h-16 rounded-lg object-cover mr-4">
                                         <div>
                                             <h3 class="font-bold text-sm text-slate-800 line-clamp-2">${event.title}</h3>
                                             <p class="text-xs text-slate-500 mt-1">${ticket.name} x ${count}枚</p>
@@ -2745,7 +2773,7 @@
                     </div>
                     
                     <div class="bg-slate-50 p-4 rounded-xl mb-6 flex items-start">
-                        <img src="${event.cover_image_url}" class="w-16 h-16 rounded-lg object-cover mr-4">
+                        <img src="${event.cover_image_url}" loading="lazy" class="w-16 h-16 rounded-lg object-cover mr-4">
                         <div>
                             <h4 class="font-bold text-sm text-slate-800 line-clamp-1">${event.title}</h4>
                             <p class="text-xs text-slate-500 mt-1">${new Date(event.start_datetime).toLocaleDateString()} @ ${event.venue_name}</p>
@@ -2857,7 +2885,7 @@
                     <!-- Event Info Card -->
                     <div class="bg-slate-50 rounded-xl p-4 mb-6 text-left">
                         <div class="flex items-start mb-3">
-                            <img src="${event.cover_image_url}" class="w-16 h-16 rounded-lg object-cover mr-3">
+                            <img src="${event.cover_image_url}" loading="lazy" class="w-16 h-16 rounded-lg object-cover mr-3">
                             <div class="flex-1">
                                 <h3 class="font-bold text-sm text-slate-800 mb-1 line-clamp-2">${event.title}</h3>
                                 <p class="text-xs text-slate-500">
@@ -4542,7 +4570,7 @@
                                 return `
                                 <tr class="hover:bg-slate-50 transition">
                                     <td class="p-4">
-                                        <img src="${evt.cover_image_url}" class="w-12 h-12 rounded object-cover">
+                                        <img src="${evt.cover_image_url}" loading="lazy" class="w-12 h-12 rounded object-cover">
                                     </td>
                                     <td class="p-4">
                                         <p class="font-bold text-slate-800 line-clamp-1">${evt.title}</p>
@@ -4713,7 +4741,7 @@
                                                 </div>
                                                 <input type="url" id="event-cover-image" value="${event?.cover_image_url || ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary text-sm" placeholder="または画像URLを直接入力" onchange="previewCoverImage(this.value)">
                                                 <div id="cover-image-preview" class="relative">
-                                                    ${event?.cover_image_url ? `<img src="${event.cover_image_url}" class="w-full h-48 object-cover rounded-lg">` : ''}
+                                                    ${event?.cover_image_url ? `<img src="${event.cover_image_url}" loading="lazy" class="w-full h-48 object-cover rounded-lg">` : ''}
                                                 </div>
                                             </div>
                                         </div>
@@ -7010,7 +7038,7 @@
                                 <div class="col-span-full p-12 text-center text-slate-400">イベントが見つかりませんでした</div>
                             ` : allEvents.map(evt => `
                                 <div class="bg-white rounded-xl shadow-card overflow-hidden hover:shadow-lg transition">
-                                    <img src="${evt.cover_image_url}" class="w-full h-40 object-cover">
+                                    <img src="${evt.cover_image_url}" loading="lazy" class="w-full h-40 object-cover">
                                     <div class="p-4">
                                         <div class="flex justify-between items-start mb-2">
                                             <h3 class="font-bold text-slate-800 flex-1">${evt.title}</h3>
@@ -13654,7 +13682,7 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     <!-- Event Info -->
                     <div class="bg-slate-50 rounded-xl p-4 mb-6">
                         <div class="flex items-start">
-                            <img src="${event.cover_image_url}" class="w-20 h-20 rounded-lg object-cover mr-4">
+                            <img src="${event.cover_image_url}" loading="lazy" class="w-20 h-20 rounded-lg object-cover mr-4">
                             <div class="flex-1">
                                 <h4 class="font-bold text-slate-800 mb-1">${event.title}</h4>
                                 <p class="text-sm text-slate-600 mb-1">
@@ -15721,50 +15749,57 @@ function showCheckinMenu(eventId) {
             if (lastVersion !== VERSION) {
                 console.log('%c⚠️ Version changed from ' + lastVersion + ' to ' + VERSION, 'color: #F59E0B; font-weight: bold;');
                 localStorage.setItem('linkup_version', VERSION);
-                
-                // Show update notification
-                setTimeout(() => {
-                    showToast('システムが更新されました。最新版を読み込んでいます...', 'info');
-                }, 1000);
             }
             
-            // Restore user session from token
-            const token = localStorage.getItem('linkup_token');
-            if (token && !store.user) {
-                try {
-                    const result = await API.Auth.me(token);
-                    if (result.success) {
-                        store.user = {
-                            id: result.user.id,
-                            name: result.user.name,
-                            email: result.user.email,
-                            icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
-                            kycStatus: result.user.kycStatus || 'none',
-                            role: result.user.role || 'attendee'
-                        };
-                    } else {
-                        // Token invalid, remove it
-                        localStorage.removeItem('linkup_token');
-                    }
-                } catch (error) {
-                    console.error('Session restore failed:', error);
-                    localStorage.removeItem('linkup_token');
-                }
-            }
-            
-            // Load events from API first
-            await store.loadEvents();
-            
+            // Update navigation immediately
             updateNav();
             
-            // Parse URL and route to appropriate view
+            // Parse URL and route to appropriate view (render with MASTER_EVENTS first for speed)
             const { view, params } = parseURL();
             router(view, params, false);
             
-            // Initialize ticket verification system
-            initializeTicketVerification();
+            // Initialize ticket verification system (non-blocking)
+            setTimeout(() => initializeTicketVerification(), 100);
             
-            toggleChatWidget(); // Init chat visibility
+            // Toggle chat widget (non-blocking)
+            setTimeout(() => toggleChatWidget(), 100);
+            
+            // Load user session and events in background (non-blocking)
+            Promise.all([
+                // Restore user session from token
+                (async () => {
+                    const token = localStorage.getItem('linkup_token');
+                    if (token && !store.user) {
+                        try {
+                            const result = await API.Auth.me(token);
+                            if (result.success) {
+                                store.user = {
+                                    id: result.user.id,
+                                    name: result.user.name,
+                                    email: result.user.email,
+                                    icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
+                                    kycStatus: result.user.kycStatus || 'none',
+                                    role: result.user.role || 'attendee'
+                                };
+                                updateNav(); // Update nav with user info
+                            } else {
+                                localStorage.removeItem('linkup_token');
+                            }
+                        } catch (error) {
+                            console.error('Session restore failed:', error);
+                            localStorage.removeItem('linkup_token');
+                        }
+                    }
+                })(),
+                
+                // Load events from API
+                (async () => {
+                    await store.loadEvents();
+                    // Re-render current view with fresh data
+                    const { view, params } = parseURL();
+                    router(view, params, false);
+                })()
+            ]).catch(err => console.error('Background loading error:', err));
         });
         
         // ========================================
@@ -16120,7 +16155,25 @@ function showCheckinMenu(eventId) {
     <!-- Load QR libraries after main content -->
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    <!-- API Client -->
-    <script defer src="assets/api-client.js"></script>
+    
+    <!-- Performance Monitoring -->
+    <script>
+        // Monitor page load performance
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                if (window.performance && performance.getEntriesByType) {
+                    const perfData = performance.getEntriesByType('navigation')[0];
+                    if (perfData) {
+                        const loadTime = perfData.loadEventEnd - perfData.fetchStart;
+                        const domReady = perfData.domContentLoadedEventEnd - perfData.fetchStart;
+                        console.log('%c⚡ Performance Metrics:', 'color: #8B5CF6; font-weight: bold;');
+                        console.log(`  DOM Ready: ${Math.round(domReady)}ms`);
+                        console.log(`  Page Load: ${Math.round(loadTime)}ms`);
+                        console.log(`  ${loadTime < 3000 ? '✅ Fast!' : loadTime < 5000 ? '⚠️ Could be faster' : '❌ Too slow'}`);
+                    }
+                }
+            }, 0);
+        });
+    </script>
 </body>
 </html>

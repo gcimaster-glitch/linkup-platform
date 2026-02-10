@@ -334,6 +334,66 @@
 
         const API_URL = "https://linkup-backend.gcimaster.workers.dev";
 
+        // API Client
+        const API = {
+            Event: {
+                async list() {
+                    const response = await fetch(`${API_URL}/api/events`);
+                    return await response.json();
+                },
+                async get(id) {
+                    const response = await fetch(`${API_URL}/api/events/${id}`);
+                    return await response.json();
+                },
+                async create(event) {
+                    const response = await fetch(`${API_URL}/api/events`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(event)
+                    });
+                    return await response.json();
+                },
+                async update(id, updates) {
+                    const response = await fetch(`${API_URL}/api/events/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updates)
+                    });
+                    return await response.json();
+                },
+                async delete(id) {
+                    const response = await fetch(`${API_URL}/api/events/${id}`, {
+                        method: 'DELETE'
+                    });
+                    return await response.json();
+                }
+            },
+            Auth: {
+                async login(email, password) {
+                    const response = await fetch(`${API_URL}/api/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    return await response.json();
+                },
+                async register(name, email, password, role = 'attendee') {
+                    const response = await fetch(`${API_URL}/api/auth/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, password, role })
+                    });
+                    return await response.json();
+                },
+                async me(token) {
+                    const response = await fetch(`${API_URL}/api/auth/me`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    return await response.json();
+                }
+            }
+        };
+
         // Minimal Store - All data from API
         const store = {
             _cachedEvents: [],
@@ -1948,7 +2008,7 @@
             document.getElementById('modal-container').classList.remove('hidden');
             
             modal.innerHTML = `
-                <div class="flex flex-col md:flex-row h-[500px]">
+                <div class="flex flex-col md:flex-row max-h-[90vh]">
                     <div class="hidden md:block w-1/2 bg-cover bg-center relative" style="background-image: url('${IMGS.music}')">
                         <div class="absolute inset-0 bg-primary/80 flex items-center justify-center p-8 text-white">
                             <div>
@@ -1957,23 +2017,85 @@
                             </div>
                         </div>
                     </div>
-                    <div class="w-full md:w-1/2 p-8 flex flex-col justify-center relative">
+                    <div class="w-full md:w-1/2 p-8 flex flex-col justify-center relative overflow-y-auto">
                         <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
                             <span class="material-icons-outlined">close</span>
                         </button>
                         <h3 class="text-2xl font-bold text-slate-800 mb-6">ログイン / 新規登録</h3>
+                        
+                        <!-- Tab Switcher -->
+                        <div class="flex border-b border-slate-200 mb-6">
+                            <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-2 font-bold text-primary border-b-2 border-primary">ログイン</button>
+                            <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-2 font-bold text-slate-400">新規登録</button>
+                        </div>
+                        
+                        <!-- Login Form -->
+                        <div id="login-form-container">
+                            <form id="login-form" class="space-y-4" onsubmit="handleLogin(event)">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
+                                    <input type="email" name="email" required 
+                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="example@email.com">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">パスワード</label>
+                                    <input type="password" name="password" required 
+                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="••••••••">
+                                </div>
+                                <button type="submit" class="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-600 transition">
+                                    ログイン
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Register Form (Hidden) -->
+                        <div id="register-form-container" class="hidden">
+                            <form id="register-form" class="space-y-4" onsubmit="handleRegister(event)">
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">名前</label>
+                                    <input type="text" name="name" required 
+                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="山田 太郎">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
+                                    <input type="email" name="email" required 
+                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="example@email.com">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">パスワード</label>
+                                    <input type="password" name="password" required minlength="8"
+                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                           placeholder="8文字以上">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-slate-700 mb-2">ユーザー種別</label>
+                                    <select name="role" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="attendee">参加者</option>
+                                        <option value="organizer">主催者</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-600 transition">
+                                    新規登録
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <div class="relative my-6">
+                            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                            <div class="relative flex justify-center text-sm"><span class="px-4 bg-white text-slate-500">または</span></div>
+                        </div>
+                        
                         <div class="space-y-3">
-                            <button onclick="login('google')" class="w-full py-3 border border-slate-300 rounded-lg flex items-center justify-center hover:bg-slate-50 transition font-bold text-slate-600">
+                            <button onclick="showToast('Google連携は準備中です', 'info')" class="w-full py-3 border border-slate-300 rounded-lg flex items-center justify-center hover:bg-slate-50 transition font-bold text-slate-600">
                                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3">
                                 Googleで続ける
                             </button>
-                            <button onclick="login('line')" class="w-full py-3 bg-[#06C755] text-white rounded-lg flex items-center justify-center hover:opacity-90 transition font-bold">
-                                LINEで続ける
-                            </button>
-                            <button onclick="login('email')" class="w-full py-3 bg-slate-800 text-white rounded-lg flex items-center justify-center hover:bg-slate-900 transition font-bold">
-                                メールアドレスで入力
-                            </button>
                         </div>
+                        
                         <p class="text-xs text-slate-400 mt-6 text-center">
                             利用規約 と プライバシーポリシー に同意したことになります。
                         </p>
@@ -1981,9 +2103,96 @@
                 </div>
             `;
         }
+        
+        function switchAuthTab(tab) {
+            const loginBtn = document.getElementById('tab-login');
+            const registerBtn = document.getElementById('tab-register');
+            const loginForm = document.getElementById('login-form-container');
+            const registerForm = document.getElementById('register-form-container');
+            
+            if (tab === 'login') {
+                loginBtn.className = 'flex-1 py-2 font-bold text-primary border-b-2 border-primary';
+                registerBtn.className = 'flex-1 py-2 font-bold text-slate-400';
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+            } else {
+                loginBtn.className = 'flex-1 py-2 font-bold text-slate-400';
+                registerBtn.className = 'flex-1 py-2 font-bold text-primary border-b-2 border-primary';
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+            }
+        }
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const email = formData.get('email');
+            const password = formData.get('password');
+            
+            try {
+                showToast('ログイン中...', 'info');
+                const result = await API.Auth.login(email, password);
+                
+                if (result.success) {
+                    localStorage.setItem('linkup_token', result.token);
+                    store.user = {
+                        id: result.user.id,
+                        name: result.user.name,
+                        email: result.user.email,
+                        icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
+                        kycStatus: result.user.kycStatus || 'none',
+                        role: result.user.role || 'attendee'
+                    };
+                    
+                    closeModal();
+                    updateNav();
+                    showToast('ログインしました', 'check_circle');
+                } else {
+                    showToast(result.error || 'ログインに失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast('ログインに失敗しました', 'error');
+            }
+        }
+        
+        async function handleRegister(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const name = formData.get('name');
+            const email = formData.get('email');
+            const password = formData.get('password');
+            const role = formData.get('role');
+            
+            try {
+                showToast('登録中...', 'info');
+                const result = await API.Auth.register(name, email, password, role);
+                
+                if (result.success) {
+                    localStorage.setItem('linkup_token', result.token);
+                    store.user = {
+                        id: result.user.id,
+                        name: result.user.name,
+                        email: result.user.email,
+                        icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
+                        kycStatus: result.user.kycStatus || 'none',
+                        role: result.user.role || role
+                    };
+                    
+                    closeModal();
+                    updateNav();
+                    showToast('登録が完了しました', 'check_circle');
+                } else {
+                    showToast(result.error || '登録に失敗しました', 'error');
+                }
+            } catch (error) {
+                console.error('Register error:', error);
+                showToast('登録に失敗しました', 'error');
+            }
+        }
 
         function login(provider) {
-            // Mock Login
+            // Mock Login (for social login buttons)
             store.user = { 
                 id: 'u-demo-001', 
                 name: 'LinkUp User', 
@@ -15448,6 +15657,30 @@ function showCheckinMenu(eventId) {
 
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
+            // Restore user session from token
+            const token = localStorage.getItem('linkup_token');
+            if (token && !store.user) {
+                try {
+                    const result = await API.Auth.me(token);
+                    if (result.success) {
+                        store.user = {
+                            id: result.user.id,
+                            name: result.user.name,
+                            email: result.user.email,
+                            icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
+                            kycStatus: result.user.kycStatus || 'none',
+                            role: result.user.role || 'attendee'
+                        };
+                    } else {
+                        // Token invalid, remove it
+                        localStorage.removeItem('linkup_token');
+                    }
+                } catch (error) {
+                    console.error('Session restore failed:', error);
+                    localStorage.removeItem('linkup_token');
+                }
+            }
+            
             // Load events from API first
             await store.loadEvents();
             

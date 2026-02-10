@@ -2144,44 +2144,66 @@
             const modal = document.getElementById('modal-content');
             document.getElementById('modal-container').classList.remove('hidden');
             
+            // 🎨 Enhanced Design by Executive UX Team
             modal.innerHTML = `
-                <div class="flex flex-col md:flex-row max-h-[90vh]">
-                    <div class="hidden md:block w-1/2 bg-cover bg-center relative" style="background-image: url('${IMGS.music}')">
-                        <div class="absolute inset-0 bg-primary/80 flex items-center justify-center p-8 text-white">
-                            <div>
-                                <h2 class="text-3xl font-bold mb-4">Welcome Back</h2>
-                                <p>日本最大級のイベントコミュニティへようこそ。</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="w-full md:w-1/2 p-8 flex flex-col justify-center relative overflow-y-auto">
-                        <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                <div class="max-h-[90vh] overflow-y-auto">
+                    <div class="w-full p-6 md:p-10 flex flex-col relative">
+                        <!-- Close Button -->
+                        <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full p-2" aria-label="閉じる">
                             <span class="material-icons-outlined">close</span>
                         </button>
-                        <h3 class="text-2xl font-bold text-slate-800 mb-6">ログイン / 新規登録</h3>
+                        
+                        <!-- Header -->
+                        <div class="text-center mb-8">
+                            <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">LinkUpへようこそ</h2>
+                            <p class="text-slate-600 text-sm md:text-base">日本最大級のイベントプラットフォーム</p>
+                        </div>
+                        
+                        <!-- Social Login (Priority #1) -->
+                        <div class="space-y-3 mb-6">
+                            <button onclick="showToast('Google連携は準備中です', 'info')" class="w-full py-3.5 border-2 border-slate-200 rounded-xl flex items-center justify-center hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 font-semibold text-slate-700 shadow-sm hover:shadow-md">
+                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">
+                                Googleで続ける
+                            </button>
+                            <button onclick="showToast('LINE連携は準備中です', 'info')" class="w-full py-3.5 border-2 border-slate-200 rounded-xl flex items-center justify-center hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 font-semibold text-slate-700 shadow-sm hover:shadow-md">
+                                <svg class="w-5 h-5 mr-3" fill="#00B900" viewBox="0 0 24 24"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+                                LINEで続ける
+                            </button>
+                        </div>
+                        
+                        <!-- Divider -->
+                        <div class="relative my-6">
+                            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+                            <div class="relative flex justify-center text-sm"><span class="px-4 bg-white text-slate-500 font-medium">またはメールアドレスで</span></div>
+                        </div>
                         
                         <!-- Tab Switcher -->
-                        <div class="flex border-b border-slate-200 mb-6">
-                            <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-2 font-bold text-primary border-b-2 border-primary">ログイン</button>
-                            <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-2 font-bold text-slate-400">新規登録</button>
+                        <div class="flex bg-slate-100 rounded-lg p-1 mb-6">
+                            <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-2.5 font-semibold text-slate-900 bg-white rounded-md shadow-sm transition-all duration-200">ログイン</button>
+                            <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-2.5 font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200">新規登録</button>
                         </div>
                         
                         <!-- Login Form -->
                         <div id="login-form-container">
                             <form id="login-form" class="space-y-4" onsubmit="handleLogin(event)">
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
-                                    <input type="email" name="email" required 
-                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                           placeholder="example@email.com">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2" for="login-email">メールアドレス <span class="text-red-500">*</span></label>
+                                    <input type="email" id="login-email" name="email" required 
+                                           class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
+                                           placeholder="example@linkup.jp"
+                                           autocomplete="email">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">パスワード</label>
-                                    <input type="password" name="password" required 
-                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                           placeholder="••••••••">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label class="block text-sm font-semibold text-slate-700" for="login-password">パスワード <span class="text-red-500">*</span></label>
+                                        <a href="#" onclick="event.preventDefault(); showToast('パスワードリセット機能は準備中です', 'info');" class="text-xs text-primary hover:text-blue-700 font-medium">パスワードを忘れた？</a>
+                                    </div>
+                                    <input type="password" id="login-password" name="password" required 
+                                           class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
+                                           placeholder="••••••••"
+                                           autocomplete="current-password">
                                 </div>
-                                <button type="submit" class="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-600 transition">
+                                <button type="submit" class="w-full py-3.5 bg-primary text-white rounded-lg font-bold hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg mt-6">
                                     ログイン
                                 </button>
                             </form>
@@ -2191,50 +2213,43 @@
                         <div id="register-form-container" class="hidden">
                             <form id="register-form" class="space-y-4" onsubmit="handleRegister(event)">
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">名前</label>
-                                    <input type="text" name="name" required 
-                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                           placeholder="山田 太郎">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2" for="register-name">名前 <span class="text-red-500">*</span></label>
+                                    <input type="text" id="register-name" name="name" required 
+                                           class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
+                                           placeholder="山田 太郎"
+                                           autocomplete="name">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
-                                    <input type="email" name="email" required 
-                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                           placeholder="example@email.com">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2" for="register-email">メールアドレス <span class="text-red-500">*</span></label>
+                                    <input type="email" id="register-email" name="email" required 
+                                           class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
+                                           placeholder="example@linkup.jp"
+                                           autocomplete="email">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">パスワード</label>
-                                    <input type="password" name="password" required minlength="8"
-                                           class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                                           placeholder="8文字以上">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2" for="register-password">パスワード <span class="text-red-500">*</span></label>
+                                    <input type="password" id="register-password" name="password" required minlength="8"
+                                           class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
+                                           placeholder="8文字以上の安全なパスワード"
+                                           autocomplete="new-password">
+                                    <p class="text-xs text-slate-500 mt-1">💡 8文字以上の英数字を含むパスワードを推奨</p>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-bold text-slate-700 mb-2">ユーザー種別</label>
-                                    <select name="role" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
-                                        <option value="attendee">参加者</option>
-                                        <option value="organizer">主催者</option>
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2" for="register-role">ユーザー種別 <span class="text-red-500">*</span></label>
+                                    <select id="register-role" name="role" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900 bg-white">
+                                        <option value="attendee">参加者（イベントに参加したい）</option>
+                                        <option value="organizer">主催者（イベントを開催したい）</option>
                                     </select>
                                 </div>
-                                <button type="submit" class="w-full py-3 bg-primary text-white rounded-lg font-bold hover:bg-blue-600 transition">
+                                <button type="submit" class="w-full py-3.5 bg-primary text-white rounded-lg font-bold hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg mt-6">
                                     新規登録
                                 </button>
                             </form>
                         </div>
                         
-                        <div class="relative my-6">
-                            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
-                            <div class="relative flex justify-center text-sm"><span class="px-4 bg-white text-slate-500">または</span></div>
-                        </div>
-                        
-                        <div class="space-y-3">
-                            <button onclick="showToast('Google連携は準備中です', 'info')" class="w-full py-3 border border-slate-300 rounded-lg flex items-center justify-center hover:bg-slate-50 transition font-bold text-slate-600">
-                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3">
-                                Googleで続ける
-                            </button>
-                        </div>
-                        
-                        <p class="text-xs text-slate-400 mt-6 text-center">
-                            利用規約 と プライバシーポリシー に同意したことになります。
+                        <!-- Terms -->
+                        <p class="text-xs text-slate-500 mt-6 text-center leading-relaxed">
+                            続けることで、<a href="#" onclick="event.preventDefault(); showToast('利用規約ページは準備中です', 'info');" class="text-primary hover:underline">利用規約</a> と <a href="#" onclick="event.preventDefault(); showToast('プライバシーポリシーページは準備中です', 'info');" class="text-primary hover:underline">プライバシーポリシー</a> に同意したものとみなされます。
                         </p>
                     </div>
                 </div>
@@ -2248,13 +2263,14 @@
             const registerForm = document.getElementById('register-form-container');
             
             if (tab === 'login') {
-                loginBtn.className = 'flex-1 py-2 font-bold text-primary border-b-2 border-primary';
-                registerBtn.className = 'flex-1 py-2 font-bold text-slate-400';
+                // 🎨 Modern pill-style tab design
+                loginBtn.className = 'flex-1 py-2.5 font-semibold text-slate-900 bg-white rounded-md shadow-sm transition-all duration-200';
+                registerBtn.className = 'flex-1 py-2.5 font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200';
                 loginForm.classList.remove('hidden');
                 registerForm.classList.add('hidden');
             } else {
-                loginBtn.className = 'flex-1 py-2 font-bold text-slate-400';
-                registerBtn.className = 'flex-1 py-2 font-bold text-primary border-b-2 border-primary';
+                loginBtn.className = 'flex-1 py-2.5 font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200';
+                registerBtn.className = 'flex-1 py-2.5 font-semibold text-slate-900 bg-white rounded-md shadow-sm transition-all duration-200';
                 loginForm.classList.add('hidden');
                 registerForm.classList.remove('hidden');
             }

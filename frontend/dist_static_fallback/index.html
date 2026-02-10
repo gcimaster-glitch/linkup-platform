@@ -102,34 +102,53 @@
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #F8FAFC; color: #0F172A; }
         
         /* Accessibility: WCAG AAA Compliant Colors - High Contrast Mode */
-        * { color: #0F172A; } /* Default: Very dark text */
+        /* Default text color for light backgrounds */
         
         /* Light backgrounds - MUST use dark text */
-        .bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100,
-        [class*="bg-white"], [class*="bg-slate-50"], [class*="bg-slate-100"] {
-            color: #0F172A !important;
-        }
-        
-        /* Ensure all children inherit dark text on light backgrounds */
-        .bg-white *, .bg-slate-50 *, .bg-slate-100 *, .bg-gray-50 *, .bg-gray-100 * {
+        .bg-white:not(.text-white), 
+        .bg-slate-50:not(.text-white), 
+        .bg-slate-100:not(.text-white), 
+        .bg-gray-50:not(.text-white), 
+        .bg-gray-100:not(.text-white) {
             color: #0F172A !important;
         }
         
         /* Dark backgrounds - white text is OK */
-        .bg-slate-800, .bg-slate-900, .bg-dark, .bg-primary, .bg-secondary,
-        .bg-slate-800 *, .bg-slate-900 *, .bg-dark *, .bg-primary *, .bg-secondary * {
+        .bg-slate-800, .bg-slate-800 *,
+        .bg-slate-900, .bg-slate-900 *,
+        .bg-dark, .bg-dark *,
+        .bg-primary, .bg-primary *,
+        .bg-secondary, .bg-secondary *,
+        [class*="bg-gradient"], [class*="bg-gradient"] * {
             color: white !important;
         }
         
-        /* Text color utilities - override Tailwind for better contrast */
-        .text-slate-400 { color: #64748b !important; } /* Darker than default */
-        .text-slate-500 { color: #475569 !important; } /* Much darker */
-        .text-slate-600 { color: #334155 !important; } /* Very dark */
-        .text-slate-700 { color: #1e293b !important; } /* Almost black */
-        .text-slate-800 { color: #0f172a !important; } /* Black */
+        /* Buttons with primary/colored backgrounds get white text */
+        button.bg-primary, button.bg-primary *,
+        button.bg-blue-600, button.bg-blue-600 *,
+        button.bg-blue-700, button.bg-blue-700 *,
+        button[class*="bg-gradient"], button[class*="bg-gradient"] * {
+            color: white !important;
+        }
         
-        /* Exceptions: Allow white text only on dark/colored backgrounds */
-        .text-white { color: white !important; }
+        /* White background buttons get dark text */
+        button.bg-white, button.bg-white *,
+        button.bg-slate-100, button.bg-slate-100 * {
+            color: #0F172A !important;
+        }
+        
+        /* Text color utilities - darker for better contrast */
+        .text-slate-300 { color: #cbd5e1 !important; } /* Keep for dark backgrounds */
+        .text-slate-400 { color: #64748b !important; }
+        .text-slate-500 { color: #475569 !important; }
+        .text-slate-600 { color: #334155 !important; }
+        .text-slate-700 { color: #1e293b !important; }
+        .text-slate-800 { color: #0f172a !important; }
+        
+        /* Explicit white text class */
+        .text-white, .text-white * { 
+            color: white !important; 
+        }
         
         .hero-gradient { background: linear-gradient(135deg, #0F172A 0%, #1E40AF 100%); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -163,8 +182,8 @@
             <div class="flex justify-between items-center h-16">
                 <!-- Logo -->
                 <div class="flex items-center cursor-pointer" onclick="router('home')">
-                    <img src="assets/logo.png?v=2" alt="LinkUp Logo" class="h-10 w-10 mr-2 rounded-lg object-contain">
-                    <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">LinkUp</span>
+                    <img src="assets/logo.png?v=2" alt="LinkUp Logo" class="h-10 w-10 mr-2 rounded-lg object-contain" style="height: 40px; width: 40px; max-height: 40px; max-width: 40px;">
+                    <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary" style="font-size: 1.5rem;">LinkUp</span>
                 </div>
 
                 <!-- Search (Desktop) -->
@@ -203,8 +222,8 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
                 <div class="col-span-1 md:col-span-1">
                     <div class="flex items-center mb-4 cursor-pointer" onclick="router('home')">
-                        <img src="assets/logo.png?v=2" alt="LinkUp Logo" class="h-8 w-8 mr-2 rounded-lg object-contain">
-                        <span class="text-2xl font-bold">LinkUp</span>
+                        <img src="assets/logo.png?v=2" alt="LinkUp Logo" class="h-8 w-8 mr-2 rounded-lg object-contain" style="height: 32px; width: 32px; max-height: 32px; max-width: 32px;">
+                        <span class="text-2xl font-bold" style="font-size: 1.5rem;">LinkUp</span>
                     </div>
                     <p class="text-slate-400 text-sm leading-relaxed">
                         人と体験をつなぐ、<br>日本最大級のイベントプラットフォーム。<br>

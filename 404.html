@@ -29,13 +29,16 @@
     <!-- Performance: Inline critical CSS to prevent FOUC -->
     <style>
         /* Critical styles for initial render */
-        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
         #app { min-height: 100vh; }
         .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s ease-in-out infinite; }
         @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         /* Hide content until Tailwind loads */
         .tw-loading { opacity: 0; transition: opacity 0.3s; }
         .tw-loaded { opacity: 1; }
+        /* Accessibility: Ensure readable text colors */
+        .bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50 { color: #1e293b !important; }
+        .bg-white *, .bg-slate-50 *, .bg-slate-100 *, .bg-gray-50 * { color: inherit; }
     </style>
     
     <!-- Performance: Critical resource hints -->
@@ -96,7 +99,38 @@
         }
     </script>
     <style>
-        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #F8FAFC; color: #1E293B; }
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+        
+        /* Accessibility: WCAG AAA Compliant Colors - High Contrast Mode */
+        * { color: #0F172A; } /* Default: Very dark text */
+        
+        /* Light backgrounds - MUST use dark text */
+        .bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100,
+        [class*="bg-white"], [class*="bg-slate-50"], [class*="bg-slate-100"] {
+            color: #0F172A !important;
+        }
+        
+        /* Ensure all children inherit dark text on light backgrounds */
+        .bg-white *, .bg-slate-50 *, .bg-slate-100 *, .bg-gray-50 *, .bg-gray-100 * {
+            color: #0F172A !important;
+        }
+        
+        /* Dark backgrounds - white text is OK */
+        .bg-slate-800, .bg-slate-900, .bg-dark, .bg-primary, .bg-secondary,
+        .bg-slate-800 *, .bg-slate-900 *, .bg-dark *, .bg-primary *, .bg-secondary * {
+            color: white !important;
+        }
+        
+        /* Text color utilities - override Tailwind for better contrast */
+        .text-slate-400 { color: #64748b !important; } /* Darker than default */
+        .text-slate-500 { color: #475569 !important; } /* Much darker */
+        .text-slate-600 { color: #334155 !important; } /* Very dark */
+        .text-slate-700 { color: #1e293b !important; } /* Almost black */
+        .text-slate-800 { color: #0f172a !important; } /* Black */
+        
+        /* Exceptions: Allow white text only on dark/colored backgrounds */
+        .text-white { color: white !important; }
+        
         .hero-gradient { background: linear-gradient(135deg, #0F172A 0%, #1E40AF 100%); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

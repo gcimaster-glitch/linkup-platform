@@ -151,26 +151,26 @@
                     <ul class="space-y-2 text-slate-300 text-sm">
                         <li><a href="#" onclick="event.preventDefault(); router('home')" class="hover:text-blue-300 transition">イベントを探す</a></li>
                         <li><a href="#" onclick="event.preventDefault(); openCreateModal()" class="hover:text-blue-300 transition">イベントを作成</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'community')" class="hover:text-blue-300 transition">コミュニティ機能</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'guide')" class="hover:text-blue-300 transition">LinkUp Premium</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'community'})" class="hover:text-blue-300 transition">コミュニティ機能</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'guide'})" class="hover:text-blue-300 transition">LinkUp Premium</a></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="text-lg font-bold mb-4 text-blue-400">サポート・企業</h3>
                     <ul class="space-y-2 text-slate-300 text-sm">
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'help')" class="hover:text-blue-300 transition">ヘルプセンター</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'about')" class="hover:text-blue-300 transition">運営会社</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'terms')" class="hover:text-blue-300 transition">利用規約</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'privacy')" class="hover:text-blue-300 transition">プライバシーポリシー</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'help'})" class="hover:text-blue-300 transition">ヘルプセンター</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'about'})" class="hover:text-blue-300 transition">運営会社</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'terms'})" class="hover:text-blue-300 transition">利用規約</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'privacy'})" class="hover:text-blue-300 transition">プライバシーポリシー</a></li>
                     </ul>
                 </div>
                 <div>
                     <h3 class="text-lg font-bold mb-4 text-blue-400">主催者向け</h3>
                     <ul class="space-y-2 text-slate-300 text-sm">
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'guide')" class="hover:text-blue-300 transition">主催者ガイド</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'guide')" class="hover:text-blue-300 transition">料金プラン</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'about')" class="hover:text-blue-300 transition">成功事例</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', 'about')" class="hover:text-blue-300 transition text-accent">法人お問い合わせ</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'guide'})" class="hover:text-blue-300 transition">主催者ガイド</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'guide'})" class="hover:text-blue-300 transition">料金プラン</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'about'})" class="hover:text-blue-300 transition">成功事例</a></li>
+                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'about'})" class="hover:text-blue-300 transition text-accent">法人お問い合わせ</a></li>
                     </ul>
                 </div>
             </div>
@@ -189,8 +189,8 @@
                 </div>
 
                 <div class="flex space-x-6 mt-4 md:mt-0 text-xs text-slate-500">
-                    <span class="cursor-pointer hover:text-white transition" onclick="router('static', 'tokusho')">特定商取引法に基づく表記</span>
-                    <span class="cursor-pointer hover:text-white transition" onclick="router('static', 'tokusho')">資金決済法に基づく表示</span>
+                    <span class="cursor-pointer hover:text-white transition" onclick="router('static', {page: 'tokusho'})">特定商取引法に基づく表記</span>
+                    <span class="cursor-pointer hover:text-white transition" onclick="router('static', {page: 'tokusho'})">資金決済法に基づく表示</span>
                 </div>
             </div>
         </div>

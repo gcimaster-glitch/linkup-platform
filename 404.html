@@ -14277,8 +14277,25 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
         }
 
         function openCreateModal() {
-             // Mock Create Event
-             showToast('この機能はデモ版では制限されています', 'info');
+            // 認証チェック
+            if (!store.user) {
+                openAuthModal();
+                showToast('イベント作成にはログインが必要です', 'info');
+                return;
+            }
+            
+            if (store.user.role !== 'organizer' && store.user.role !== 'admin') {
+                showToast('イベント作成には主催者アカウントが必要です', 'info');
+                setTimeout(() => {
+                    if (confirm('主催者として登録しますか？\n\n※デモ環境では右下のボタンから主催者としてログインできます')) {
+                        openAuthModal();
+                    }
+                }, 500);
+                return;
+            }
+            
+            // 主催者ダッシュボードのイベント作成画面へルーティング
+            router('organizer_event_edit', { id: 'new' });
         }
 
         // --- DEV TOOLS ---

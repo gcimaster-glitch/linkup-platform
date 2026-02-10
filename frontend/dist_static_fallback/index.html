@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Cache Control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <!-- Version: 2026-02-10-v3 | Build: API-Connected | Commit: b17a271 -->
+    
     <title>LinkUp - 日本最大級のイベント・コミュニティプラットフォーム</title>
     
     <!-- SEO & OGP -->
@@ -15657,6 +15665,11 @@ function showCheckinMenu(eventId) {
 
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
+            // Version info
+            console.log('%c🚀 LinkUp Platform v3.0', 'font-size: 16px; font-weight: bold; color: #2563EB;');
+            console.log('%cBuild: 2026-02-10 | API-Connected | Auth: Real Backend', 'color: #10B981;');
+            console.log('%cCommit: b17a271 | Demo Modals: Disabled', 'color: #6B7280;');
+            
             // Restore user session from token
             const token = localStorage.getItem('linkup_token');
             if (token && !store.user) {

@@ -9,7 +9,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <!-- Version: 2026-02-10-v3 | Build: API-Connected | Commit: b17a271 -->
+    <!-- Version: 2026-02-10-v3.1-CACHE-FIX | Build: Service-Worker-Disabled | Commit: cb6890e -->
     
     <title>LinkUp - 日本最大級のイベント・コミュニティプラットフォーム</title>
     
@@ -15666,9 +15666,24 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            console.log('%c🚀 LinkUp Platform v3.0', 'font-size: 16px; font-weight: bold; color: #2563EB;');
-            console.log('%cBuild: 2026-02-10 | API-Connected | Auth: Real Backend', 'color: #10B981;');
-            console.log('%cCommit: b17a271 | Demo Modals: Disabled', 'color: #6B7280;');
+            const VERSION = '3.1-CACHE-FIX';
+            const BUILD_DATE = '2026-02-10T06:55:00Z';
+            
+            console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
+            console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');
+            console.log('%cService Worker: DISABLED | Caches: CLEARED', 'color: #EF4444;');
+            
+            // Check if this is the correct version
+            const lastVersion = localStorage.getItem('linkup_version');
+            if (lastVersion !== VERSION) {
+                console.log('%c⚠️ Version changed from ' + lastVersion + ' to ' + VERSION, 'color: #F59E0B; font-weight: bold;');
+                localStorage.setItem('linkup_version', VERSION);
+                
+                // Show update notification
+                setTimeout(() => {
+                    showToast('システムが更新されました。最新版を読み込んでいます...', 'info');
+                }, 1000);
+            }
             
             // Restore user session from token
             const token = localStorage.getItem('linkup_token');
@@ -16032,31 +16047,31 @@ function showCheckinMenu(eventId) {
 
     </script>
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker - DISABLED for cache issues -->
     <script>
-        // Register Service Worker for PWA functionality
+        // Unregister ALL existing service workers to clear cache
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then((registration) => {
-                        console.log('✅ Service Worker registered:', registration.scope);
-                        
-                        // Check for updates
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    console.log('🔄 New version available. Refresh to update.');
-                                    // Optional: Show update notification to user
-                                }
-                            });
-                        });
-                    })
-                    .catch((error) => {
-                        console.log('❌ Service Worker registration failed:', error);
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister().then(function(success) {
+                        console.log('🗑️ Service Worker unregistered:', success);
                     });
+                }
             });
         }
+        
+        // Clear all caches
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name).then(function(success) {
+                        console.log('🗑️ Cache deleted:', name);
+                    });
+                }
+            });
+        }
+        
+        console.log('🔄 All service workers and caches cleared. Please refresh the page.');
     </script>
     
     <!-- Load QR libraries after main content -->

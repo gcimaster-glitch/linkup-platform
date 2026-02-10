@@ -1690,6 +1690,32 @@
             const event = store.events.find(e => e.event_id === id);
             if (!event) return renderHome(container); 
             
+            // Generate tickets if not present
+            if (!event.tickets || event.tickets.length === 0) {
+                event.tickets = [
+                    {
+                        id: `tkt-${event.event_id}-1`,
+                        name: '一般参加チケット',
+                        price: event.price || 1000,
+                        desc: '通常価格での参加チケットです',
+                        purchaseLimit: 5,
+                        isReserved: false
+                    }
+                ];
+                
+                // Add VIP ticket if price > 2000
+                if (event.price > 2000) {
+                    event.tickets.unshift({
+                        id: `tkt-${event.event_id}-vip`,
+                        name: 'VIPチケット',
+                        price: Math.floor(event.price * 1.5),
+                        desc: '優先入場・特典付き',
+                        purchaseLimit: 2,
+                        isReserved: false
+                    });
+                }
+            }
+            
             // Insert JSON-LD structured data for SEO
             const structuredData = generateEventStructuredData(event);
             insertStructuredData(structuredData);

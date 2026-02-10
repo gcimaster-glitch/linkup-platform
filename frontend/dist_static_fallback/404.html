@@ -107,90 +107,7 @@
         }
     </script>
     <style>
-        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #F8FAFC; color: #0F172A; }
-        
-        /* Accessibility: WCAG AAA Compliant Colors - High Contrast Mode */
-        /* Default text color for light backgrounds */
-        
-        /* Light backgrounds - MUST use dark text */
-        .bg-white:not(.text-white), 
-        .bg-slate-50:not(.text-white), 
-        .bg-slate-100:not(.text-white), 
-        .bg-gray-50:not(.text-white), 
-        .bg-gray-100:not(.text-white) {
-            color: #0F172A !important;
-        }
-        
-        /* Dark backgrounds - white text is OK */
-        .bg-slate-800, .bg-slate-800 *,
-        .bg-slate-900, .bg-slate-900 *,
-        .bg-dark, .bg-dark *,
-        .bg-primary, .bg-primary *,
-        .bg-secondary, .bg-secondary *,
-        [class*="bg-gradient"], [class*="bg-gradient"] * {
-            color: white !important;
-        }
-        
-        /* 🎨 CRITICAL: Allow gradient text & transparent text for special effects */
-        .text-transparent,
-        .bg-clip-text,
-        [class*="bg-clip-text"],
-        [class*="text-transparent"] {
-            -webkit-background-clip: text !important;
-            background-clip: text !important;
-            color: transparent !important;
-        }
-        
-        /* Buttons with primary/colored backgrounds get white text */
-        button.bg-primary, button.bg-primary *,
-        button.bg-blue-600, button.bg-blue-600 *,
-        button.bg-blue-700, button.bg-blue-700 *,
-        button[class*="bg-gradient"], button[class*="bg-gradient"] * {
-            color: white !important;
-        }
-        
-        /* White background buttons get dark text */
-        button.bg-white, button.bg-white *,
-        button.bg-slate-100, button.bg-slate-100 * {
-            color: #0F172A !important;
-        }
-        
-        /* Text color utilities - darker for better contrast */
-        .text-slate-300 { color: #cbd5e1 !important; } /* Keep for dark backgrounds */
-        .text-slate-400 { color: #64748b !important; }
-        .text-slate-500 { color: #475569 !important; }
-        .text-slate-600 { color: #334155 !important; }
-        .text-slate-700 { color: #1e293b !important; }
-        .text-slate-800 { color: #0f172a !important; }
-        
-        /* Explicit white text class */
-        .text-white, .text-white * { 
-            color: white !important; 
-        }
-        
-        /* 🎨 Preserve color utilities for UI elements */
-        .text-primary { color: #2563EB !important; }
-        .text-secondary { color: #7C3AED !important; }
-        .text-blue-500 { color: #3B82F6 !important; }
-        .text-blue-600 { color: #2563EB !important; }
-        .text-blue-700 { color: #1D4ED8 !important; }
-        .text-green-500 { color: #10B981 !important; }
-        .text-green-600 { color: #059669 !important; }
-        .text-red-500 { color: #EF4444 !important; }
-        .text-red-600 { color: #DC2626 !important; }
-        .text-yellow-500 { color: #F59E0B !important; }
-        .text-purple-500 { color: #A855F7 !important; }
-        .text-purple-600 { color: #9333EA !important; }
-        
-        /* 🎫 CRITICAL: Seat/Ticket selection - preserve blue highlight */
-        button.bg-primary,
-        .bg-primary,
-        button[class*="bg-primary"],
-        [class*="bg-primary"] {
-            background-color: #2563EB !important;
-            color: white !important;
-        }
-        
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #F8FAFC; color: #1E293B; }
         .hero-gradient { background: linear-gradient(135deg, #0F172A 0%, #1E40AF 100%); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -217,49 +134,33 @@
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased">
 
-    <!-- 🎨 Premium Header Design - Executive UX Team -->
-    <header class="fixed w-full z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200/60 transition-all duration-300" id="main-header" style="box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.08);">
+    <!-- Header -->
+    <header class="fixed w-full z-50 bg-white/90 backdrop-blur-md shadow-sm transition-all duration-300" id="main-header">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-20">
-                <!-- Logo - Enhanced with better spacing -->
-                <div class="flex items-center cursor-pointer group" onclick="router('home')">
-                    <div class="relative">
-                        <img src="assets/logo.png?v=2" alt="LinkUp Logo" class="h-12 w-12 mr-3 rounded-xl object-contain transition-transform group-hover:scale-105" style="height: 48px; width: 48px; max-height: 48px; max-width: 48px; filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.1));">
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary" style="font-size: 1.75rem; letter-spacing: -0.02em;">LinkUp</span>
-                        <span class="text-[10px] text-slate-500 font-medium tracking-wide -mt-1">イベントプラットフォーム</span>
-                    </div>
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center cursor-pointer" onclick="router('home')">
+                    <img src="assets/logo.png?v=2" alt="LinkUp Logo" class="h-10 w-10 mr-2 rounded-lg object-contain" style="height: 40px; width: 40px; max-height: 40px; max-width: 40px;">
+                    <span class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary" style="font-size: 1.5rem;">LinkUp</span>
                 </div>
 
-                <!-- Search (Desktop) - Premium Design -->
-                <div class="hidden md:flex flex-1 max-w-2xl mx-12 relative">
-                    <div class="relative w-full group">
-                        <input type="text" id="searchInput" placeholder="🔍 イベントを検索（例: 音楽ライブ、ビジネスセミナー）" 
-                               oninput="renderEventListOnly(this.value)"
-                               class="w-full pl-12 pr-4 py-3.5 bg-slate-50/80 border-2 border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary focus:border-primary focus:bg-white transition-all text-sm font-medium text-slate-700 placeholder:text-slate-400"
-                               style="box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); transition: all 0.2s ease;">
-                        <span class="material-icons-outlined absolute left-4 top-3.5 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
-                    </div>
+                <!-- Search (Desktop) -->
+                <div class="hidden md:flex flex-1 max-w-lg mx-8 relative">
+                    <input type="text" id="searchInput" placeholder="イベント、キーワード、会場を検索..." 
+                           oninput="renderEventListOnly(this.value)"
+                           class="w-full pl-10 pr-4 py-2 bg-slate-100 border-none rounded-full focus:ring-2 focus:ring-primary focus:bg-white transition-all shadow-inner text-sm">
+                    <span class="material-icons-outlined absolute left-3 top-2 text-slate-400">search</span>
                 </div>
 
-                <!-- Navigation - Premium Design -->
-                <nav class="flex items-center space-x-3">
-                    <!-- Organizer Button -->
-                    <button onclick="router('organizer')" class="hidden md:flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 rounded-xl hover:from-slate-100 hover:to-slate-200 transition-all duration-200 font-semibold text-sm border border-slate-200/50"
-                            style="box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);">
-                        <span class="material-icons-outlined text-base">dashboard</span>
-                        <span>主催者管理</span>
+                <!-- Navigation -->
+                <nav class="flex items-center space-x-2 md:space-x-4">
+                    <button onclick="router('organizer')" class="hidden md:flex items-center px-4 py-2 bg-slate-100 text-slate-700 rounded-full hover:bg-slate-200 transition shadow-sm text-sm font-medium">
+                         主催者管理
+                    </button>
+                    <button onclick="openCreateModal()" class="hidden md:flex items-center px-4 py-2 bg-primary text-white rounded-full hover:bg-blue-700 transition shadow-md hover:shadow-lg text-sm font-medium">
+                        <span class="material-icons-outlined text-sm mr-1">add</span> イベント作成
                     </button>
                     
-                    <!-- Create Event Button - Premium CTA -->
-                    <button onclick="openCreateModal()" class="hidden md:flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-bold text-sm"
-                            style="box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); transition: all 0.2s ease;">
-                        <span class="material-icons-outlined text-base">add_circle</span>
-                        <span>イベント作成</span>
-                    </button>
-                    
-                    <!-- Auth Section -->
                     <div id="nav-auth-section" class="flex items-center">
                         <!-- Injected by JS -->
                     </div>

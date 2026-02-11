@@ -30,6 +30,7 @@ bucket_name = "linkup-storage"
 ENVIRONMENT = "production"
 JWT_SECRET = "your-jwt-secret-change-in-production"
 FRONTEND_URL = "https://link-up.live"
+R2_PUBLIC_DOMAIN = "linkup-storage.r2.cloudflarestorage.com"
 APP_NAME = "LinkUp"
 APP_TAGLINE = "人と機会を繋げる"
 

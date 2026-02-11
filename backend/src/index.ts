@@ -15,6 +15,7 @@ export type Bindings = {
   DB: D1Database;
   AI: any;
   R2?: R2Bucket;
+  R2_PUBLIC_DOMAIN?: string;
   JWT_SECRET: string;
   RESEND_API_KEY: string;
   ENVIRONMENT: string;

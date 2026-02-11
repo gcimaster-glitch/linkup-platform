@@ -35,12 +35,15 @@ uploadRoutes.post('/image', async (c) => {
       });
 
       // R2の公開URLを返す
-      const publicUrl = `https://pub-YOUR_R2_PUBLIC_DOMAIN/${fileName}`;
+      // R2_PUBLIC_DOMAINが設定されている場合はそれを使用、なければデフォルト
+      const r2Domain = c.env.R2_PUBLIC_DOMAIN || 'linkup-storage.r2.cloudflarestorage.com';
+      const publicUrl = `https://${r2Domain}/${fileName}`;
       
       return c.json({
         success: true,
         url: publicUrl,
-        fileName: fileName
+        fileName: fileName,
+        message: 'Image uploaded successfully'
       });
     } else {
       // R2が利用できない場合はエラー

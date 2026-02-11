@@ -6319,6 +6319,28 @@
                 }
                 updateVenueFields();
             }
+            
+            // 🎯 日時フィールドの初期化
+            setTimeout(() => {
+                // 新規作成時：デフォルト値を設定
+                if (isNew) {
+                    const now = new Date();
+                    
+                    // 開始日時: 今日の14:00
+                    document.getElementById('event-start-year').value = now.getFullYear();
+                    document.getElementById('event-start-month').value = now.getMonth() + 1;
+                    document.getElementById('event-start-day').value = now.getDate();
+                    document.getElementById('event-start-hour').value = 14;
+                    document.getElementById('event-start-minute').value = 0;
+                    updateStartDateTime();
+                    
+                    // 終了日時は自動設定される (autoSetEndDateTime() が呼ばれる)
+                } else {
+                    // 編集時：既存の値から隠しフィールドを更新
+                    updateStartDateTime();
+                    updateEndDateTime();
+                }
+            }, 100);
         }
 
         function renderOrganizerParticipants() {
@@ -14672,40 +14694,82 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
 
         function addTicketType() {
             const ticketList = document.getElementById('ticket-list');
+            const ticketIndex = ticketList.children.length;
             const newTicket = document.createElement('div');
             newTicket.className = 'border border-slate-200 rounded-lg p-4';
             newTicket.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
-                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="VIP席">
+                <div class="space-y-4">
+                    <!-- 基本情報 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
+                            <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="VIP席">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
+                            <div class="relative">
+                                <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg pr-32" placeholder="5000">
+                                <div class="absolute right-3 top-2.5 flex items-center gap-2">
+                                    <label class="text-xs text-slate-500">
+                                        <input type="radio" name="tax-type-${ticketIndex}" value="tax-included" checked class="mr-1">税込
+                                    </label>
+                                    <label class="text-xs text-slate-500">
+                                        <input type="radio" name="tax-type-${ticketIndex}" value="tax-excluded" class="mr-1">税別
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
+                            <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="50">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
-                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="5000">
+                    
+                    <!-- 追加情報 -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                一人あたり購入制限
+                                <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                            </label>
+                            <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="5" placeholder="5" min="1" max="10">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">手数料（円）</label>
+                            <input type="number" class="ticket-fee w-full px-4 py-2 border border-slate-300 rounded-lg" value="0" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">受け渡し方法</label>
+                            <select class="ticket-delivery w-full px-4 py-2 border border-slate-300 rounded-lg">
+                                <option value="digital" selected>電子チケット（QR）</option>
+                                <option value="mail">郵送</option>
+                                <option value="pickup">当日受け取り</option>
+                            </select>
+                        </div>
                     </div>
+                    
+                    <!-- 締め切り日時 -->
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
-                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="50">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                            申込み締め切り日時
+                            <span class="text-xs text-slate-500 font-normal">- 設定しない場合はイベント開始まで</span>
+                        </label>
+                        <input type="datetime-local" class="ticket-deadline w-full px-4 py-2 border border-slate-300 rounded-lg">
                     </div>
+                    
+                    <!-- 備考欄 -->
                     <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2">一人あたり購入制限</label>
-                        <select class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg">
-                            <option value="1">1枚まで</option>
-                            <option value="2">2枚まで</option>
-                            <option value="3">3枚まで</option>
-                            <option value="4" selected>4枚まで</option>
-                            <option value="5">5枚まで</option>
-                            <option value="6">6枚まで</option>
-                            <option value="7">7枚まで</option>
-                            <option value="8">8枚まで</option>
-                            <option value="9">9枚まで</option>
-                            <option value="10">10枚まで</option>
-                        </select>
+                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                            備考
+                            <span class="text-xs text-slate-500 font-normal">- キャンセルポリシーなど</span>
+                        </label>
+                        <textarea class="ticket-notes w-full px-4 py-2 border border-slate-300 rounded-lg" rows="3" placeholder="例: キャンセルはイベント3日前まで可能です。"></textarea>
                     </div>
+                    
                     <div class="flex items-end">
                         <button onclick="this.closest('.border').remove()" class="text-red-500 hover:text-red-700">
                             <span class="material-icons-outlined">delete</span>
+                            削除
                         </button>
                     </div>
                 </div>
@@ -14995,84 +15059,161 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
 
         function saveEvent(eventId) {
             const isNew = eventId === 'new';
+            console.log('💾 saveEvent called:', { eventId, isNew });
             
-            // フォームデータ取得
-            const title = document.getElementById('event-title').value;
-            const category = document.getElementById('event-category').value;
-            const startDatetime = document.getElementById('event-start').value;
-            const endDatetime = document.getElementById('event-end').value;
-            
-            // エディタコンテンツ取得（現在のモードから）
-            let description;
-            if (currentEditorMode === 'wysiwyg') {
-                description = document.getElementById('event-description-wysiwyg').innerHTML;
-            } else {
-                description = document.getElementById('event-description-ai').value;
-            }
-            
-            const coverImage = document.getElementById('event-cover-image').value;
-            
-            // サブ画像取得（空でないもののみ）
-            const sub_images = [];
-            for (let i = 1; i <= 3; i++) {
-                const subImageUrl = document.getElementById(`event-sub-image-${i}`).value;
-                if (subImageUrl) {
-                    sub_images.push(subImageUrl);
+            try {
+                // フォームデータ取得
+                const title = document.getElementById('event-title')?.value;
+                const category = document.getElementById('event-category')?.value;
+                const startDatetime = document.getElementById('event-start')?.value;
+                const endDatetime = document.getElementById('event-end')?.value;
+                
+                console.log('📝 Form values:', { title, category, startDatetime, endDatetime });
+                
+                // バリデーション
+                if (!title || !startDatetime || !endDatetime) {
+                    console.error('❌ Validation failed:', { title, startDatetime, endDatetime });
+                    showToast('必須項目を入力してください（タイトル、開始日時、終了日時）', 'error');
+                    return;
                 }
-            }
-            
-            // 動画URL取得
-            const video_url = document.getElementById('event-video-url').value;
-            
-            const venueType = document.getElementById('venue-type').value;
-            const userRestriction = document.querySelector('input[name="user-restriction"]:checked').value;
-            
-            // バリデーション
-            if (!title || !startDatetime || !endDatetime) {
-                showToast('必須項目を入力してください', 'error');
-                return;
-            }
-            
-            // 会場情報取得
-            let venueData = {};
-            if (venueType === 'custom') {
-                venueData.venue_name = document.getElementById('venue-name-custom').value;
-                venueData.venue_address = document.getElementById('venue-address-custom').value;
-            } else if (venueType === 'registered') {
-                const venueId = document.getElementById('venue-select').value;
-                const venue = store.venues.find(v => v.id === venueId);
-                if (venue) {
-                    venueData.venue_id = venue.id;
-                    venueData.venue_name = venue.name;
-                    venueData.venue_address = venue.address;
-                    // 座席データを紐付け
-                    if (venue.seats && venue.seats.length > 0) {
-                        venueData.seats = venue.seats.map(seat => ({
-                            ...seat,
-                            event_status: 'available' // イベント固有のステータス
-                        }));
+                
+                // エディタコンテンツ取得（現在のモードから）
+                let description;
+                if (currentEditorMode === 'wysiwyg') {
+                    description = document.getElementById('event-description-wysiwyg')?.innerHTML || '';
+                } else {
+                    description = document.getElementById('event-description-ai')?.value || '';
+                }
+                
+                const coverImage = document.getElementById('event-cover-image')?.value;
+                
+                // サブ画像取得（空でないもののみ）
+                const sub_images = [];
+                for (let i = 1; i <= 3; i++) {
+                    const subImageUrl = document.getElementById(`event-sub-image-${i}`)?.value;
+                    if (subImageUrl) {
+                        sub_images.push(subImageUrl);
                     }
                 }
-            } else if (venueType === 'online') {
-                venueData.venue_name = 'オンライン';
-                venueData.venue_address = 'Zoom Link';
-                venueData.zoom_url = document.getElementById('venue-zoom-url').value;
-            }
-            
-            // チケット情報取得
-            const ticketElements = document.querySelectorAll('#ticket-list > div');
-            const tickets = Array.from(ticketElements).map((el, idx) => {
-                const purchaseLimit = parseInt(el.querySelector('.ticket-limit').value) || 5;
-                const taxType = el.querySelector(`input[name="tax-type-${idx}"]:checked`)?.value || 'tax-included';
-                const serviceFee = parseInt(el.querySelector('.ticket-fee')?.value) || 0;
-                const deliveryMethod = el.querySelector('.ticket-delivery')?.value || 'digital';
-                const deadline = el.querySelector('.ticket-deadline')?.value || null;
-                const notes = el.querySelector('.ticket-notes')?.value || '';
                 
-                return {
-                    id: `ticket-${Date.now()}-${idx}`,
-                    name: el.querySelector('.ticket-name').value,
-                    price: parseInt(el.querySelector('.ticket-price').value) || 0,
+                // 動画URL取得
+                const video_url = document.getElementById('event-video-url')?.value;
+                
+                const venueType = document.getElementById('venue-type')?.value;
+                const userRestriction = document.querySelector('input[name="user-restriction"]:checked')?.value || 'free';
+                
+                // 会場情報取得
+                let venueData = {};
+                if (venueType === 'custom') {
+                    venueData.venue_name = document.getElementById('venue-name-custom')?.value || '会場名未定';
+                    venueData.venue_address = document.getElementById('venue-address-custom')?.value || '';
+                } else if (venueType === 'registered') {
+                    const venueId = document.getElementById('venue-select')?.value;
+                    const venue = store.venues.find(v => v.id === venueId);
+                    if (venue) {
+                        venueData.venue_id = venue.id;
+                        venueData.venue_name = venue.name;
+                        venueData.venue_address = venue.address;
+                        // 座席データを紐付け
+                        if (venue.seats && venue.seats.length > 0) {
+                            venueData.seats = venue.seats.map(seat => ({
+                                ...seat,
+                                event_status: 'available' // イベント固有のステータス
+                            }));
+                        }
+                    }
+                } else if (venueType === 'online') {
+                    venueData.venue_name = 'オンライン';
+                    venueData.venue_address = 'Zoom Link';
+                    venueData.zoom_url = document.getElementById('venue-zoom-url')?.value || '';
+                }
+                
+                // チケット情報取得
+                const ticketElements = document.querySelectorAll('#ticket-list > div');
+                console.log('🎫 Found ticket elements:', ticketElements.length);
+                
+                if (ticketElements.length === 0) {
+                    console.warn('⚠️ No tickets found!');
+                    showToast('チケットを1つ以上追加してください', 'warning');
+                    return;
+                }
+                
+                const tickets = Array.from(ticketElements).map((el, idx) => {
+                    console.log(`🎫 Processing ticket ${idx}:`, el);
+                    
+                    const purchaseLimit = parseInt(el.querySelector('.ticket-limit')?.value) || 5;
+                    const taxType = el.querySelector(`input[name="tax-type-${idx}"]:checked`)?.value || 'tax-included';
+                    const serviceFee = parseInt(el.querySelector('.ticket-fee')?.value) || 0;
+                    const deliveryMethod = el.querySelector('.ticket-delivery')?.value || 'digital';
+                    const deadline = el.querySelector('.ticket-deadline')?.value || null;
+                    const notes = el.querySelector('.ticket-notes')?.value || '';
+                    
+                    const ticket = {
+                        id: `ticket-${Date.now()}-${idx}`,
+                        name: el.querySelector('.ticket-name')?.value || 'チケット',
+                        price: parseInt(el.querySelector('.ticket-price')?.value) || 0,
+                        taxType: taxType,
+                        serviceFee: serviceFee,
+                        capacity: parseInt(el.querySelector('.ticket-capacity')?.value) || 100,
+                        available: parseInt(el.querySelector('.ticket-capacity')?.value) || 100,
+                        purchaseLimit: Math.max(1, Math.min(10, purchaseLimit)), // 1-10の範囲に制限
+                        deliveryMethod: deliveryMethod,
+                        deadline: deadline,
+                        notes: notes
+                    };
+                    
+                    console.log(`✅ Ticket ${idx} data:`, ticket);
+                    return ticket;
+                });
+                
+                console.log('Tickets data:', tickets);
+                
+                // イベントオブジェクト作成
+                const eventData = {
+                    event_id: isNew ? `evt-${Date.now()}` : eventId,
+                    title,
+                    category,
+                    start_datetime: new Date(startDatetime).toISOString(),
+                    end_datetime: new Date(endDatetime).toISOString(),
+                    description,
+                    cover_image_url: coverImage || `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80`,
+                    sub_images: sub_images.length > 0 ? sub_images : undefined, // 空の場合はundefinedで保存しない
+                    video_url: video_url || undefined, // 空の場合はundefinedで保存しない
+                    ...venueData,
+                    tickets,
+                    organizer_name: store.organizerProfile?.name || store.user?.name || 'Organizer',
+                    organizer_rating: 4.8,
+                    user_restriction: userRestriction,
+                    status: 'draft',
+                    approval_status: 'draft',
+                    created_at: isNew ? new Date().toISOString() : (store.events.find(e => e.event_id === eventId)?.created_at || new Date().toISOString()),
+                    updated_at: new Date().toISOString()
+                };
+                
+                console.log('💾 Event data to save:', eventData);
+                
+                // 保存
+                if (isNew) {
+                    console.log('➕ Adding new event...');
+                    store.addEvent(eventData);
+                } else {
+                    console.log('📝 Updating existing event...');
+                    store.updateEvent(eventData);
+                }
+                
+                console.log('✅ Save successful!');
+                showToast('✅ イベントを保存しました', 'success');
+                
+                setTimeout(() => {
+                    console.log('🔄 Routing to organizer dashboard...');
+                    router('organizer');
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('❌ 保存に失敗しました: ' + error.message, 'error');
+            }
+        }
                     taxType: taxType,
                     serviceFee: serviceFee,
                     capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,

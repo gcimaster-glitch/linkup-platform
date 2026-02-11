@@ -774,6 +774,13 @@
 
         store.init();
 
+        // Check for email verification on page load
+        const urlParams = new URLSearchParams(window.location.search);
+        const verificationToken = urlParams.get('token');
+        if (window.location.pathname === '/verify-email' && verificationToken) {
+            router('verify_email', { token: verificationToken }, false);
+        }
+
         // --- ROUTER & VIEW RENDERERS ---
         // --- SEO-FRIENDLY ROUTING SYSTEM ---
         function router(view, params = {}, pushState = true) {
@@ -826,6 +833,10 @@
                         url = `/category/${params.category}`;
                         title = `${params.category} イベント一覧 | LinkUp`;
                         break;
+                    case 'verify_email':
+                        url = `/verify-email?token=${params.token || ''}`;
+                        title = 'メール確認 | LinkUp';
+                        break;
                 }
                 
                 history.pushState({ view, params }, title, url);
@@ -848,6 +859,7 @@
             else if (view === 'admin') renderAdmin(app);
             else if (view === 'static') renderStaticPage(app, params.page);
             else if (view === 'category') renderCategoryPage(app, params.category);
+            else if (view === 'verify_email') renderEmailVerification(app, params.token);
             
             updateNav();
         }
@@ -921,6 +933,83 @@
         }
 
         // --- STATIC PAGE RENDERER ---
+        
+        // メール確認ページ
+        async function renderEmailVerification(container, token) {
+            container.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 px-4">
+                    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+                        <div id="verification-content">
+                            <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            <p class="text-slate-600">メールアドレスを確認中...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (!token) {
+                document.getElementById('verification-content').innerHTML = `
+                    <span class="material-icons text-red-500 text-6xl mb-4">error</span>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">確認リンクが無効です</h2>
+                    <p class="text-slate-600 mb-6">確認トークンが見つかりません。</p>
+                    <button onclick="router('home')" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+                        ホームに戻る
+                    </button>
+                `;
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/verify-email?token=${token}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Save token if provided
+                    if (data.token) {
+                        localStorage.setItem('linkup_token', data.token);
+                        store.user = data.user;
+                    }
+
+                    document.getElementById('verification-content').innerHTML = `
+                        <span class="material-icons text-green-500 text-6xl mb-4">check_circle</span>
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">メール確認完了！</h2>
+                        <p class="text-slate-600 mb-6">${data.message || 'メールアドレスが確認されました。'}</p>
+                        <button onclick="router('home')" class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-lg hover:opacity-90 transition font-semibold">
+                            イベントを探す
+                        </button>
+                    `;
+
+                    // Auto redirect after 3 seconds
+                    setTimeout(() => {
+                        if (store.user) {
+                            router('dashboard');
+                        } else {
+                            router('home');
+                        }
+                    }, 3000);
+                } else {
+                    document.getElementById('verification-content').innerHTML = `
+                        <span class="material-icons text-red-500 text-6xl mb-4">error</span>
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">確認に失敗しました</h2>
+                        <p class="text-slate-600 mb-6">${data.message || '確認リンクが無効または期限切れです。'}</p>
+                        <button onclick="router('home')" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+                            ホームに戻る
+                        </button>
+                    `;
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                document.getElementById('verification-content').innerHTML = `
+                    <span class="material-icons text-red-500 text-6xl mb-4">error</span>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">エラーが発生しました</h2>
+                    <p class="text-slate-600 mb-6">確認処理中にエラーが発生しました。</p>
+                    <button onclick="router('home')" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+                        ホームに戻る
+                    </button>
+                `;
+            }
+        }
+        
         function renderStaticPage(container, pageId) {
             let content = '';
             let title = '';

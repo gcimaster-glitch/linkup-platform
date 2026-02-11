@@ -19,7 +19,7 @@ export class ResendService {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'LinkUp <noreply@linkup.example.com>',
+          from: 'LinkUp <noreply@link-up.live>',
           to,
           subject,
           html

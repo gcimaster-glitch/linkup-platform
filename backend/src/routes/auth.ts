@@ -48,15 +48,10 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
 
     if (db) {
-        // Note: email_verified column needs migration (see database/migration_add_email_verification.sql)
-        // For now, we'll insert without email_verified field and update schema later
+        // Insert user with email_verified = 0 (migration required)
         await db.prepare(
-            'INSERT INTO users (user_id, email, password_hash, display_name, role, avatar_url, kyc_status) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        ).bind(userId, email, passwordHash, name, role, avatarUrl, 'unverified').run();
-        
-        // TODO: Store verification token after migration
-        // await db.prepare('UPDATE users SET email_verification_token = ?, email_verification_expires = ? WHERE user_id = ?')
-        //     .bind(verificationToken, verificationExpires, userId).run();
+            'INSERT INTO users (user_id, email, password_hash, display_name, role, avatar_url, kyc_status, email_verified, email_verification_token, email_verification_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).bind(userId, email, passwordHash, name, role, avatarUrl, 'unverified', 0, verificationToken, verificationExpires).run();
         
         if (role === 'organizer') {
             await db.prepare(
@@ -64,24 +59,44 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
             ).bind(userId, name).run();
         }
         
-        // Send verification email (mock for now)
-        // const resend = new ResendService(c.env.RESEND_API_KEY);
-        const verificationUrl = `${c.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+        // Send verification email
+        const resend = new ResendService(c.env.RESEND_API_KEY);
+        const verificationUrl = `${c.env.FRONTEND_URL || 'https://link-up.live'}/verify-email?token=${verificationToken}`;
         
-        // TODO: Uncomment when Resend API key is configured
-        // await resend.sendEmail(
-        //     email,
-        //     'LinkUp - メールアドレスの確認',
-        //     `
-        //     <h1>LinkUpへようこそ！</h1>
-        //     <p>アカウント登録ありがとうございます。</p>
-        //     <p>以下のリンクをクリックして、メールアドレスを確認してください：</p>
-        //     <a href="${verificationUrl}">メールアドレスを確認する</a>
-        //     <p>このリンクは24時間有効です。</p>
-        //     `
-        // );
+        const emailResult = await resend.sendEmail(
+            email,
+            'LinkUp - メールアドレスの確認',
+            `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                    h1 { color: #2563EB; font-size: 28px; margin-bottom: 20px; }
+                    p { color: #475569; font-size: 16px; line-height: 1.6; margin: 15px 0; }
+                    .button { display: inline-block; background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+                    .footer { color: #94a3b8; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🎉 LinkUpへようこそ！</h1>
+                    <p>アカウント登録ありがとうございます。</p>
+                    <p>以下のボタンをクリックして、メールアドレスを確認してください：</p>
+                    <a href="${verificationUrl}" class="button">メールアドレスを確認する</a>
+                    <p style="color: #64748b; font-size: 14px;">このリンクは24時間有効です。</p>
+                    <div class="footer">
+                        <p>このメールに心当たりがない場合は、このメールを無視してください。</p>
+                        <p>© 2026 LinkUp. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            `
+        );
         
-        console.log(`[Email Verification] Token: ${verificationToken}, URL: ${verificationUrl}`);
+        console.log(`[Email Verification] Token: ${verificationToken}, URL: ${verificationUrl}, Result:`, emailResult);
     } else {
         console.warn('DB binding not found, skipping persistence');
     }
@@ -200,28 +215,49 @@ app.get('/verify-email', async (c) => {
             return c.json({ error: 'Database not available' }, 500);
         }
         
-        // TODO: After migration, query with email_verification_token
-        // const user: any = await db.prepare(
-        //     'SELECT * FROM users WHERE email_verification_token = ? AND email_verification_expires > datetime("now")'
-        // ).bind(token).first();
+        // Query user with verification token
+        const user: any = await db.prepare(
+            'SELECT * FROM users WHERE email_verification_token = ? AND email_verification_expires > datetime("now")'
+        ).bind(token).first();
         
-        // For now, mock success
-        console.log(`[Email Verification] Token received: ${token}`);
+        if (!user) {
+            return c.json({ 
+                error: 'Invalid or expired verification token',
+                message: '確認リンクが無効または期限切れです。再度登録してください。'
+            }, 400);
+        }
         
-        // TODO: Update user after migration
-        // if (user) {
-        //     await db.prepare(
-        //         'UPDATE users SET email_verified = 1, email_verification_token = NULL, email_verification_expires = NULL WHERE user_id = ?'
-        //     ).bind(user.user_id).run();
-        //     
-        //     return c.json({ success: true, message: 'Email verified successfully' });
-        // }
+        // Update user: verify email and clear token
+        await db.prepare(
+            'UPDATE users SET email_verified = 1, email_verification_token = NULL, email_verification_expires = NULL WHERE user_id = ?'
+        ).bind(user.user_id).run();
         
-        return c.json({ success: true, message: 'Email verification is in preparation. All users are currently auto-verified.' });
+        // Generate JWT token for auto-login
+        const token_jwt = await sign({
+            userId: user.user_id,
+            email: user.email,
+            role: user.role,
+            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // 7 days
+        }, c.env.JWT_SECRET || 'development-secret-key');
+        
+        return c.json({ 
+            success: true, 
+            message: 'メールアドレスが確認されました。ログインできます。',
+            token: token_jwt,
+            user: {
+                id: user.user_id,
+                name: user.display_name,
+                email: user.email,
+                role: user.role,
+                icon: user.avatar_url,
+                kycStatus: user.kyc_status,
+                emailVerified: true
+            }
+        });
         
     } catch (error) {
         console.error('Verification error:', error);
-        return c.json({ error: 'Verification failed' }, 500);
+        return c.json({ error: 'Verification failed', message: '確認に失敗しました。' }, 500);
     }
 });
 

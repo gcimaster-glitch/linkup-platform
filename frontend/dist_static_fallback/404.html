@@ -47,6 +47,18 @@
         /* Accessibility: Ensure readable text colors */
         .bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50 { color: #1e293b !important; }
         .bg-white *, .bg-slate-50 *, .bg-slate-100 *, .bg-gray-50 * { color: inherit; }
+        
+        /* 🎯 Radio Button Selection Indicator */
+        .radio-box {
+            transition: all 0.2s ease;
+        }
+        input[type="radio"]:checked + div .radio-box {
+            border-color: #2563EB !important;
+            background-color: #2563EB !important;
+        }
+        input[type="radio"]:checked + div .radio-box div {
+            background-color: white !important;
+        }
     </style>
     
     <!-- Performance: Critical resource hints -->
@@ -183,10 +195,10 @@
 
                 <!-- Navigation -->
                 <nav class="flex items-center space-x-3">
-                    <button onclick="router('organizer')" class="hidden md:flex items-center px-4 py-2 bg-white/20 text-white rounded-full hover:bg-white/30 transition backdrop-blur-sm text-sm font-medium border border-white/30">
+                    <button onclick="router('organizer')" class="hidden md:flex items-center px-4 py-2 bg-white/90 text-blue-600 rounded-full hover:bg-white transition backdrop-blur-sm text-sm font-bold border-2 border-white shadow-md hover:shadow-lg" id="organizer-btn" style="display: none;">
                          📈 主催者管理
                     </button>
-                    <button onclick="openCreateModal()" class="hidden md:flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition shadow-lg text-sm font-bold border-2 border-blue-400">
+                    <button onclick="openCreateModal()" class="hidden md:flex items-center px-5 py-2.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full hover:from-yellow-500 hover:to-orange-600 transition shadow-xl text-sm font-bold border-2 border-white/50 hover:scale-105" id="create-event-btn" style="display: none;">
                         <span class="material-icons-outlined text-sm mr-1">add_circle</span> イベント作成
                     </button>
                     
@@ -2353,6 +2365,18 @@
 
         function updateNav() {
             const nav = document.getElementById('nav-auth-section');
+            const organizerBtn = document.getElementById('organizer-btn');
+            const createEventBtn = document.getElementById('create-event-btn');
+            
+            // 主催者ボタンの表示/非表示を制御
+            if (store.user && (store.user.role === 'organizer' || store.user.role === 'admin')) {
+                organizerBtn.style.display = 'flex';
+                createEventBtn.style.display = 'flex';
+            } else {
+                organizerBtn.style.display = 'none';
+                createEventBtn.style.display = 'none';
+            }
+            
             if (store.user) {
                 nav.innerHTML = `
                     <div class="flex items-center gap-3 ml-4">

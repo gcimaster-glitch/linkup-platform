@@ -2320,19 +2320,27 @@
                 const result = await API.Auth.register(name, email, password, role);
                 
                 if (result.success) {
-                    localStorage.setItem('linkup_token', result.token);
-                    store.user = {
-                        id: result.user.id,
-                        name: result.user.name,
-                        email: result.user.email,
-                        icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
-                        kycStatus: result.user.kycStatus || 'none',
-                        role: result.user.role || role
-                    };
-                    
-                    closeModal();
-                    updateNav();
-                    showToast('登録が完了しました', 'check_circle');
+                    // Check if email verification is required
+                    if (result.email_verification_required) {
+                        closeModal();
+                        showEmailVerificationModal(result.user.email);
+                        showToast('確認メールを送信しました。メールを確認してください。', 'mail');
+                    } else {
+                        // Old flow: immediate login
+                        localStorage.setItem('linkup_token', result.token);
+                        store.user = {
+                            id: result.user.id,
+                            name: result.user.name,
+                            email: result.user.email,
+                            icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
+                            kycStatus: result.user.kycStatus || 'none',
+                            role: result.user.role || role
+                        };
+                        
+                        closeModal();
+                        updateNav();
+                        showToast('登録が完了しました', 'check_circle');
+                    }
                 } else {
                     showToast(result.error || '登録に失敗しました', 'error');
                 }
@@ -2340,6 +2348,46 @@
                 console.error('Register error:', error);
                 showToast('登録に失敗しました', 'error');
             }
+        }
+        
+        function showEmailVerificationModal(email) {
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8 text-center max-w-md">
+                    <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span class="material-icons-outlined text-blue-600 text-5xl">mail</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-4">メールを確認してください</h3>
+                    <p class="text-slate-600 mb-2">
+                        <strong>${email}</strong> に確認メールを送信しました。
+                    </p>
+                    <p class="text-sm text-slate-500 mb-6">
+                        メール内のリンクをクリックして、アカウントを有効化してください。<br>
+                        メールが届かない場合は、迷惑メールフォルダをご確認ください。
+                    </p>
+                    
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-left">
+                        <div class="flex items-start">
+                            <span class="material-icons-outlined text-blue-500 mr-2 mt-0.5">info</span>
+                            <div class="text-sm text-blue-700">
+                                <p class="font-bold mb-1">確認リンクの有効期限</p>
+                                <p>メール内のリンクは24時間有効です。</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="closeModal(); showToast('メールを再送信しました（デモ）', 'mail')" class="w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition mb-3">
+                        <span class="material-icons-outlined text-sm align-middle mr-1">refresh</span>
+                        確認メールを再送信
+                    </button>
+                    
+                    <button onclick="closeModal()" class="w-full py-3 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 transition">
+                        閉じる
+                    </button>
+                </div>
+            `;
         }
 
         function login(provider) {

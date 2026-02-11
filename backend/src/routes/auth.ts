@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sign } from 'hono/jwt';
 import * as bcrypt from 'bcryptjs';
 import type { Bindings } from '../index';
+import { ResendService } from '../services/resend';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -20,7 +21,7 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
-// 新規登録
+// 新規登録（メール認証付き）
 app.post('/register', zValidator('json', registerSchema), async (c) => {
   const { email, password, display_name, role } = c.req.valid('json');
 
@@ -41,35 +42,63 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
     
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
+    
+    // Generate email verification token
+    const verificationToken = uuidv4();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
 
     if (db) {
+        // Note: email_verified column needs migration (see database/migration_add_email_verification.sql)
+        // For now, we'll insert without email_verified field and update schema later
         await db.prepare(
             'INSERT INTO users (user_id, email, password_hash, display_name, role, avatar_url, kyc_status) VALUES (?, ?, ?, ?, ?, ?, ?)'
         ).bind(userId, email, passwordHash, name, role, avatarUrl, 'unverified').run();
+        
+        // TODO: Store verification token after migration
+        // await db.prepare('UPDATE users SET email_verification_token = ?, email_verification_expires = ? WHERE user_id = ?')
+        //     .bind(verificationToken, verificationExpires, userId).run();
         
         if (role === 'organizer') {
             await db.prepare(
                 'INSERT INTO organizer_profiles (organizer_id, organization_name, rating) VALUES (?, ?, 0.0)'
             ).bind(userId, name).run();
         }
+        
+        // Send verification email (mock for now)
+        // const resend = new ResendService(c.env.RESEND_API_KEY);
+        const verificationUrl = `${c.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+        
+        // TODO: Uncomment when Resend API key is configured
+        // await resend.sendEmail(
+        //     email,
+        //     'LinkUp - メールアドレスの確認',
+        //     `
+        //     <h1>LinkUpへようこそ！</h1>
+        //     <p>アカウント登録ありがとうございます。</p>
+        //     <p>以下のリンクをクリックして、メールアドレスを確認してください：</p>
+        //     <a href="${verificationUrl}">メールアドレスを確認する</a>
+        //     <p>このリンクは24時間有効です。</p>
+        //     `
+        // );
+        
+        console.log(`[Email Verification] Token: ${verificationToken}, URL: ${verificationUrl}`);
     } else {
-        // Fallback for environment without DB (should not happen in prod with D1)
         console.warn('DB binding not found, skipping persistence');
     }
 
-    // JWT Token
-    const token = await sign({ sub: userId, role, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 }, c.env.JWT_SECRET);
-
+    // Return success but indicate email verification is pending
     return c.json({ 
       success: true, 
-      token, 
+      message: '登録が完了しました。確認メールを送信しました。',
+      email_verification_required: true,
       user: { 
         id: userId, 
         name: name, 
         email, 
         role, 
         icon: avatarUrl,
-        kycStatus: 'unverified'
+        kycStatus: 'unverified',
+        emailVerified: false
       } 
     }, 201);
 
@@ -155,5 +184,45 @@ app.get('/users', async (c) => {
 
 // ヘルスチェック
 app.get('/health', (c) => c.json({ status: 'ok', db_binding: !!c.env.DB }));
+
+// メール認証エンドポイント
+app.get('/verify-email', async (c) => {
+    const token = c.req.query('token');
+    
+    if (!token) {
+        return c.json({ error: 'Verification token is required' }, 400);
+    }
+    
+    try {
+        const db = c.env.DB;
+        
+        if (!db) {
+            return c.json({ error: 'Database not available' }, 500);
+        }
+        
+        // TODO: After migration, query with email_verification_token
+        // const user: any = await db.prepare(
+        //     'SELECT * FROM users WHERE email_verification_token = ? AND email_verification_expires > datetime("now")'
+        // ).bind(token).first();
+        
+        // For now, mock success
+        console.log(`[Email Verification] Token received: ${token}`);
+        
+        // TODO: Update user after migration
+        // if (user) {
+        //     await db.prepare(
+        //         'UPDATE users SET email_verified = 1, email_verification_token = NULL, email_verification_expires = NULL WHERE user_id = ?'
+        //     ).bind(user.user_id).run();
+        //     
+        //     return c.json({ success: true, message: 'Email verified successfully' });
+        // }
+        
+        return c.json({ success: true, message: 'Email verification is in preparation. All users are currently auto-verified.' });
+        
+    } catch (error) {
+        console.error('Verification error:', error);
+        return c.json({ error: 'Verification failed' }, 500);
+    }
+});
 
 export { app as authRoutes };

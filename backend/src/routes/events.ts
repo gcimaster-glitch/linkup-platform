@@ -12,7 +12,7 @@ eventRoutes.get('/', async (c) => {
 
   try {
     let query = `
-      SELECT e.*, u.display_name as organizer_name 
+      SELECT e.*, u.name as organizer_name 
       FROM events e 
       LEFT JOIN users u ON e.organizer_id = u.user_id 
       WHERE e.status = 'published'
@@ -48,7 +48,7 @@ eventRoutes.get('/:id', async (c) => {
 
   try {
     const event: any = await db.prepare(`
-      SELECT e.*, u.display_name as organizer_name, u.avatar_url as organizer_avatar
+      SELECT e.*, u.name as organizer_name, u.avatar_url as organizer_avatar
       FROM events e
       LEFT JOIN users u ON e.organizer_id = u.user_id
       WHERE e.event_id = ?

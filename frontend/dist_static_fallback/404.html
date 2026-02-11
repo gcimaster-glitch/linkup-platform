@@ -302,7 +302,7 @@
     <link rel="apple-touch-icon" href="/assets/logo.png">
 
     <!-- Performance: Async loading of non-critical resources -->
-    <script src="https://cdn.tailwindcss.com" defer></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <!-- Leaflet CSS & JS for Real Maps - Load only when needed -->
     <link rel="preload" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -15518,52 +15518,6 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 console.error('Save error:', error);
                 showToast('❌ 保存に失敗しました: ' + error.message, 'error');
             }
-        }
-                    taxType: taxType,
-                    serviceFee: serviceFee,
-                    capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,
-                    available: parseInt(el.querySelector('.ticket-capacity').value) || 100,
-                    purchaseLimit: Math.max(1, Math.min(10, purchaseLimit)), // 1-10の範囲に制限
-                    deliveryMethod: deliveryMethod,
-                    deadline: deadline,
-                    notes: notes
-                };
-            });
-            
-            // イベントオブジェクト作成
-            const eventData = {
-                event_id: isNew ? `evt-${Date.now()}` : eventId,
-                title,
-                category,
-                start_datetime: new Date(startDatetime).toISOString(),
-                end_datetime: new Date(endDatetime).toISOString(),
-                description,
-                cover_image_url: coverImage || `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80`,
-                sub_images: sub_images.length > 0 ? sub_images : undefined, // 空の場合はundefinedで保存しない
-                video_url: video_url || undefined, // 空の場合はundefinedで保存しない
-                ...venueData,
-                tickets,
-                organizer_name: store.organizerProfile.name,
-                organizer_rating: 4.8,
-                user_restriction: userRestriction,
-                status: 'draft',
-                approval_status: 'draft',
-                created_at: isNew ? new Date().toISOString() : (store.events.find(e => e.event_id === eventId)?.created_at || new Date().toISOString()),
-                updated_at: new Date().toISOString()
-            };
-            
-            // 保存
-            if (isNew) {
-                store.addEvent(eventData);
-            } else {
-                store.updateEvent(eventData);
-            }
-            
-            showToast('イベントを保存しました', 'success');
-            
-            setTimeout(() => {
-                renderOrganizer(document.getElementById('app'), 'events');
-            }, 1000);
         }
 
         function submitForApproval(eventId) {

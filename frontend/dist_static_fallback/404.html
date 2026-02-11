@@ -3135,17 +3135,17 @@
                                 ${latestTickets.map(t => {
                                     const event = store.events.find(e => e.event_id === t.eventId) || {};
                                     return `
-                                    <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl shadow-2xl overflow-hidden text-white cursor-pointer hover:scale-105 transition-transform duration-300" onclick="showTicketDetail('${t.id}')">
+                                    <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl shadow-2xl overflow-hidden text-white hover:scale-105 transition-transform duration-300">
                                         <div class="p-6">
                                             <div class="flex items-start justify-between mb-4">
                                                 <div>
                                                     <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm">ADMIT ONE</span>
                                                 </div>
-                                                <button onclick="event.stopPropagation(); showTicketQR('${t.id}')" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition backdrop-blur-sm">
+                                                <button onclick="showTicketQR('${t.id}')" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition backdrop-blur-sm">
                                                     <span class="material-icons-outlined">qr_code_2</span>
                                                 </button>
                                             </div>
-                                            <h3 class="text-2xl font-bold mb-2 line-clamp-2">${t.title}</h3>
+                                            <h3 class="text-2xl font-bold mb-2 line-clamp-2 cursor-pointer hover:underline" onclick="router('detail', {id: '${t.eventId || event.event_id}'})">${t.title}</h3>
                                             <p class="text-sm opacity-90 mb-1">${t.ticketName}</p>
                                             <p class="text-sm opacity-80">枚数: ${t.count}枚</p>
                                             ${event.start_datetime ? `
@@ -3158,6 +3158,10 @@
                                                     <span class="material-icons-outlined text-base mr-2">location_on</span>
                                                     <span class="line-clamp-1">${event.venue_name || '会場未定'}</span>
                                                 </div>
+                                                <button onclick="showTicketDetail('${t.id}')" class="mt-3 w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition backdrop-blur-sm">
+                                                    <span class="material-icons-outlined text-sm align-middle mr-1">confirmation_number</span>
+                                                    チケット詳細
+                                                </button>
                                             </div>
                                             ` : ''}
                                         </div>
@@ -3234,10 +3238,10 @@
                                     <div class="flex items-center space-x-3 mb-3 pb-3 border-b border-slate-100 last:border-0">
                                         <span class="material-icons-outlined text-primary">confirmation_number</span>
                                         <div class="flex-1">
-                                            <p class="text-sm font-bold text-slate-800">${t.title}</p>
+                                            <p class="text-sm font-bold text-slate-800 cursor-pointer hover:text-primary transition" onclick="router('detail', {id: '${t.eventId}'})">${t.title}</p>
                                             <p class="text-xs text-slate-500">${new Date(t.purchaseDate).toLocaleDateString()}</p>
                                         </div>
-                                        <button onclick="showTicketDetail('${t.id}')" class="text-primary text-xs hover:underline">詳細</button>
+                                        <button onclick="showTicketDetail('${t.id}')" class="text-primary text-xs hover:underline shrink-0">詳細</button>
                                     </div>
                                 `).join('') : '<p class="text-slate-400 text-sm">チケットがありません</p>'}
                             </div>
@@ -3746,11 +3750,11 @@
                                 </div>
                                 <div class="p-6 flex-1">
                                     <div class="flex justify-between items-start mb-2">
-                                        <div>
-                                            <h3 class="font-bold text-lg text-slate-800">${t.title}</h3>
+                                        <div class="flex-1">
+                                            <h3 class="font-bold text-lg text-slate-800 cursor-pointer hover:text-primary transition" onclick="router('detail', {id: '${t.eventId}'})">${t.title}</h3>
                                             <p class="text-sm text-primary font-bold">${t.ticketName}</p>
                                         </div>
-                                        <button onclick="showTicketQR('${t.id}')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition flex items-center">
+                                        <button onclick="showTicketQR('${t.id}')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition flex items-center shrink-0">
                                             <span class="material-icons-outlined text-sm mr-1">qr_code_2</span>
                                             QRコード
                                         </button>

@@ -3607,6 +3607,16 @@
                     const latestTickets = myTickets.slice(0, 2);
                     
                     return `
+                        ${renderPageGuide(
+                            'ダッシュボードへようこそ！',
+                            'ここではあなたのチケット、イベント情報、統計情報を一覧で確認できます。',
+                            [
+                                'チケットカードをクリックすると詳細情報が表示されます',
+                                'QRコードボタンで入場用QRコードを表示できます',
+                                '開催まで残り日数がバッジで表示されます'
+                            ]
+                        )}
+                        
                         <!-- 🎫 Latest Tickets (Main Display) -->
                         ${latestTickets.length > 0 ? `
                         <div class="mb-8">
@@ -3617,9 +3627,19 @@
                                 </button>
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                ${latestTickets.map(t => {
+                                ${latestTickets.map((t, index) => {
                                     const event = store.events.find(e => e.event_id === t.eventId) || {};
                                     const coverImage = event.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200';
+                                    
+                                    // 開催まで何日か計算
+                                    const daysUntilEvent = event.start_datetime ? Math.ceil((new Date(event.start_datetime) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+                                    const eventStatus = daysUntilEvent !== null ? (
+                                        daysUntilEvent < 0 ? '開催終了' :
+                                        daysUntilEvent === 0 ? '本日開催！' :
+                                        daysUntilEvent === 1 ? '明日開催！' :
+                                        `開催まであと${daysUntilEvent}日`
+                                    ) : '';
+                                    
                                     return `
                                     <!-- Ticket Card with Event Visual Background -->
                                     <div class="relative rounded-2xl shadow-2xl overflow-hidden hover:scale-105 transition-all duration-300 group cursor-pointer" onclick="showTicketDetail('${t.id}')">
@@ -3629,6 +3649,27 @@
                                             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
                                         </div>
                                         
+                                        <!-- 🎫 整理番号バッジ（左上） -->
+                                        <div class="absolute top-4 left-4 z-10">
+                                            <div class="px-4 py-2 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-lg shadow-lg">
+                                                <p class="text-xs font-bold text-white tracking-wider">NO.${index + 1}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- 🗓️ 開催カウントダウンバッジ（右上） -->
+                                        ${eventStatus ? `
+                                        <div class="absolute top-4 right-4 z-10">
+                                            <div class="px-4 py-2 ${
+                                                daysUntilEvent <= 0 ? 'bg-slate-500' :
+                                                daysUntilEvent <= 3 ? 'bg-gradient-to-r from-red-500 to-pink-600 animate-pulse' :
+                                                daysUntilEvent <= 7 ? 'bg-gradient-to-r from-orange-500 to-yellow-500' :
+                                                'bg-gradient-to-r from-blue-500 to-purple-600'
+                                            } rounded-lg shadow-lg backdrop-blur-sm">
+                                                <p class="text-xs font-bold text-white tracking-wide">${eventStatus}</p>
+                                            </div>
+                                        </div>
+                                        ` : ''}
+                                        
                                         <!-- Ticket Shape Decoration -->
                                         <div class="absolute top-0 right-8 w-4 h-4 bg-slate-50 rounded-full -translate-y-2"></div>
                                         <div class="absolute bottom-0 right-8 w-4 h-4 bg-slate-50 rounded-full translate-y-2"></div>
@@ -3637,7 +3678,7 @@
                                         <div class="absolute right-12 top-0 bottom-0 border-l-2 border-dashed border-white/30"></div>
                                         
                                         <!-- Content -->
-                                        <div class="relative p-6 text-white">
+                                        <div class="relative p-6 text-white" style="padding-top: 80px;">
                                             <div class="flex items-start justify-between mb-4">
                                                 <div class="flex-1">
                                                     <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm inline-block mb-2">ADMIT ONE</span>
@@ -3775,6 +3816,15 @@
                     
                 case 'inbox':
                     return `
+                        ${renderPageGuide(
+                            '受信箱',
+                            '管理者やイベント主催者からの重要なお知らせを確認できます。',
+                            [
+                                'メッセージをクリックすると詳細が表示されます',
+                                '未読メッセージは青いバッジで表示されます',
+                                'イベントのリマインダーや重要な通知が届きます'
+                            ]
+                        )}
                         <div class="bg-white rounded-2xl shadow-card">
                             <div class="p-6 border-b border-slate-100">
                                 <div class="flex items-center justify-between">
@@ -3817,9 +3867,65 @@
                     
                 case 'profile':
                     return `
+                        ${renderPageGuide(
+                            'プロフィール設定',
+                            'あなたの個人情報を編集・管理できます。変更した内容は保存ボタンを押すまで反映されません。',
+                            [
+                                'プロフィール画像とカバー画像は20種類から選択、または独自画像をアップロード可能',
+                                'メールアドレスの変更には本人確認が必要です',
+                                '個人情報は暗号化されて保護されます'
+                            ]
+                        )}
                         <div class="bg-white rounded-2xl shadow-card p-6">
                             <h3 class="text-lg font-bold text-slate-800 mb-6">プロフィール編集</h3>
                             <form onsubmit="saveUserProfile(event)" class="space-y-6">
+                                <!-- 📸 プロフィール画像とカバー画像 -->
+                                <div class="bg-slate-50 rounded-xl p-6 space-y-4">
+                                    <h4 class="font-bold text-slate-800 mb-4">画像設定</h4>
+                                    
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <!-- プロフィール画像 -->
+                                        <div>
+                                            <label class="block text-sm font-bold text-slate-700 mb-3">プロフィール画像</label>
+                                            <div class="flex items-center gap-4">
+                                                <img src="${store.user.icon}" class="w-20 h-20 rounded-xl border-2 border-slate-200 object-cover" alt="プロフィール画像">
+                                                <div class="flex flex-col gap-2">
+                                                    <button type="button" onclick="openProfileIconModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm font-bold flex items-center gap-2">
+                                                        <span class="material-icons-outlined text-base">image</span>
+                                                        選択
+                                                    </button>
+                                                    <button type="button" onclick="uploadCustomProfileImage()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm font-bold flex items-center gap-2">
+                                                        <span class="material-icons-outlined text-base">upload</span>
+                                                        アップロード
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-slate-500 mt-2">推奨: 正方形、最小 200x200px</p>
+                                        </div>
+                                        
+                                        <!-- カバー画像 -->
+                                        <div>
+                                            <label class="block text-sm font-bold text-slate-700 mb-3">カバー画像</label>
+                                            <div class="relative">
+                                                <div class="w-full h-20 rounded-xl overflow-hidden border-2 border-slate-200 bg-gradient-to-r ${store.user.coverImage ? '' : 'from-blue-500 to-purple-600'}">
+                                                    ${store.user.coverImage ? `<img src="${store.user.coverImage}" class="w-full h-full object-cover" alt="カバー画像">` : ''}
+                                                </div>
+                                                <div class="flex gap-2 mt-2">
+                                                    <button type="button" onclick="openCoverImageModal()" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 text-sm font-bold flex items-center justify-center gap-2">
+                                                        <span class="material-icons-outlined text-base">image</span>
+                                                        選択
+                                                    </button>
+                                                    <button type="button" onclick="uploadCustomCoverImage()" class="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm font-bold flex items-center justify-center gap-2">
+                                                        <span class="material-icons-outlined text-base">upload</span>
+                                                        アップロード
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-slate-500 mt-2">推奨: 16:9、最小 1200x675px</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label class="block text-sm font-bold text-slate-700 mb-2">氏名</label>
@@ -3879,6 +3985,15 @@
                                     '演劇', '現代アート', '写真', '彫刻', 'デジタルアート', 'アニメーション', '映画'];
                     
                     return `
+                        ${renderPageGuide(
+                            '興味・関心',
+                            'あなたの興味・関心を設定すると、おすすめのイベントが表示されるようになります。',
+                            [
+                                'カテゴリは最大30個、タグは最大50個まで選択できます',
+                                '選択した内容はいつでも変更可能です',
+                                'より多くの興味を設定すると、より精度の高いおすすめが届きます'
+                            ]
+                        )}
                         <div class="space-y-6">
                             <!-- Categories -->
                             <div class="bg-white rounded-2xl shadow-card p-6">
@@ -4130,6 +4245,15 @@
                     
                 case 'support':
                     return `
+                        ${renderPageGuide(
+                            'サポート',
+                            'お困りのことやご質問がありましたら、お気軽にお問い合わせください。',
+                            [
+                                'チャットサポート: AIが即座に対応、平均応答時間1-2時間',
+                                'メールサポート: 詳しい内容を記入、添付ファイル対応、応答1-2営業日',
+                                'よくある質問: 一般的な問題はこちらで解決できます'
+                            ]
+                        )}
                         <div class="space-y-6">
                             <!-- Support Options -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -5637,14 +5761,94 @@
                                             </select>
                                         </div>
                                         
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label class="block text-sm font-bold text-slate-700 mb-2">開始日時 <span class="text-red-500">*</span></label>
-                                                <input type="datetime-local" id="event-start" value="${event ? new Date(event.start_datetime).toISOString().slice(0, 16) : ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
+                                        <!-- 🎯 改善版：日時入力UI -->
+                                        <div class="space-y-4">
+                                            <!-- 終日チェック -->
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="event-all-day" class="w-4 h-4 text-primary rounded" onchange="toggleAllDay()">
+                                                <label for="event-all-day" class="ml-2 text-sm text-slate-700">終日イベント</label>
                                             </div>
-                                            <div>
-                                                <label class="block text-sm font-bold text-slate-700 mb-2">終了日時 <span class="text-red-500">*</span></label>
-                                                <input type="datetime-local" id="event-end" value="${event ? new Date(event.end_datetime).toISOString().slice(0, 16) : ''}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary">
+                                            
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <!-- 開始日時 -->
+                                                <div>
+                                                    <label class="block text-sm font-bold text-slate-700 mb-2">開始日時 <span class="text-red-500">*</span></label>
+                                                    
+                                                    <!-- 日付 -->
+                                                    <div class="flex items-center gap-2 mb-2">
+                                                        <select id="event-start-year" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateStartDateTime()">
+                                                            ${Array.from({length: 5}, (_, i) => new Date().getFullYear() + i).map(year => 
+                                                                `<option value="${year}" ${event && new Date(event.start_datetime).getFullYear() === year ? 'selected' : ''}>${year}年</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                        <select id="event-start-month" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateStartDateTime()">
+                                                            ${Array.from({length: 12}, (_, i) => i + 1).map(month => 
+                                                                `<option value="${month}" ${event && new Date(event.start_datetime).getMonth() + 1 === month ? 'selected' : ''}>${month}月</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                        <select id="event-start-day" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateStartDateTime()">
+                                                            ${Array.from({length: 31}, (_, i) => i + 1).map(day => 
+                                                                `<option value="${day}" ${event && new Date(event.start_datetime).getDate() === day ? 'selected' : ''}>${day}日</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <!-- 時刻 -->
+                                                    <div id="event-start-time-fields" class="flex items-center gap-2">
+                                                        <select id="event-start-hour" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateStartDateTime()">
+                                                            ${Array.from({length: 24}, (_, i) => i).map(hour => 
+                                                                `<option value="${hour}" ${event && new Date(event.start_datetime).getHours() === hour ? 'selected' : ''}>${String(hour).padStart(2, '0')}時</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                        <select id="event-start-minute" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateStartDateTime()">
+                                                            ${[0, 15, 30, 45].map(minute => 
+                                                                `<option value="${minute}" ${event && new Date(event.start_datetime).getMinutes() === minute ? 'selected' : ''}>${String(minute).padStart(2, '0')}分</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <input type="hidden" id="event-start" value="${event ? new Date(event.start_datetime).toISOString().slice(0, 16) : ''}">
+                                                </div>
+                                                
+                                                <!-- 終了日時 -->
+                                                <div>
+                                                    <label class="block text-sm font-bold text-slate-700 mb-2">終了日時 <span class="text-red-500">*</span></label>
+                                                    
+                                                    <!-- 日付 -->
+                                                    <div class="flex items-center gap-2 mb-2">
+                                                        <select id="event-end-year" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateEndDateTime()">
+                                                            ${Array.from({length: 5}, (_, i) => new Date().getFullYear() + i).map(year => 
+                                                                `<option value="${year}" ${event && new Date(event.end_datetime).getFullYear() === year ? 'selected' : ''}>${year}年</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                        <select id="event-end-month" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateEndDateTime()">
+                                                            ${Array.from({length: 12}, (_, i) => i + 1).map(month => 
+                                                                `<option value="${month}" ${event && new Date(event.end_datetime).getMonth() + 1 === month ? 'selected' : ''}>${month}月</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                        <select id="event-end-day" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateEndDateTime()">
+                                                            ${Array.from({length: 31}, (_, i) => i + 1).map(day => 
+                                                                `<option value="${day}" ${event && new Date(event.end_datetime).getDate() === day ? 'selected' : ''}>${day}日</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <!-- 時刻 -->
+                                                    <div id="event-end-time-fields" class="flex items-center gap-2">
+                                                        <select id="event-end-hour" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateEndDateTime()">
+                                                            ${Array.from({length: 24}, (_, i) => i).map(hour => 
+                                                                `<option value="${hour}" ${event && new Date(event.end_datetime).getHours() === hour ? 'selected' : ''}>${String(hour).padStart(2, '0')}時</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                        <select id="event-end-minute" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary" onchange="updateEndDateTime()">
+                                                            ${[0, 15, 30, 45].map(minute => 
+                                                                `<option value="${minute}" ${event && new Date(event.end_datetime).getMinutes() === minute ? 'selected' : ''}>${String(minute).padStart(2, '0')}分</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <input type="hidden" id="event-end" value="${event ? new Date(event.end_datetime).toISOString().slice(0, 16) : ''}">
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -13315,6 +13519,15 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     
                 case 'tickets':
                     return `
+                        ${renderPageGuide(
+                            'チケット管理',
+                            'ここでは購入したすべてのチケットを確認・管理できます。',
+                            [
+                                'チケットをクリックすると詳細とQRコードが表示されます',
+                                'イベント名をクリックするとイベント詳細ページへ移動します',
+                                '過去のチケットも履歴として確認できます'
+                            ]
+                        )}
                         <div class="space-y-6">
                             <div>
                                 <h4 class="font-bold text-slate-800 mb-3">チケット購入履歴 (${user.tickets.length}件)</h4>
@@ -14481,6 +14694,113 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             }, 1000);
         }
 
+        // 🎯 ダッシュボードガイドヘルパー関数
+        function renderPageGuide(title, description, tips = []) {
+            return `
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-blue-500 rounded-r-xl p-5 mb-6 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0">
+                            <span class="material-icons-outlined text-blue-600 text-2xl">info</span>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-slate-800 text-lg mb-2">${title}</h4>
+                            <p class="text-sm text-slate-700 mb-3 leading-relaxed">${description}</p>
+                            ${tips.length > 0 ? `
+                                <div class="space-y-1.5">
+                                    ${tips.map(tip => `
+                                        <div class="flex items-start gap-2">
+                                            <span class="material-icons-outlined text-blue-500 text-sm mt-0.5">check_circle</span>
+                                            <span class="text-xs text-slate-600">${tip}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 🎯 日時入力UI管理関数
+        function toggleAllDay() {
+            const allDay = document.getElementById('event-all-day').checked;
+            const startTimeFields = document.getElementById('event-start-time-fields');
+            const endTimeFields = document.getElementById('event-end-time-fields');
+            
+            if (allDay) {
+                startTimeFields.style.display = 'none';
+                endTimeFields.style.display = 'none';
+                
+                // 終日の場合、時刻を00:00と23:59に設定
+                document.getElementById('event-start-hour').value = 0;
+                document.getElementById('event-start-minute').value = 0;
+                document.getElementById('event-end-hour').value = 23;
+                document.getElementById('event-end-minute').value = 45; // 23:45
+            } else {
+                startTimeFields.style.display = 'flex';
+                endTimeFields.style.display = 'flex';
+            }
+            
+            updateStartDateTime();
+            updateEndDateTime();
+        }
+        
+        function updateStartDateTime() {
+            const year = document.getElementById('event-start-year').value;
+            const month = document.getElementById('event-start-month').value;
+            const day = document.getElementById('event-start-day').value;
+            const hour = document.getElementById('event-start-hour').value;
+            const minute = document.getElementById('event-start-minute').value;
+            
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+            document.getElementById('event-start').value = dateStr;
+            
+            // 🎯 開始日時を入力したら、終了日時を自動設定（+2時間）
+            autoSetEndDateTime();
+        }
+        
+        function updateEndDateTime() {
+            const year = document.getElementById('event-end-year').value;
+            const month = document.getElementById('event-end-month').value;
+            const day = document.getElementById('event-end-day').value;
+            const hour = document.getElementById('event-end-hour').value;
+            const minute = document.getElementById('event-end-minute').value;
+            
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+            document.getElementById('event-end').value = dateStr;
+        }
+        
+        function autoSetEndDateTime() {
+            const startDateStr = document.getElementById('event-start').value;
+            if (!startDateStr) return;
+            
+            const startDate = new Date(startDateStr);
+            
+            // 終日チェックがONの場合は23:59にする
+            const allDay = document.getElementById('event-all-day').checked;
+            if (allDay) {
+                const endDate = new Date(startDate);
+                endDate.setHours(23, 45, 0, 0);
+                
+                document.getElementById('event-end-year').value = endDate.getFullYear();
+                document.getElementById('event-end-month').value = endDate.getMonth() + 1;
+                document.getElementById('event-end-day').value = endDate.getDate();
+                document.getElementById('event-end-hour').value = 23;
+                document.getElementById('event-end-minute').value = 45;
+            } else {
+                // デフォルト +2時間
+                const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+                
+                document.getElementById('event-end-year').value = endDate.getFullYear();
+                document.getElementById('event-end-month').value = endDate.getMonth() + 1;
+                document.getElementById('event-end-day').value = endDate.getDate();
+                document.getElementById('event-end-hour').value = endDate.getHours();
+                document.getElementById('event-end-minute').value = Math.floor(endDate.getMinutes() / 15) * 15; // 15分単位に丸める
+            }
+            
+            updateEndDateTime();
+        }
+
         function saveEvent(eventId) {
             const isNew = eventId === 'new';
             
@@ -15215,6 +15535,48 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
         }
 
         // Profile Icon Selection Modal
+        function uploadCustomProfileImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file && file.size <= 5 * 1024 * 1024) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        store.user = { ...store.user, icon: event.target.result };
+                        showToast('プロフィール画像を更新しました', 'check_circle');
+                        router('dashboard_profile'); // Refresh profile page
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showToast('ファイルサイズは5MB以下にしてください', 'error');
+                }
+            };
+            input.click();
+        }
+        
+        function uploadCustomCoverImage() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file && file.size <= 10 * 1024 * 1024) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        store.user = { ...store.user, coverImage: event.target.result };
+                        showToast('カバー画像を更新しました', 'check_circle');
+                        router('dashboard_profile'); // Refresh profile page
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showToast('ファイルサイズは10MB以下にしてください', 'error');
+                }
+            };
+            input.click();
+        }
+
         function openProfileIconModal() {
             const modal = document.getElementById('modal-content');
             document.getElementById('modal-container').classList.remove('hidden');

@@ -2434,17 +2434,42 @@
                                 </h3>
                                 
                                 <div class="space-y-4 mb-6">
-                                    ${event.tickets.map(tkt => `
-                                        <div class="bg-white border border-slate-200 rounded-xl p-4 hover:border-primary transition cursor-pointer group shadow-sm hover:shadow-md" onclick="openCheckout('${event.event_id}', '${tkt.id}')">
+                                    ${event.tickets.map(tkt => {
+                                        // 締め切りチェック
+                                        const now = new Date();
+                                        const isExpired = tkt.deadline && new Date(tkt.deadline) < now;
+                                        const deadlineDate = tkt.deadline ? new Date(tkt.deadline) : null;
+                                        const hoursLeft = deadlineDate ? Math.ceil((deadlineDate - now) / (1000 * 60 * 60)) : null;
+                                        
+                                        // 税込/税別表示
+                                        const taxLabel = tkt.taxType === 'tax-excluded' ? '（税別）' : '（税込）';
+                                        const totalPrice = tkt.taxType === 'tax-excluded' 
+                                            ? Math.floor(tkt.price * 1.1) 
+                                            : tkt.price;
+                                        const serviceFeeLabel = tkt.serviceFee > 0 ? ` + 手数料 ¥${tkt.serviceFee.toLocaleString()}` : '';
+                                        
+                                        return `
+                                        <div class="bg-white border ${isExpired ? 'border-slate-200 opacity-50' : 'border-slate-200 hover:border-primary'} rounded-xl p-4 ${isExpired ? 'cursor-not-allowed' : 'hover:shadow-md cursor-pointer group'} transition shadow-sm" ${isExpired ? '' : `onclick="openCheckout('${event.event_id}', '${tkt.id}')"`}>
                                             <div class="flex justify-between items-start mb-2">
-                                                <span class="font-bold text-slate-800 group-hover:text-primary">${tkt.name}</span>
-                                                <span class="font-bold text-lg text-slate-900">¥${tkt.price.toLocaleString()}</span>
+                                                <div>
+                                                    <span class="font-bold text-slate-800 ${isExpired ? '' : 'group-hover:text-primary'}">${tkt.name}</span>
+                                                    ${isExpired ? '<span class="ml-2 text-xs bg-slate-200 text-slate-500 px-2 py-0.5 rounded-full font-bold">受付終了</span>' : ''}
+                                                    ${hoursLeft && hoursLeft <= 24 && !isExpired ? `<span class="ml-2 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold animate-pulse">締切まで${hoursLeft}時間</span>` : ''}
+                                                </div>
+                                                <div class="text-right">
+                                                    <span class="font-bold text-lg text-slate-900">¥${tkt.price.toLocaleString()}</span>
+                                                    <span class="text-xs text-slate-500 ml-1">${taxLabel}</span>
+                                                    ${serviceFeeLabel && `<div class="text-xs text-slate-500">${serviceFeeLabel}</div>`}
+                                                </div>
                                             </div>
-                                            <p class="text-xs text-slate-500 mb-2">${tkt.desc || ''}</p>
-                                            ${tkt.purchaseLimit ? `<p class="text-xs text-slate-400 mb-3 flex items-center"><span class="material-icons-outlined text-xs mr-1">info</span>お一人様${tkt.purchaseLimit}枚まで</p>` : ''}
-                                            <button class="w-full py-2 bg-primary text-white border border-transparent rounded-lg text-sm font-bold hover:bg-blue-700 transition shadow-sm">選択する</button>
+                                            ${tkt.notes ? `<p class="text-xs text-slate-500 mb-2">${tkt.notes}</p>` : ''}
+                                            ${tkt.purchaseLimit ? `<p class="text-xs text-slate-400 mb-2 flex items-center"><span class="material-icons-outlined text-xs mr-1">info</span>お一人様${tkt.purchaseLimit}枚まで</p>` : ''}
+                                            ${deadlineDate && !isExpired ? `<p class="text-xs text-slate-400 mb-2 flex items-center"><span class="material-icons-outlined text-xs mr-1">schedule</span>締切: ${deadlineDate.toLocaleString('ja-JP')}</p>` : ''}
+                                            ${tkt.deliveryMethod ? `<p class="text-xs text-slate-400 mb-3 flex items-center"><span class="material-icons-outlined text-xs mr-1">${tkt.deliveryMethod === 'digital' ? 'qr_code' : tkt.deliveryMethod === 'mail' ? 'mail' : 'store'}</span>${tkt.deliveryMethod === 'digital' ? '電子チケット（QR）' : tkt.deliveryMethod === 'mail' ? '郵送' : '当日受け取り'}</p>` : ''}
+                                            <button class="w-full py-2 ${isExpired ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-primary text-white hover:bg-blue-700'} border border-transparent rounded-lg text-sm font-bold transition shadow-sm" ${isExpired ? 'disabled' : ''}>${isExpired ? '受付終了' : '選択する'}</button>
                                         </div>
-                                    `).join('')}
+                                        `;
+                                    }).join('')}
                                 </div>
 
                                 <p class="text-xs text-slate-400 text-center flex items-center justify-center">
@@ -2942,6 +2967,23 @@
             
             const event = store.events.find(e => e.event_id === eventId);
             const ticket = event.tickets.find(t => t.id === ticketId);
+            
+            // 🎯 チケット締め切りチェック
+            if (ticket.deadline) {
+                const deadlineDate = new Date(ticket.deadline);
+                const now = new Date();
+                
+                if (now > deadlineDate) {
+                    showToast('❌ このチケットの申込み締め切りが過ぎています', 'error');
+                    return;
+                }
+                
+                // 締め切りまでの残り時間を計算
+                const hoursLeft = Math.ceil((deadlineDate - now) / (1000 * 60 * 60));
+                if (hoursLeft <= 24) {
+                    showToast(`⚠️ 締め切りまで残り ${hoursLeft} 時間です！`, 'warning');
+                }
+            }
             
             store.cart = { event, ticket, count: 1, seats: [] };
             

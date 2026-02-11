@@ -59,6 +59,229 @@
         input[type="radio"]:checked + div .radio-box div {
             background-color: white !important;
         }
+        
+        /* ====== DASHBOARD PAGE LAYOUT (Phase 2) ====== */
+        .dashboard-layout {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background: #f8fafc;
+        }
+        
+        .dashboard-header-cover {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
+            position: relative;
+            margin-bottom: 80px;
+        }
+        
+        .dashboard-header-cover::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(to bottom, transparent, #f8fafc);
+        }
+        
+        .dashboard-profile-card {
+            position: absolute;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            z-index: 10;
+        }
+        
+        .dashboard-profile-card img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .dashboard-body {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+        }
+        
+        .dashboard-sidenav {
+            width: 260px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            position: sticky;
+            top: 64px;
+            height: calc(100vh - 64px);
+            overflow-y: auto;
+            padding: 1.5rem 0;
+        }
+        
+        .dashboard-sidenav .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            color: #64748b;
+            text-decoration: none;
+            transition: all 0.2s;
+            position: relative;
+            font-weight: 500;
+        }
+        
+        .dashboard-sidenav .nav-item:hover {
+            background: #f1f5f9;
+            color: #2563EB;
+        }
+        
+        .dashboard-sidenav .nav-item.active {
+            background: #EFF6FF;
+            color: #2563EB;
+            font-weight: 600;
+        }
+        
+        .dashboard-sidenav .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #2563EB;
+        }
+        
+        .dashboard-sidenav .nav-item .badge {
+            margin-left: auto;
+            background: #EF4444;
+            color: white;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        
+        .dashboard-content {
+            flex: 1;
+            padding: 2rem;
+            background: #f8fafc;
+        }
+        
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 1.5rem;
+            padding: 12px 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .breadcrumb span {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .breadcrumb .active {
+            color: #0f172a;
+            font-weight: 600;
+        }
+        
+        .breadcrumb .separator {
+            color: #cbd5e1;
+        }
+        
+        /* Mobile: Bottom Tab Bar */
+        @media (max-width: 768px) {
+            .dashboard-header-cover {
+                height: 150px;
+                margin-bottom: 60px;
+            }
+            
+            .dashboard-profile-card {
+                bottom: -40px;
+                padding: 15px;
+                gap: 15px;
+            }
+            
+            .dashboard-profile-card img {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .dashboard-sidenav {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: auto;
+                top: auto;
+                border-right: none;
+                border-top: 1px solid #e2e8f0;
+                display: flex;
+                justify-content: space-around;
+                padding: 8px 0;
+                z-index: 40;
+                background: white;
+            }
+            
+            .dashboard-sidenav .nav-item {
+                flex-direction: column;
+                padding: 8px 12px;
+                font-size: 11px;
+                gap: 4px;
+                flex: 1;
+                text-align: center;
+            }
+            
+            .dashboard-sidenav .nav-item .material-icons-outlined {
+                font-size: 20px;
+            }
+            
+            .dashboard-sidenav .nav-item .badge {
+                position: absolute;
+                top: 4px;
+                right: 8px;
+                margin: 0;
+            }
+            
+            .dashboard-content {
+                padding: 1rem;
+                padding-bottom: 5rem;
+            }
+            
+            .breadcrumb {
+                font-size: 0.75rem;
+                padding: 8px 12px;
+            }
+        }
+        
+        /* Tablet */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .dashboard-sidenav {
+                width: 200px;
+            }
+            
+            .dashboard-sidenav .nav-item {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+        }
     </style>
     
     <!-- Performance: Critical resource hints -->
@@ -811,7 +1034,39 @@
                         break;
                     case 'dashboard':
                         url = '/dashboard';
-                        title = 'マイページ | LinkUp';
+                        title = 'ダッシュボード | LinkUp';
+                        break;
+                    case 'dashboard_tickets':
+                        url = '/dashboard/tickets';
+                        title = 'チケット管理 | LinkUp';
+                        break;
+                    case 'dashboard_inbox':
+                        url = '/dashboard/inbox';
+                        title = '受信箱 | LinkUp';
+                        break;
+                    case 'dashboard_profile':
+                        url = '/dashboard/profile';
+                        title = 'プロフィール | LinkUp';
+                        break;
+                    case 'dashboard_interests':
+                        url = '/dashboard/interests';
+                        title = '興味・関心 | LinkUp';
+                        break;
+                    case 'dashboard_events':
+                        url = '/dashboard/events';
+                        title = 'イベント管理 | LinkUp';
+                        break;
+                    case 'dashboard_payments':
+                        url = '/dashboard/payments';
+                        title = '決済履歴 | LinkUp';
+                        break;
+                    case 'dashboard_support':
+                        url = '/dashboard/support';
+                        title = 'サポート | LinkUp';
+                        break;
+                    case 'dashboard_kyc':
+                        url = '/dashboard/kyc';
+                        title = '本人確認 | LinkUp';
                         break;
                     case 'organizer':
                         url = '/organizer/dashboard';
@@ -850,7 +1105,39 @@
             else if (view === 'checkout_confirm') renderCheckoutConfirm(app);
             else if (view === 'dashboard') {
                 if(!store.user) { openAuthModal(); return; }
-                renderDashboard(app);
+                renderDashboardPage(app, 'overview');
+            }
+            else if (view === 'dashboard_tickets') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboardPage(app, 'tickets');
+            }
+            else if (view === 'dashboard_inbox') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboardPage(app, 'inbox');
+            }
+            else if (view === 'dashboard_profile') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboardPage(app, 'profile');
+            }
+            else if (view === 'dashboard_interests') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboardPage(app, 'interests');
+            }
+            else if (view === 'dashboard_events') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboardPage(app, 'events');
+            }
+            else if (view === 'dashboard_payments') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboardPage(app, 'payments');
+            }
+            else if (view === 'dashboard_support') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboardPage(app, 'support');
+            }
+            else if (view === 'dashboard_kyc') {
+                if(!store.user) { openAuthModal(); return; }
+                renderDashboardPage(app, 'kyc');
             }
             else if (view === 'checkout_session') renderStripeMock(app);
             else if (view === 'organizer_profile') renderOrganizerProfile(app, params.id);
@@ -912,6 +1199,13 @@
                 const organizerId = decodeURIComponent(path.split('/organizers/')[1]);
                 return { view: 'organizer_profile', params: { id: organizerId } };
             } else if (path === '/dashboard') {
+                return { view: 'dashboard', params: {} };
+            } else if (path.startsWith('/dashboard/')) {
+                const subpage = path.split('/dashboard/')[1];
+                const validSubpages = ['tickets', 'inbox', 'profile', 'interests', 'events', 'payments', 'support', 'kyc'];
+                if (validSubpages.includes(subpage)) {
+                    return { view: `dashboard_${subpage}`, params: {} };
+                }
                 return { view: 'dashboard', params: {} };
             } else if (path.startsWith('/organizer')) {
                 if (path.includes('/events/')) {
@@ -3216,7 +3510,7 @@
                         <div class="mb-8">
                             <div class="flex justify-between items-center mb-4">
                                 <h2 class="text-2xl font-bold text-slate-800">あなたのチケット</h2>
-                                <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="text-sm text-primary hover:underline font-bold">
+                                <button onclick="router('dashboard_tickets')" class="text-sm text-primary hover:underline font-bold">
                                     すべて見る →
                                 </button>
                             </div>
@@ -3304,15 +3598,15 @@
                                     <span class="material-icons-outlined text-primary text-3xl mb-2">search</span>
                                     <p class="text-sm font-bold text-slate-700">イベント探索</p>
                                 </button>
-                                <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
+                                <button onclick="router('dashboard_tickets')" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
                                     <span class="material-icons-outlined text-primary text-3xl mb-2">confirmation_number</span>
                                     <p class="text-sm font-bold text-slate-700">チケット確認</p>
                                 </button>
-                                <button onclick="openKYCModal()" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
+                                <button onclick="router('dashboard_kyc')" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
                                     <span class="material-icons-outlined text-primary text-3xl mb-2">verified_user</span>
                                     <p class="text-sm font-bold text-slate-700">本人確認</p>
                                 </button>
-                                <button onclick="openUserSupportChat()" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
+                                <button onclick="router('dashboard_support')" class="p-4 border border-slate-200 rounded-lg hover:border-primary hover:bg-blue-50 transition text-center">
                                     <span class="material-icons-outlined text-primary text-3xl mb-2">support_agent</span>
                                     <p class="text-sm font-bold text-slate-700">サポート</p>
                                 </button>
@@ -3621,6 +3915,91 @@
                         </div>
                     `;
                     
+                case 'kyc':
+                    return `
+                        <div class="space-y-6">
+                            <!-- KYC Status Card -->
+                            <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl shadow-xl p-8 text-white">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h2 class="text-2xl font-bold mb-2">本人確認ステータス</h2>
+                                        <p class="text-white/80">Stripe Identity による安全な本人確認</p>
+                                    </div>
+                                    <div class="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                                        <span class="material-icons-outlined text-5xl">${store.user.kycStatus === 'verified' ? 'verified' : 'pending'}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-6 flex items-center space-x-4">
+                                    <span class="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-bold">
+                                        ${store.user.kycStatus === 'verified' ? '✅ 確認済み' : store.user.kycStatus === 'pending' ? '⏳ 審査中' : '❌ 未確認'}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <!-- KYC Explanation -->
+                            <div class="bg-white rounded-2xl shadow-card p-6">
+                                <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                                    <span class="material-icons-outlined text-blue-600 mr-2">info</span>
+                                    本人確認（eKYC）とは
+                                </h3>
+                                <p class="text-slate-600 mb-4">
+                                    本人確認（eKYC: electronic Know Your Customer）は、オンラインで本人であることを確認するプロセスです。
+                                    LinkUpでは、Stripe Identityを使用して安全かつ迅速に本人確認を行います。
+                                </p>
+                                
+                                <h4 class="font-bold text-slate-800 mb-2 mt-6">🎯 本人確認のメリット</h4>
+                                <ul class="space-y-2 text-sm text-slate-600">
+                                    <li class="flex items-start">
+                                        <span class="material-icons-outlined text-green-500 text-sm mr-2 mt-0.5">check_circle</span>
+                                        高額イベントの主催が可能
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="material-icons-outlined text-green-500 text-sm mr-2 mt-0.5">check_circle</span>
+                                        売上金の即時出金
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="material-icons-outlined text-green-500 text-sm mr-2 mt-0.5">check_circle</span>
+                                        プレミアムイベントへの参加
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="material-icons-outlined text-green-500 text-sm mr-2 mt-0.5">check_circle</span>
+                                        アカウントのセキュリティ向上
+                                    </li>
+                                </ul>
+                                
+                                <h4 class="font-bold text-slate-800 mb-2 mt-6">📄 必要な書類</h4>
+                                <ul class="space-y-2 text-sm text-slate-600">
+                                    <li class="flex items-start">
+                                        <span class="material-icons-outlined text-primary text-sm mr-2 mt-0.5">badge</span>
+                                        運転免許証
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="material-icons-outlined text-primary text-sm mr-2 mt-0.5">badge</span>
+                                        マイナンバーカード（顔写真付き）
+                                    </li>
+                                    <li class="flex items-start">
+                                        <span class="material-icons-outlined text-primary text-sm mr-2 mt-0.5">badge</span>
+                                        パスポート
+                                    </li>
+                                </ul>
+                                
+                                <h4 class="font-bold text-slate-800 mb-2 mt-6">🔒 セキュリティとプライバシー</h4>
+                                <p class="text-sm text-slate-600">
+                                    Stripe Identityは、業界標準のセキュリティプロトコルを使用して個人情報を保護します。
+                                    提出された情報は暗号化され、厳重に管理されます。詳細は<a href="https://stripe.com/privacy" target="_blank" class="text-primary hover:underline">Stripeのプライバシーポリシー</a>をご覧ください。
+                                </p>
+                                
+                                ${store.user.kycStatus !== 'verified' ? `
+                                <div class="mt-6">
+                                    <button onclick="showToast('Stripe Identity統合は準備中です', 'info')" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-lg hover:opacity-90 transition font-bold">
+                                        本人確認を開始
+                                    </button>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                    
                 case 'support':
                     return `
                         <div class="space-y-6">
@@ -3719,6 +4098,122 @@
                 default:
                     return '';
             }
+        }
+        
+        // ===== PHASE 2: NEW DASHBOARD PAGE SYSTEM =====
+        function renderDashboardPage(container, subpage = 'overview') {
+            const unreadCount = (store.userInbox || []).filter(m => !m.read).length;
+            
+            container.innerHTML = `
+                <div class="dashboard-layout">
+                    <!-- Profile Cover Header (Only on overview) -->
+                    ${subpage === 'overview' ? `
+                        <div class="dashboard-header-cover">
+                            <div class="dashboard-profile-card">
+                                <img src="${store.user.icon}" alt="${store.user.name}">
+                                <div>
+                                    <h2 class="text-xl font-bold text-slate-800">${store.user.name}</h2>
+                                    <p class="text-sm text-slate-500">${store.user.email}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="dashboard-body">
+                        <!-- Side Navigation -->
+                        <aside class="dashboard-sidenav">
+                            <a href="/dashboard" onclick="event.preventDefault(); router('dashboard'); return false;" 
+                               class="nav-item ${subpage === 'overview' ? 'active' : ''}">
+                                <span class="material-icons-outlined">dashboard</span>
+                                <span>ダッシュボード</span>
+                            </a>
+                            <a href="/dashboard/tickets" onclick="event.preventDefault(); router('dashboard_tickets'); return false;" 
+                               class="nav-item ${subpage === 'tickets' ? 'active' : ''}">
+                                <span class="material-icons-outlined">confirmation_number</span>
+                                <span>チケット</span>
+                            </a>
+                            <a href="/dashboard/inbox" onclick="event.preventDefault(); router('dashboard_inbox'); return false;" 
+                               class="nav-item ${subpage === 'inbox' ? 'active' : ''}">
+                                <span class="material-icons-outlined">inbox</span>
+                                <span>受信箱</span>
+                                ${unreadCount > 0 ? `<span class="badge">${unreadCount}</span>` : ''}
+                            </a>
+                            <a href="/dashboard/profile" onclick="event.preventDefault(); router('dashboard_profile'); return false;" 
+                               class="nav-item ${subpage === 'profile' ? 'active' : ''}">
+                                <span class="material-icons-outlined">person</span>
+                                <span>プロフィール</span>
+                            </a>
+                            <a href="/dashboard/interests" onclick="event.preventDefault(); router('dashboard_interests'); return false;" 
+                               class="nav-item ${subpage === 'interests' ? 'active' : ''}">
+                                <span class="material-icons-outlined">favorite</span>
+                                <span>興味・関心</span>
+                            </a>
+                            <a href="/dashboard/events" onclick="event.preventDefault(); router('dashboard_events'); return false;" 
+                               class="nav-item ${subpage === 'events' ? 'active' : ''}">
+                                <span class="material-icons-outlined">event</span>
+                                <span>イベント管理</span>
+                            </a>
+                            <a href="/dashboard/payments" onclick="event.preventDefault(); router('dashboard_payments'); return false;" 
+                               class="nav-item ${subpage === 'payments' ? 'active' : ''}">
+                                <span class="material-icons-outlined">receipt</span>
+                                <span>決済履歴</span>
+                            </a>
+                            <a href="/dashboard/support" onclick="event.preventDefault(); router('dashboard_support'); return false;" 
+                               class="nav-item ${subpage === 'support' ? 'active' : ''}">
+                                <span class="material-icons-outlined">support_agent</span>
+                                <span>サポート</span>
+                            </a>
+                        </aside>
+                        
+                        <!-- Main Content -->
+                        <main class="dashboard-content">
+                            <!-- Breadcrumb -->
+                            ${renderBreadcrumb(subpage)}
+                            
+                            <!-- Page Content -->
+                            <div id="dashboard-subpage-content"></div>
+                        </main>
+                    </div>
+                </div>
+            `;
+            
+            // Render subpage content
+            const contentDiv = container.querySelector('#dashboard-subpage-content');
+            renderDashboardSubpage(contentDiv, subpage);
+        }
+        
+        // Breadcrumb Navigation
+        function renderBreadcrumb(subpage) {
+            const breadcrumbs = {
+                'overview': ['ホーム', 'ダッシュボード'],
+                'tickets': ['ホーム', 'ダッシュボード', 'チケット'],
+                'inbox': ['ホーム', 'ダッシュボード', '受信箱'],
+                'profile': ['ホーム', 'ダッシュボード', 'プロフィール'],
+                'interests': ['ホーム', 'ダッシュボード', '興味・関心'],
+                'events': ['ホーム', 'ダッシュボード', 'イベント管理'],
+                'payments': ['ホーム', 'ダッシュボード', '決済履歴'],
+                'support': ['ホーム', 'ダッシュボード', 'サポート'],
+                'kyc': ['ホーム', 'ダッシュボード', '本人確認']
+            };
+            
+            const crumbs = breadcrumbs[subpage] || ['ホーム', 'ダッシュボード'];
+            
+            return `
+                <nav class="breadcrumb">
+                    ${crumbs.map((crumb, i) => `
+                        <span class="${i === crumbs.length - 1 ? 'active' : ''}">
+                            ${i === 0 ? '<span class="material-icons-outlined" style="font-size:16px;">home</span>' : ''}
+                            ${crumb}
+                        </span>
+                        ${i < crumbs.length - 1 ? '<span class="separator">/</span>' : ''}
+                    `).join('')}
+                </nav>
+            `;
+        }
+        
+        // Render Subpage Content (reuse existing tab content)
+        function renderDashboardSubpage(container, subpage) {
+            container.innerHTML = renderUserDashboardTab(subpage);
         }
         
         function renderDashboard(container, activeTab = 'overview') {

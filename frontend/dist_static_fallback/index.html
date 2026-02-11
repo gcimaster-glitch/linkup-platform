@@ -5144,7 +5144,7 @@
                                         <td class="p-4">
                                             ${ticket.deadline ? `
                                                 <div class="text-xs">${ticket.deadline.toLocaleString('ja-JP')}</div>
-                                                ${ticket.isExpired ? '<span class="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">終了</span>' : ticket.hoursLeft <= 24 ? `<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full animate-pulse">残り${ticket.hoursLeft}h</span>` : `<span class="text-xs text-slate-500">残り${Math.ceil(ticket.hoursLeft / 24)}日</span>`}
+                                                ${ticket.isExpired ? '<span class="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">終了</span>' : ticket.hoursLeft <= 24 ? '<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full animate-pulse">残り' + ticket.hoursLeft + 'h</span>' : '<span class="text-xs text-slate-500">残り' + Math.ceil(ticket.hoursLeft / 24) + '日</span>'}
                                             ` : '<span class="text-xs text-slate-400">イベント開始まで</span>'}
                                         </td>
                                         <td class="p-4">

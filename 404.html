@@ -4251,36 +4251,36 @@
                     <!-- タブメニュー -->
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
                         <div class="flex border-b border-slate-200 overflow-x-auto">
-                            <button onclick="renderDashboard(document.getElementById('app'), 'overview')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'overview' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="router('dashboard')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'overview' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">dashboard</span>
                                 ダッシュボード
                             </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'inbox')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'inbox' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="router('dashboard_inbox')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'inbox' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">inbox</span>
                                 受信箱
                                 ${(store.userInbox || []).filter(m => !m.read).length > 0 ? `<span class="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">${(store.userInbox || []).filter(m => !m.read).length}</span>` : ''}
                             </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'profile')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'profile' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="router('dashboard_profile')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'profile' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">person</span>
                                 プロフィール
                             </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'interests')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'interests' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="router('dashboard_interests')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'interests' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">favorite</span>
                                 興味・関心
                             </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'events')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'events' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="router('dashboard_events')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'events' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">event</span>
                                 イベント管理
                             </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'tickets' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="router('dashboard_tickets')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'tickets' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">confirmation_number</span>
                                 チケット
                             </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'payments')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'payments' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="router('dashboard_payments')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'payments' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">receipt</span>
                                 決済履歴
                             </button>
-                            <button onclick="renderDashboard(document.getElementById('app'), 'support')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'support' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
+                            <button onclick="router('dashboard_support')" class="px-6 py-3 text-sm font-bold whitespace-nowrap ${activeTab === 'support' ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-700'}">
                                 <span class="material-icons-outlined text-sm align-middle mr-1">support_agent</span>
                                 サポート
                             </button>
@@ -13881,7 +13881,7 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             `;
             
             // Refresh dashboard to update unread count
-            renderDashboard(document.getElementById('app'), 'inbox');
+            router('dashboard_inbox');
         }
         
         function saveUserProfile(e) {
@@ -13892,28 +13892,28 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
         function addUserCategory(category) {
             if (!store.userInterests.categories.includes(category) && store.userInterests.categories.length < 30) {
                 store.userInterests.categories.push(category);
-                renderDashboard(document.getElementById('app'), 'interests');
+                router('dashboard_interests');
                 showToast(`「${category}」を追加しました`, 'add');
             }
         }
         
         function removeUserCategory(category) {
             store.userInterests.categories = store.userInterests.categories.filter(c => c !== category);
-            renderDashboard(document.getElementById('app'), 'interests');
+            router('dashboard_interests');
             showToast(`「${category}」を削除しました`, 'remove');
         }
         
         function addUserTag(tag) {
             if (!store.userInterests.tags.includes(tag) && store.userInterests.tags.length < 50) {
                 store.userInterests.tags.push(tag);
-                renderDashboard(document.getElementById('app'), 'interests');
+                router('dashboard_interests');
                 showToast(`「${tag}」を追加しました`, 'add');
             }
         }
         
         function removeUserTag(tag) {
             store.userInterests.tags = store.userInterests.tags.filter(t => t !== tag);
-            renderDashboard(document.getElementById('app'), 'interests');
+            router('dashboard_interests');
             showToast(`「${tag}」を削除しました`, 'remove');
         }
         

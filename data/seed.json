@@ -1,0 +1,283 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "created": "2026-02-11",
+    "description": "LinkUp Platform Demo/Seed Data - Safe to delete in production",
+    "total_records": {
+      "users": 5,
+      "venues": 3,
+      "events": 30,
+      "tickets": 90,
+      "category_images": 8
+    }
+  },
+  "category_images": [
+    {
+      "category": "tech",
+      "image_url": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "thumbnail_url": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      "description": "テクノロジー・IT関連イベント"
+    },
+    {
+      "category": "business",
+      "image_url": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "thumbnail_url": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      "description": "ビジネス・経営関連イベント"
+    },
+    {
+      "category": "art",
+      "image_url": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "thumbnail_url": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      "description": "アート・デザイン関連イベント"
+    },
+    {
+      "category": "music",
+      "image_url": "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "thumbnail_url": "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      "description": "音楽・ライブイベント"
+    },
+    {
+      "category": "social",
+      "image_url": "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "thumbnail_url": "https://images.unsplash.com/photo-1511632765486-a01980e01a18?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      "description": "交流会・ネットワーキング"
+    },
+    {
+      "category": "festival",
+      "image_url": "https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "thumbnail_url": "https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      "description": "フェスティバル・大型イベント"
+    },
+    {
+      "category": "food",
+      "image_url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "thumbnail_url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      "description": "グルメ・食イベント"
+    },
+    {
+      "category": "startups",
+      "image_url": "https://images.unsplash.com/photo-1559136555-930d72f1d300?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "thumbnail_url": "https://images.unsplash.com/photo-1559136555-930d72f1d300?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      "description": "スタートアップ・起業イベント"
+    }
+  ],
+  "users": [
+    {
+      "user_id": "usr_demo_001",
+      "email": "demo@linkup.live",
+      "name": "デモユーザー",
+      "user_type": "participant",
+      "verified": 1
+    },
+    {
+      "user_id": "usr_organizer_001",
+      "email": "organizer@linkup.live",
+      "name": "LinkUp Official",
+      "user_type": "organizer",
+      "bio": "LinkUp公式主催者アカウント",
+      "verified": 1
+    },
+    {
+      "user_id": "usr_organizer_002",
+      "email": "nextgen@linkup.live",
+      "name": "NextGen Creators",
+      "user_type": "organizer",
+      "bio": "次世代クリエイターコミュニティ",
+      "verified": 1
+    },
+    {
+      "user_id": "usr_admin_001",
+      "email": "admin@linkup.live",
+      "name": "管理者",
+      "user_type": "admin",
+      "verified": 1
+    },
+    {
+      "user_id": "usr_demo_002",
+      "email": "user2@linkup.live",
+      "name": "テストユーザー2",
+      "user_type": "participant",
+      "verified": 0
+    }
+  ],
+  "venues": [
+    {
+      "venue_id": "v-1",
+      "name": "渋谷ストリームホール",
+      "address": "東京都渋谷区渋谷3-21-3",
+      "lat": 35.6571,
+      "lng": 139.7026,
+      "capacity": 120,
+      "layout_rows": 10,
+      "layout_cols": 12
+    },
+    {
+      "venue_id": "v-2",
+      "name": "東京国際フォーラム",
+      "address": "東京都千代田区丸の内3-5-1",
+      "lat": 35.6765,
+      "lng": 139.7628,
+      "capacity": 400,
+      "layout_rows": 20,
+      "layout_cols": 20
+    },
+    {
+      "venue_id": "v-3",
+      "name": "オンライン",
+      "address": "Zoom Link",
+      "lat": null,
+      "lng": null,
+      "capacity": 9999,
+      "layout_rows": null,
+      "layout_cols": null
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_demo_001",
+      "title": "TECH Summit Vol.1: AI・機械学習の最前線",
+      "description": "<div class='prose max-w-none'><p>AI・機械学習の最新トレンドを学べる大規模カンファレンス。業界トップエンジニアが登壇します。</p><h3>ハイライト</h3><ul><li>ChatGPT開発者による基調講演</li><li>実践的なハンズオンセッション</li><li>企業ブース展示</li></ul></div>",
+      "category": "tech",
+      "cover_image_url": "https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "venue_id": "v-2",
+      "venue_name": "東京国際フォーラム",
+      "venue_address": "東京都千代田区丸の内3-5-1",
+      "lat": 35.6765,
+      "lng": 139.7628,
+      "start_datetime": "2026-02-25T10:00:00+09:00",
+      "end_datetime": "2026-02-25T18:00:00+09:00",
+      "organizer_id": "usr_organizer_001",
+      "organizer_name": "LinkUp Official",
+      "organizer_rating": 4.8,
+      "status": "published",
+      "max_attendees": 400,
+      "current_attendees": 234,
+      "is_online": 0,
+      "tags": "[\"AI\", \"機械学習\", \"テクノロジー\"]"
+    },
+    {
+      "event_id": "evt_demo_002",
+      "title": "BUSINESS Summit Vol.1: スタートアップ成長戦略",
+      "description": "<div class='prose max-w-none'><p>急成長スタートアップの経営者が語る、成長の秘訣とピボット戦略。</p></div>",
+      "category": "business",
+      "cover_image_url": "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "venue_id": "v-1",
+      "venue_name": "渋谷ストリームホール",
+      "venue_address": "東京都渋谷区渋谷3-21-3",
+      "lat": 35.6571,
+      "lng": 139.7026,
+      "start_datetime": "2026-02-26T14:00:00+09:00",
+      "end_datetime": "2026-02-26T17:00:00+09:00",
+      "organizer_id": "usr_organizer_002",
+      "organizer_name": "NextGen Creators",
+      "organizer_rating": 4.5,
+      "status": "published",
+      "max_attendees": 120,
+      "current_attendees": 89,
+      "is_online": 0,
+      "tags": "[\"スタートアップ\", \"経営\", \"ビジネス\"]"
+    },
+    {
+      "event_id": "evt_demo_003",
+      "title": "ART Summit Vol.1: デジタルアートの未来",
+      "description": "<div class='prose max-w-none'><p>NFT、メタバース時代のアート表現を探る。</p></div>",
+      "category": "art",
+      "cover_image_url": "https://images.unsplash.com/photo-1513364776144-60967b0f800f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+      "venue_id": "v-1",
+      "venue_name": "渋谷ストリームホール",
+      "venue_address": "東京都渋谷区渋谷3-21-3",
+      "lat": 35.6571,
+      "lng": 139.7026,
+      "start_datetime": "2026-02-27T13:00:00+09:00",
+      "end_datetime": "2026-02-27T16:00:00+09:00",
+      "organizer_id": "usr_organizer_001",
+      "organizer_name": "LinkUp Official",
+      "organizer_rating": 4.8,
+      "status": "published",
+      "max_attendees": 120,
+      "current_attendees": 67,
+      "is_online": 0,
+      "tags": "[\"NFT\", \"デジタルアート\", \"メタバース\"]"
+    }
+  ],
+  "tickets": [
+    {
+      "ticket_id": "tkt_demo_001_early",
+      "event_id": "evt_demo_001",
+      "ticket_type": "early_bird",
+      "ticket_name": "早割チケット",
+      "price": 8000,
+      "quantity": 100,
+      "sold_count": 100,
+      "purchase_limit": 4,
+      "description": "早期購入者限定の特別価格チケット（売り切れ）",
+      "is_reserved_seating": 1,
+      "status": "sold_out"
+    },
+    {
+      "ticket_id": "tkt_demo_001_general",
+      "event_id": "evt_demo_001",
+      "ticket_type": "general",
+      "ticket_name": "一般チケット",
+      "price": 12000,
+      "quantity": 250,
+      "sold_count": 114,
+      "purchase_limit": 4,
+      "description": "通常価格の一般参加チケット",
+      "is_reserved_seating": 1,
+      "status": "available"
+    },
+    {
+      "ticket_id": "tkt_demo_001_vip",
+      "event_id": "evt_demo_001",
+      "ticket_type": "vip",
+      "ticket_name": "VIPチケット",
+      "price": 25000,
+      "quantity": 50,
+      "sold_count": 20,
+      "purchase_limit": 2,
+      "description": "最前列席確保・ランチ付き・登壇者との交流会参加権",
+      "is_reserved_seating": 1,
+      "status": "available"
+    },
+    {
+      "ticket_id": "tkt_demo_002_general",
+      "event_id": "evt_demo_002",
+      "ticket_type": "general",
+      "ticket_name": "一般チケット",
+      "price": 5000,
+      "quantity": 100,
+      "sold_count": 79,
+      "purchase_limit": 4,
+      "description": "通常参加チケット",
+      "is_reserved_seating": 1,
+      "status": "available"
+    },
+    {
+      "ticket_id": "tkt_demo_002_student",
+      "event_id": "evt_demo_002",
+      "ticket_type": "student",
+      "ticket_name": "学生チケット",
+      "price": 2000,
+      "quantity": 20,
+      "sold_count": 10,
+      "purchase_limit": 2,
+      "description": "学生限定の割引チケット（学生証確認あり）",
+      "is_reserved_seating": 1,
+      "status": "available"
+    },
+    {
+      "ticket_id": "tkt_demo_003_free",
+      "event_id": "evt_demo_003",
+      "ticket_type": "free",
+      "ticket_name": "無料チケット",
+      "price": 0,
+      "quantity": 120,
+      "sold_count": 67,
+      "purchase_limit": 1,
+      "description": "無料で参加できるチケット",
+      "is_reserved_seating": 1,
+      "status": "available"
+    }
+  ]
+}

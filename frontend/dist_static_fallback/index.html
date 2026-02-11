@@ -717,6 +717,44 @@
             _cachedEvents: [],
             _cachedUser: null,
             
+            // Profile Icons (20 options)
+            profileIcons: [
+                { id: 'avatar1', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', name: 'アバター 1' },
+                { id: 'avatar2', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka', name: 'アバター 2' },
+                { id: 'avatar3', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Luna', name: 'アバター 3' },
+                { id: 'avatar4', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Max', name: 'アバター 4' },
+                { id: 'avatar5', url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bella', name: 'アバター 5' },
+                { id: 'avatar6', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Felix', name: 'ロボット 1' },
+                { id: 'avatar7', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Aneka', name: 'ロボット 2' },
+                { id: 'avatar8', url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Luna', name: 'ロボット 3' },
+                { id: 'avatar9', url: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Felix', name: 'ピクセル 1' },
+                { id: 'avatar10', url: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Aneka', name: 'ピクセル 2' },
+                { id: 'avatar11', url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Felix', name: 'キャラ 1' },
+                { id: 'avatar12', url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Aneka', name: 'キャラ 2' },
+                { id: 'avatar13', url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Luna', name: 'キャラ 3' },
+                { id: 'avatar14', url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Max', name: 'キャラ 4' },
+                { id: 'avatar15', url: 'https://api.dicebear.com/7.x/big-smile/svg?seed=Felix', name: 'スマイル 1' },
+                { id: 'avatar16', url: 'https://api.dicebear.com/7.x/big-smile/svg?seed=Aneka', name: 'スマイル 2' },
+                { id: 'avatar17', url: 'https://api.dicebear.com/7.x/lorelei/svg?seed=Felix', name: 'ガール 1' },
+                { id: 'avatar18', url: 'https://api.dicebear.com/7.x/lorelei/svg?seed=Aneka', name: 'ガール 2' },
+                { id: 'avatar19', url: 'https://api.dicebear.com/7.x/micah/svg?seed=Felix', name: 'シンプル 1' },
+                { id: 'avatar20', url: 'https://api.dicebear.com/7.x/micah/svg?seed=Aneka', name: 'シンプル 2' }
+            ],
+            
+            // Cover Images (10 options)
+            coverImages: [
+                { id: 'cover1', url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=300&fit=crop', name: 'ミュージック' },
+                { id: 'cover2', url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=1200&h=300&fit=crop', name: 'コンサート' },
+                { id: 'cover3', url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=300&fit=crop', name: 'イベント' },
+                { id: 'cover4', url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=1200&h=300&fit=crop', name: 'ライブ' },
+                { id: 'cover5', url: 'https://images.unsplash.com/photo-1485872299829-c673f5194813?w=1200&h=300&fit=crop', name: 'カラフル' },
+                { id: 'cover6', url: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&h=300&fit=crop', name: 'ネイチャー' },
+                { id: 'cover7', url: 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=1200&h=300&fit=crop', name: 'パーティー' },
+                { id: 'cover8', url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=1200&h=300&fit=crop', name: 'アブストラクト' },
+                { id: 'cover9', url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=1200&h=300&fit=crop', name: 'クラシック' },
+                { id: 'cover10', url: 'https://images.unsplash.com/photo-1501612780327-45045538702b?w=1200&h=300&fit=crop', name: 'シティ' }
+            ],
+            
             get user() { 
                 if (!this._cachedUser) {
                     this._cachedUser = JSON.parse(localStorage.getItem('user'));
@@ -3517,36 +3555,62 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 ${latestTickets.map(t => {
                                     const event = store.events.find(e => e.event_id === t.eventId) || {};
+                                    const coverImage = event.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200';
                                     return `
-                                    <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl shadow-2xl overflow-hidden text-white hover:scale-105 transition-transform duration-300">
-                                        <div class="p-6">
+                                    <!-- Ticket Card with Event Visual Background -->
+                                    <div class="relative rounded-2xl shadow-2xl overflow-hidden hover:scale-105 transition-all duration-300 group cursor-pointer" onclick="showTicketDetail('${t.id}')">
+                                        <!-- Background Image -->
+                                        <div class="absolute inset-0">
+                                            <img src="${coverImage}" class="w-full h-full object-cover" alt="${t.title}">
+                                            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                                        </div>
+                                        
+                                        <!-- Ticket Shape Decoration -->
+                                        <div class="absolute top-0 right-8 w-4 h-4 bg-slate-50 rounded-full -translate-y-2"></div>
+                                        <div class="absolute bottom-0 right-8 w-4 h-4 bg-slate-50 rounded-full translate-y-2"></div>
+                                        
+                                        <!-- Perforated Line -->
+                                        <div class="absolute right-12 top-0 bottom-0 border-l-2 border-dashed border-white/30"></div>
+                                        
+                                        <!-- Content -->
+                                        <div class="relative p-6 text-white">
                                             <div class="flex items-start justify-between mb-4">
-                                                <div>
-                                                    <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm">ADMIT ONE</span>
+                                                <div class="flex-1">
+                                                    <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm inline-block mb-2">ADMIT ONE</span>
+                                                    <div class="flex items-center gap-2 text-xs opacity-80">
+                                                        <span class="material-icons-outlined text-sm">confirmation_number</span>
+                                                        <span>${t.ticketName}</span>
+                                                        <span class="mx-1">•</span>
+                                                        <span>${t.count}枚</span>
+                                                    </div>
                                                 </div>
-                                                <button onclick="showTicketQR('${t.id}')" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition backdrop-blur-sm">
-                                                    <span class="material-icons-outlined">qr_code_2</span>
+                                                <button onclick="event.stopPropagation(); showTicketQR('${t.id}')" class="p-3 bg-white/20 rounded-xl hover:bg-white/30 transition backdrop-blur-md">
+                                                    <span class="material-icons-outlined text-2xl">qr_code_2</span>
                                                 </button>
                                             </div>
-                                            <h3 class="text-2xl font-bold mb-2 line-clamp-2 cursor-pointer hover:underline" onclick="router('detail', {id: '${t.eventId || event.event_id}'})">${t.title}</h3>
-                                            <p class="text-sm opacity-90 mb-1">${t.ticketName}</p>
-                                            <p class="text-sm opacity-80">枚数: ${t.count}枚</p>
+                                            
+                                            <h3 class="text-2xl font-bold mb-3 line-clamp-2 drop-shadow-lg" onclick="event.stopPropagation(); router('detail', {id: '${t.eventId || event.event_id}'})">${t.title}</h3>
+                                            
                                             ${event.start_datetime ? `
-                                            <div class="mt-4 pt-4 border-t border-white/20">
-                                                <div class="flex items-center text-sm mb-2">
-                                                    <span class="material-icons-outlined text-base mr-2">event</span>
-                                                    <span>${new Date(event.start_datetime).toLocaleDateString('ja-JP', {year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
+                                            <div class="space-y-2">
+                                                <div class="flex items-center text-sm">
+                                                    <span class="material-icons-outlined text-base mr-2 opacity-80">event</span>
+                                                    <span class="drop-shadow">${new Date(event.start_datetime).toLocaleDateString('ja-JP', {year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
                                                 </div>
                                                 <div class="flex items-center text-sm">
-                                                    <span class="material-icons-outlined text-base mr-2">location_on</span>
-                                                    <span class="line-clamp-1">${event.venue_name || '会場未定'}</span>
+                                                    <span class="material-icons-outlined text-base mr-2 opacity-80">location_on</span>
+                                                    <span class="line-clamp-1 drop-shadow">${event.venue_name || '会場未定'}</span>
                                                 </div>
-                                                <button onclick="showTicketDetail('${t.id}')" class="mt-3 w-full py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-bold transition backdrop-blur-sm">
-                                                    <span class="material-icons-outlined text-sm align-middle mr-1">confirmation_number</span>
-                                                    チケット詳細
-                                                </button>
                                             </div>
                                             ` : ''}
+                                        </div>
+                                        
+                                        <!-- Barcode at bottom -->
+                                        <div class="relative bg-white/95 backdrop-blur-sm p-3">
+                                            <div class="flex justify-center gap-px">
+                                                ${Array.from({length: 40}, () => `<div class="w-1 h-8 bg-slate-800" style="height: ${Math.random() * 20 + 20}px"></div>`).join('')}
+                                            </div>
+                                            <p class="text-center text-xs text-slate-600 mt-1 font-mono">${t.id.toUpperCase()}</p>
                                         </div>
                                     </div>
                                 `}).join('')}
@@ -4108,9 +4172,17 @@
                 <div class="dashboard-layout">
                     <!-- Profile Cover Header (Only on overview) -->
                     ${subpage === 'overview' ? `
-                        <div class="dashboard-header-cover">
+                        <div class="dashboard-header-cover" style="background-image: linear-gradient(135deg, rgba(37,99,235,0.9), rgba(124,58,237,0.9)), url('${store.user.coverImage || store.coverImages[0].url}'); background-size: cover; background-position: center;">
+                            <button onclick="openCoverImageModal()" class="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-lg text-white transition">
+                                <span class="material-icons-outlined text-sm">edit</span>
+                            </button>
                             <div class="dashboard-profile-card">
-                                <img src="${store.user.icon}" alt="${store.user.name}">
+                                <div class="relative group">
+                                    <img src="${store.user.icon}" alt="${store.user.name}">
+                                    <button onclick="openProfileIconModal()" class="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                        <span class="material-icons-outlined">edit</span>
+                                    </button>
+                                </div>
                                 <div>
                                     <h2 class="text-xl font-bold text-slate-800">${store.user.name}</h2>
                                     <p class="text-sm text-slate-500">${store.user.email}</p>
@@ -15076,6 +15148,133 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     </div>
                 </div>
             `;
+        }
+
+        // Profile Icon Selection Modal
+        function openProfileIconModal() {
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8 max-w-4xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-slate-800">プロフィールアイコンを選択</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="font-bold text-slate-700 mb-3">プリセットアイコン（20種類）</h4>
+                        <div class="grid grid-cols-5 md:grid-cols-10 gap-3">
+                            ${store.profileIcons.map(icon => `
+                                <button onclick="selectProfileIcon('${icon.url}')" class="group relative aspect-square rounded-xl overflow-hidden border-2 border-slate-200 hover:border-blue-500 transition">
+                                    <img src="${icon.url}" class="w-full h-full object-cover" alt="${icon.name}">
+                                    <div class="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/20 transition"></div>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="border-t pt-6">
+                        <h4 class="font-bold text-slate-700 mb-3">カスタム画像をアップロード</h4>
+                        <div class="flex items-center gap-4">
+                            <input type="file" id="profile-icon-upload" accept="image/*" class="hidden">
+                            <button onclick="document.getElementById('profile-icon-upload').click()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-slate-700 transition flex items-center gap-2">
+                                <span class="material-icons-outlined">upload</span>
+                                画像を選択
+                            </button>
+                            <p class="text-sm text-slate-500">JPG, PNG, GIF（最大5MB）</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // File upload handler
+            document.getElementById('profile-icon-upload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file && file.size <= 5 * 1024 * 1024) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        selectProfileIcon(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showToast('ファイルサイズは5MB以下にしてください', 'error');
+                }
+            });
+        }
+        
+        function selectProfileIcon(iconUrl) {
+            store.user = { ...store.user, icon: iconUrl };
+            closeModal();
+            showToast('プロフィールアイコンを更新しました', 'check_circle');
+            router('dashboard'); // Refresh dashboard
+        }
+        
+        // Cover Image Selection Modal
+        function openCoverImageModal() {
+            const modal = document.getElementById('modal-content');
+            document.getElementById('modal-container').classList.remove('hidden');
+            
+            modal.innerHTML = `
+                <div class="p-8 max-w-4xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-slate-800">カバー画像を選択</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="font-bold text-slate-700 mb-3">プリセット画像（10種類）</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            ${store.coverImages.map(cover => `
+                                <button onclick="selectCoverImage('${cover.url}')" class="group relative aspect-video rounded-xl overflow-hidden border-2 border-slate-200 hover:border-blue-500 transition">
+                                    <img src="${cover.url}" class="w-full h-full object-cover" alt="${cover.name}">
+                                    <div class="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/20 transition"></div>
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-2 text-white text-xs font-bold">
+                                        ${cover.name}
+                                    </div>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="border-t pt-6">
+                        <h4 class="font-bold text-slate-700 mb-3">カスタム画像をアップロード</h4>
+                        <div class="flex items-center gap-4">
+                            <input type="file" id="cover-image-upload" accept="image/*" class="hidden">
+                            <button onclick="document.getElementById('cover-image-upload').click()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-lg font-bold text-slate-700 transition flex items-center gap-2">
+                                <span class="material-icons-outlined">upload</span>
+                                画像を選択
+                            </button>
+                            <p class="text-sm text-slate-500">JPG, PNG（最大10MB、推奨: 1200x300px）</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // File upload handler
+            document.getElementById('cover-image-upload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file && file.size <= 10 * 1024 * 1024) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        selectCoverImage(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    showToast('ファイルサイズは10MB以下にしてください', 'error');
+                }
+            });
+        }
+        
+        function selectCoverImage(imageUrl) {
+            store.user = { ...store.user, coverImage: imageUrl };
+            closeModal();
+            showToast('カバー画像を更新しました', 'check_circle');
+            router('dashboard'); // Refresh dashboard
         }
 
         function openKYCModal() {

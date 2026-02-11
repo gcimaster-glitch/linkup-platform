@@ -3070,7 +3070,55 @@
             
             switch(activeTab) {
                 case 'overview':
+                    // 最新チケットを取得
+                    const latestTickets = myTickets.slice(0, 2);
+                    
                     return `
+                        <!-- 🎫 Latest Tickets (Main Display) -->
+                        ${latestTickets.length > 0 ? `
+                        <div class="mb-8">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-2xl font-bold text-slate-800">あなたのチケット</h2>
+                                <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="text-sm text-primary hover:underline font-bold">
+                                    すべて見る →
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                ${latestTickets.map(t => {
+                                    const event = store.events.find(e => e.event_id === t.eventId) || {};
+                                    return `
+                                    <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl shadow-2xl overflow-hidden text-white cursor-pointer hover:scale-105 transition-transform duration-300" onclick="showTicketDetail('${t.id}')">
+                                        <div class="p-6">
+                                            <div class="flex items-start justify-between mb-4">
+                                                <div>
+                                                    <span class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm">ADMIT ONE</span>
+                                                </div>
+                                                <button onclick="event.stopPropagation(); showTicketQR('${t.id}')" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition backdrop-blur-sm">
+                                                    <span class="material-icons-outlined">qr_code_2</span>
+                                                </button>
+                                            </div>
+                                            <h3 class="text-2xl font-bold mb-2 line-clamp-2">${t.title}</h3>
+                                            <p class="text-sm opacity-90 mb-1">${t.ticketName}</p>
+                                            <p class="text-sm opacity-80">枚数: ${t.count}枚</p>
+                                            ${event.start_datetime ? `
+                                            <div class="mt-4 pt-4 border-t border-white/20">
+                                                <div class="flex items-center text-sm mb-2">
+                                                    <span class="material-icons-outlined text-base mr-2">event</span>
+                                                    <span>${new Date(event.start_datetime).toLocaleDateString('ja-JP', {year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
+                                                </div>
+                                                <div class="flex items-center text-sm">
+                                                    <span class="material-icons-outlined text-base mr-2">location_on</span>
+                                                    <span class="line-clamp-1">${event.venue_name || '会場未定'}</span>
+                                                </div>
+                                            </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `}).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
                         <!-- Statistics Cards -->
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-card p-6 text-white">
@@ -3166,25 +3214,37 @@
                     return `
                         <div class="bg-white rounded-2xl shadow-card">
                             <div class="p-6 border-b border-slate-100">
-                                <h3 class="text-lg font-bold text-slate-800">受信箱</h3>
-                                <p class="text-sm text-slate-500 mt-1">管理者・イベント主催者からのメッセージ</p>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h3 class="text-lg font-bold text-slate-800">受信箱</h3>
+                                        <p class="text-sm text-slate-500 mt-1">管理者・イベント主催者からのメッセージ</p>
+                                    </div>
+                                    <span class="text-sm text-slate-500">
+                                        未読: <span class="font-bold text-primary">${store.userInbox.filter(m => !m.read).length}</span>件
+                                    </span>
+                                </div>
                             </div>
                             <div class="divide-y divide-slate-100">
                                 ${store.userInbox.map(msg => `
-                                    <div class="p-6 hover:bg-slate-50 transition cursor-pointer ${!msg.read ? 'bg-blue-50/30' : ''}" onclick="viewUserMessage('${msg.id}')">
+                                    <div class="p-6 hover:bg-slate-50 transition cursor-pointer ${!msg.read ? 'bg-blue-50/50 border-l-4 border-blue-500' : ''}" onclick="viewUserMessage('${msg.id}')">
                                         <div class="flex items-start space-x-4">
-                                            <div class="w-10 h-10 rounded-full ${msg.fromType === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center flex-shrink-0">
-                                                <span class="material-icons-outlined text-sm">${msg.fromType === 'admin' ? 'shield' : 'event'}</span>
+                                            <div class="w-12 h-12 rounded-full ${msg.fromType === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'} flex items-center justify-center flex-shrink-0">
+                                                <span class="material-icons-outlined">${msg.fromType === 'admin' ? 'shield' : 'event'}</span>
                                             </div>
                                             <div class="flex-1 min-w-0">
-                                                <div class="flex items-center space-x-2 mb-1">
-                                                    <p class="text-sm font-bold text-slate-800">${msg.from}</p>
-                                                    ${!msg.read ? '<span class="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">未読</span>' : ''}
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <div class="flex items-center space-x-2">
+                                                        <p class="text-sm font-bold text-slate-800">${msg.from}</p>
+                                                        ${!msg.read ? '<span class="px-2.5 py-0.5 bg-blue-500 text-white text-xs rounded-full font-bold">未読</span>' : '<span class="px-2.5 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full font-bold">既読</span>'}
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <div class="text-sm font-bold text-slate-700">${new Date(msg.date).toLocaleDateString('ja-JP', {month: 'short', day: 'numeric'})}</div>
+                                                        <div class="text-xs text-slate-400">${new Date(msg.date + ' 12:00').toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'})}</div>
+                                                    </div>
                                                 </div>
-                                                <p class="text-sm font-bold text-slate-700 mb-1">${msg.subject}</p>
-                                                <p class="text-xs text-slate-500 line-clamp-2">${msg.preview}</p>
+                                                <p class="text-base font-bold text-slate-800 mb-2">${msg.subject}</p>
+                                                <p class="text-sm text-slate-600 line-clamp-2">${msg.preview}</p>
                                             </div>
-                                            <div class="text-xs text-slate-400">${msg.date}</div>
                                         </div>
                                     </div>
                                 `).join('')}
@@ -3525,10 +3585,33 @@
             const paymentHistory = store.paymentHistory.filter(p => p.userId === (store.user ? store.user.email : 'demo@example.com'));
             
             container.innerHTML = `
-                <div class="max-w-4xl mx-auto px-4 py-8">
-                    <h1 class="text-2xl font-bold text-slate-800 mb-2">マイページ</h1>
-                    <p class="text-slate-500 text-sm mb-8">ようこそ、${store.user.name}さん</p>
-
+                <!-- 🎨 Profile Header with Cover Image -->
+                <div class="relative mb-8">
+                    <div class="h-48 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-b-3xl overflow-hidden relative">
+                        <img src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=300&fit=crop" 
+                             class="w-full h-full object-cover opacity-80" 
+                             loading="lazy"
+                             alt="Cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+                    </div>
+                    <div class="max-w-4xl mx-auto px-4 -mt-20 relative">
+                        <div class="flex items-end space-x-4">
+                            <img src="${store.user.icon}" 
+                                 class="w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-white" 
+                                 alt="${store.user.name}">
+                            <div class="flex-1 pb-4">
+                                <h1 class="text-3xl font-bold text-white mb-1 drop-shadow-lg">${store.user.name}</h1>
+                                <p class="text-white/90 text-sm drop-shadow-md">${store.user.email}</p>
+                            </div>
+                            <button onclick="showToast('カバー画像編集は準備中です', 'info')" class="mb-4 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg font-bold transition border border-white/30">
+                                <span class="material-icons-outlined text-sm align-middle mr-1">edit</span>
+                                編集
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="max-w-4xl mx-auto px-4 py-4">
                     <!-- タブメニュー -->
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6">
                         <div class="flex border-b border-slate-200 overflow-x-auto">
@@ -14364,23 +14447,93 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             document.getElementById('modal-container').classList.remove('hidden');
             
             modal.innerHTML = `
-                <div class="p-8">
-                    <h3 class="text-xl font-bold mb-4 text-slate-800">本人確認書類の提出</h3>
-                    <p class="text-sm text-slate-500 mb-6">安全な取引のために、運転免許証またはマイナンバーカードの画像をアップロードしてください。</p>
-                    
-                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:bg-slate-50 transition" onclick="document.getElementById('kyc-input').click()">
-                        <span class="material-icons-outlined text-4xl text-slate-400 mb-2">cloud_upload</span>
-                        <p class="text-sm font-bold text-slate-600">クリックして画像をアップロード</p>
-                        <p class="text-xs text-slate-400 mt-1">またはドラッグ＆ドロップ</p>
-                        <input type="file" id="kyc-input" class="hidden" onchange="previewKYC(this)">
+                <div class="p-8 max-w-2xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-2xl font-bold text-slate-800">本人確認 (eKYC)</h3>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                            <span class="material-icons-outlined">close</span>
+                        </button>
                     </div>
                     
-                    <div id="kyc-preview" class="hidden mt-4">
-                        <p class="text-xs font-bold text-slate-500 mb-2">プレビュー:</p>
-                        <img id="kyc-img" class="w-full h-48 object-cover rounded-lg border border-slate-200">
+                    <!-- eKYC説明 -->
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                        <div class="flex items-start">
+                            <span class="material-icons-outlined text-blue-500 mr-3 mt-0.5">info</span>
+                            <div>
+                                <p class="font-bold text-blue-800 mb-2">安全で確実な本人確認</p>
+                                <p class="text-sm text-blue-700">LinkUpは、Stripe Identityを使用した安全な本人確認システム（eKYC）を採用しています。お客様の個人情報は暗号化され、厳重に保護されます。</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- メリット -->
+                    <div class="mb-6">
+                        <h4 class="font-bold text-slate-800 mb-3">本人確認を完了すると</h4>
+                        <div class="space-y-2">
+                            <div class="flex items-center text-sm text-slate-600">
+                                <span class="material-icons-outlined text-green-500 mr-2">check_circle</span>
+                                <span>イベント主催者として収益化が可能になります</span>
+                            </div>
+                            <div class="flex items-center text-sm text-slate-600">
+                                <span class="material-icons-outlined text-green-500 mr-2">check_circle</span>
+                                <span>高額チケット（10万円以上）の購入が可能になります</span>
+                            </div>
+                            <div class="flex items-center text-sm text-slate-600">
+                                <span class="material-icons-outlined text-green-500 mr-2">check_circle</span>
+                                <span>認証バッジが表示され、信頼性が向上します</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 必要書類 -->
+                    <div class="mb-6">
+                        <h4 class="font-bold text-slate-800 mb-3">必要な書類</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="border border-slate-200 rounded-lg p-3 text-center">
+                                <span class="material-icons-outlined text-blue-500 text-3xl mb-2">badge</span>
+                                <p class="text-sm font-bold text-slate-700">運転免許証</p>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg p-3 text-center">
+                                <span class="material-icons-outlined text-blue-500 text-3xl mb-2">credit_card</span>
+                                <p class="text-sm font-bold text-slate-700">マイナンバーカード</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- アップロード -->
+                    <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center cursor-pointer hover:bg-slate-50 transition mb-6" onclick="document.getElementById('kyc-input').click()">
+                        <span class="material-icons-outlined text-5xl text-slate-400 mb-3">cloud_upload</span>
+                        <p class="text-base font-bold text-slate-700 mb-1">書類をアップロード</p>
+                        <p class="text-sm text-slate-500">クリックして画像を選択、またはドラッグ＆ドロップ</p>
+                        <p class="text-xs text-slate-400 mt-2">JPG, PNG (最大5MB)</p>
+                        <input type="file" id="kyc-input" class="hidden" accept="image/*" onchange="previewKYC(this)">
+                    </div>
+                    
+                    <div id="kyc-preview" class="hidden mb-6">
+                        <p class="text-sm font-bold text-slate-700 mb-2">プレビュー:</p>
+                        <img id="kyc-img" class="w-full h-64 object-contain rounded-lg border border-slate-200 bg-slate-50">
+                    </div>
+                    
+                    <!-- セキュリティ情報 -->
+                    <div class="bg-slate-50 rounded-lg p-4 mb-6 text-xs text-slate-600">
+                        <div class="flex items-start mb-2">
+                            <span class="material-icons-outlined text-slate-400 text-sm mr-2">lock</span>
+                            <p><strong>プライバシー保護:</strong> アップロードされた画像は暗号化され、Stripe Identity経由で安全に処理されます。</p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="material-icons-outlined text-slate-400 text-sm mr-2">verified</span>
+                            <p><strong>審査時間:</strong> 通常、1〜2営業日以内に審査が完了します。</p>
+                        </div>
                     </div>
 
-                    <button onclick="submitKYC()" class="w-full mt-6 py-3 bg-primary text-white font-bold rounded-lg shadow hover:bg-blue-700 transition" id="kyc-submit" disabled>提出する</button>
+                    <div class="flex space-x-3">
+                        <button onclick="closeModal()" class="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition">
+                            キャンセル
+                        </button>
+                        <button onclick="submitKYC()" class="flex-1 py-3 bg-primary text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-lg" id="kyc-submit" disabled>
+                            提出する
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -14804,20 +14957,49 @@ async function showTicketQR(ticketId) {
                 </div>
                 
                 <div class="bg-slate-50 rounded-xl p-4 text-left mb-6">
-                    <h4 class="font-bold text-slate-800 mb-3">イベント情報</h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-slate-600">イベント名</span>
-                            <span class="font-semibold">${event.title}</span>
+                    <h4 class="font-bold text-slate-800 mb-3 flex items-center">
+                        <span class="material-icons-outlined text-primary mr-2">event</span>
+                        イベント詳細
+                    </h4>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-start">
+                            <span class="material-icons-outlined text-slate-400 text-base mr-2 mt-0.5">confirmation_number</span>
+                            <div class="flex-1">
+                                <span class="text-slate-500 block text-xs mb-1">イベント名</span>
+                                <span class="font-bold text-slate-800">${event.title}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-600">開催日時</span>
-                            <span class="font-semibold">${new Date(event.start_datetime).toLocaleString('ja-JP')}</span>
+                        <div class="flex items-start">
+                            <span class="material-icons-outlined text-slate-400 text-base mr-2 mt-0.5">schedule</span>
+                            <div class="flex-1">
+                                <span class="text-slate-500 block text-xs mb-1">開催日時</span>
+                                <span class="font-bold text-slate-800">${new Date(event.start_datetime).toLocaleDateString('ja-JP', {year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'})}</span>
+                                <span class="block font-bold text-slate-800">${new Date(event.start_datetime).toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'})} - ${new Date(event.end_datetime).toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'})}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-600">会場</span>
-                            <span class="font-semibold">${event.venue_name}</span>
+                        <div class="flex items-start">
+                            <span class="material-icons-outlined text-slate-400 text-base mr-2 mt-0.5">location_on</span>
+                            <div class="flex-1">
+                                <span class="text-slate-500 block text-xs mb-1">会場</span>
+                                <span class="font-bold text-slate-800">${event.venue_name}</span>
+                                ${event.venue_address ? `<span class="block text-slate-600 text-xs mt-1">${event.venue_address}</span>` : ''}
+                            </div>
                         </div>
+                        <div class="flex items-start">
+                            <span class="material-icons-outlined text-slate-400 text-base mr-2 mt-0.5">local_activity</span>
+                            <div class="flex-1">
+                                <span class="text-slate-500 block text-xs mb-1">チケット種類</span>
+                                <span class="font-bold text-slate-800">${ticket.ticketName}</span>
+                                <span class="block text-slate-600 text-xs mt-1">枚数: ${ticket.count}枚 | 購入日: ${new Date(ticket.purchaseDate).toLocaleDateString('ja-JP')}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <button onclick="router('detail', {id: '${event.event_id}'}); closeModal();" class="w-full py-2 text-sm text-primary hover:bg-blue-50 rounded-lg font-bold transition flex items-center justify-center">
+                            <span class="material-icons-outlined text-sm mr-1">open_in_new</span>
+                            イベント詳細を見る
+                        </button>
                     </div>
                 </div>
                 

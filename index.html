@@ -5897,7 +5897,51 @@
                                         
                                         <div>
                                             <label class="block text-sm font-bold text-slate-700 mb-2">カバー画像（メイン）</label>
+                                            
+                                            <!-- 📐 ガイドライン -->
+                                            <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-3 rounded-r-lg">
+                                                <div class="flex items-start gap-2">
+                                                    <span class="material-icons-outlined text-blue-600 text-sm mt-0.5">info</span>
+                                                    <div class="text-xs text-blue-800">
+                                                        <p class="font-bold mb-1">画像ガイドライン</p>
+                                                        <ul class="space-y-0.5">
+                                                            <li>• 推奨サイズ: 1200x630px（16:9）</li>
+                                                            <li>• 最小サイズ: 800x400px</li>
+                                                            <li>• ファイル形式: JPG, PNG, WebP</li>
+                                                            <li>• 最大ファイルサイズ: 5MB</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
                                             <div class="space-y-3">
+                                                <!-- プリセット画像選択 -->
+                                                <div>
+                                                    <p class="text-xs font-bold text-slate-700 mb-2">プリセット画像から選択</p>
+                                                    <div class="grid grid-cols-5 gap-2 mb-3">
+                                                        ${[
+                                                            { id: 1, url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=630&fit=crop', name: 'コンサート' },
+                                                            { id: 2, url: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=1200&h=630&fit=crop', name: 'ビジネス' },
+                                                            { id: 3, url: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=1200&h=630&fit=crop', name: 'テック' },
+                                                            { id: 4, url: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=1200&h=630&fit=crop', name: 'アート' },
+                                                            { id: 5, url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1200&h=630&fit=crop', name: 'イベント' },
+                                                            { id: 6, url: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=1200&h=630&fit=crop', name: '音楽フェス' },
+                                                            { id: 7, url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=630&fit=crop', name: 'ステージ' },
+                                                            { id: 8, url: 'https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?w=1200&h=630&fit=crop', name: 'カンファレンス' },
+                                                            { id: 9, url: 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=1200&h=630&fit=crop', name: 'セミナー' },
+                                                            { id: 10, url: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=1200&h=630&fit=crop', name: 'ワークショップ' }
+                                                        ].map(preset => `
+                                                            <button type="button" onclick="selectPresetCoverImage('${preset.url}')" class="group relative aspect-video rounded-lg overflow-hidden border-2 border-slate-200 hover:border-blue-500 transition">
+                                                                <img src="${preset.url}" class="w-full h-full object-cover" alt="${preset.name}">
+                                                                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                                                                    <span class="text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition">${preset.name}</span>
+                                                                </div>
+                                                            </button>
+                                                        `).join('')}
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- ファイルアップロード -->
                                                 <div class="flex items-center space-x-3">
                                                     <input type="file" id="event-cover-image-file" accept="image/*" class="hidden" onchange="uploadEventCoverImage(this)">
                                                     <button type="button" onclick="document.getElementById('event-cover-image-file').click()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition flex items-center">
@@ -6008,27 +6052,75 @@
                                     <div id="ticket-list" class="space-y-4">
                                         ${event && event.tickets ? event.tickets.map((ticket, idx) => `
                                             <div class="border border-slate-200 rounded-lg p-4">
-                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
-                                                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.name}" placeholder="一般参加">
+                                                <div class="space-y-4">
+                                                    <!-- 基本情報 -->
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
+                                                            <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.name}" placeholder="一般参加">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
+                                                            <div class="relative">
+                                                                <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.price}" placeholder="0">
+                                                                <div class="absolute right-3 top-2.5 flex items-center gap-2">
+                                                                    <label class="text-xs text-slate-500">
+                                                                        <input type="radio" name="tax-type-${idx}" value="tax-included" checked class="mr-1">税込
+                                                                    </label>
+                                                                    <label class="text-xs text-slate-500">
+                                                                        <input type="radio" name="tax-type-${idx}" value="tax-excluded" class="mr-1">税別
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
+                                                            <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.capacity || 100}" placeholder="100">
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
-                                                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.price}" placeholder="0">
+                                                    
+                                                    <!-- 追加情報 -->
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                                                一人あたり購入制限
+                                                                <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                                                            </label>
+                                                            <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.purchaseLimit || 5}" placeholder="5" min="1" max="10">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">手数料（円）</label>
+                                                            <input type="number" class="ticket-fee w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.serviceFee || 0}" placeholder="0">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">受け渡し方法</label>
+                                                            <select class="ticket-delivery w-full px-4 py-2 border border-slate-300 rounded-lg">
+                                                                <option value="digital" ${ticket.deliveryMethod === 'digital' || !ticket.deliveryMethod ? 'selected' : ''}>電子チケット（QR）</option>
+                                                                <option value="mail" ${ticket.deliveryMethod === 'mail' ? 'selected' : ''}>郵送</option>
+                                                                <option value="pickup" ${ticket.deliveryMethod === 'pickup' ? 'selected' : ''}>当日受け取り</option>
+                                                            </select>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
-                                                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.capacity || 100}" placeholder="100">
-                                                    </div>
+                                                    
+                                                    <!-- 締め切り日時 -->
                                                     <div>
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">
-                                                            一人あたり購入制限
-                                                            <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                                                            申込み締め切り日時
+                                                            <span class="text-xs text-slate-500 font-normal">- 設定しない場合はイベント開始まで</span>
                                                         </label>
-                                                        <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.purchaseLimit || 5}" placeholder="5" min="1" max="10">
+                                                        <input type="datetime-local" class="ticket-deadline w-full px-4 py-2 border border-slate-300 rounded-lg" value="${ticket.deadline || ''}">
                                                     </div>
-                                                    <div class="md:col-span-2 flex items-end">
+                                                    
+                                                    <!-- 備考欄 -->
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                                                            備考
+                                                            <span class="text-xs text-slate-500 font-normal">- キャンセルポリシーなど</span>
+                                                        </label>
+                                                        <textarea class="ticket-notes w-full px-4 py-2 border border-slate-300 rounded-lg" rows="3" placeholder="例: キャンセルはイベント3日前まで可能です。それ以降の返金はできません。">${ticket.notes || ''}</textarea>
+                                                    </div>
+                                                    
+                                                    <div class="flex items-end">
                                                         <button onclick="removeTicketType(${idx})" class="text-red-500 hover:text-red-700">
                                                             <span class="material-icons-outlined">delete</span>
                                                             削除
@@ -6038,25 +6130,72 @@
                                             </div>
                                         `).join('') : `
                                             <div class="border border-slate-200 rounded-lg p-4">
-                                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
-                                                        <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="一般参加" placeholder="一般参加">
+                                                <div class="space-y-4">
+                                                    <!-- 基本情報 -->
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
+                                                            <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" value="一般参加" placeholder="一般参加">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
+                                                            <div class="relative">
+                                                                <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg pr-32" value="3000" placeholder="0">
+                                                                <div class="absolute right-3 top-2.5 flex items-center gap-2">
+                                                                    <label class="text-xs text-slate-500">
+                                                                        <input type="radio" name="tax-type-0" value="tax-included" checked class="mr-1">税込
+                                                                    </label>
+                                                                    <label class="text-xs text-slate-500">
+                                                                        <input type="radio" name="tax-type-0" value="tax-excluded" class="mr-1">税別
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
+                                                            <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="100" placeholder="100">
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
-                                                        <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg" value="3000" placeholder="0">
+                                                    
+                                                    <!-- 追加情報 -->
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">
+                                                                一人あたり購入制限
+                                                                <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                                                            </label>
+                                                            <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="5" placeholder="5" min="1" max="10">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">手数料（円）</label>
+                                                            <input type="number" class="ticket-fee w-full px-4 py-2 border border-slate-300 rounded-lg" value="0" placeholder="0">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-sm font-bold text-slate-700 mb-2">受け渡し方法</label>
+                                                            <select class="ticket-delivery w-full px-4 py-2 border border-slate-300 rounded-lg">
+                                                                <option value="digital" selected>電子チケット（QR）</option>
+                                                                <option value="mail">郵送</option>
+                                                                <option value="pickup">当日受け取り</option>
+                                                            </select>
+                                                        </div>
                                                     </div>
+                                                    
+                                                    <!-- 締め切り日時 -->
                                                     <div>
-                                                        <label class="block text-sm font-bold text-slate-700 mb-2">販売枚数</label>
-                                                        <input type="number" class="ticket-capacity w-full px-4 py-2 border border-slate-300 rounded-lg" value="100" placeholder="100">
-                                                    </div>
-                                                    <div class="md:col-span-3">
                                                         <label class="block text-sm font-bold text-slate-700 mb-2">
-                                                            一人あたり購入制限
-                                                            <span class="text-xs text-slate-500 font-normal">(1-10枚)</span>
+                                                            申込み締め切り日時
+                                                            <span class="text-xs text-slate-500 font-normal">- 設定しない場合はイベント開始まで</span>
                                                         </label>
-                                                        <input type="number" class="ticket-limit w-full px-4 py-2 border border-slate-300 rounded-lg" value="5" placeholder="5" min="1" max="10">
+                                                        <input type="datetime-local" class="ticket-deadline w-full px-4 py-2 border border-slate-300 rounded-lg">
+                                                    </div>
+                                                    
+                                                    <!-- 備考欄 -->
+                                                    <div>
+                                                        <label class="block text-sm font-bold text-slate-700 mb-2">
+                                                            備考
+                                                            <span class="text-xs text-slate-500 font-normal">- キャンセルポリシーなど</span>
+                                                        </label>
+                                                        <textarea class="ticket-notes w-full px-4 py-2 border border-slate-300 rounded-lg" rows="3" placeholder="例: キャンセルはイベント3日前まで可能です。それ以降の返金はできません。"></textarea>
                                                     </div>
                                                 </div>
                                             </div>
@@ -14658,40 +14797,93 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             `;
         }
 
+        function selectPresetCoverImage(url) {
+            document.getElementById('event-cover-image').value = url;
+            document.getElementById('cover-image-preview').innerHTML = `<img src="${url}" loading="lazy" class="w-full h-48 object-cover rounded-lg">`;
+            showToast('プリセット画像を選択しました', 'check_circle');
+        }
+
         function generateDescriptionWithAI() {
-            const description = document.getElementById('event-description').value;
-            if (!description.trim()) {
+            // AIエディタから入力を取得
+            const rawDescription = document.getElementById('event-description-ai').value;
+            if (!rawDescription.trim()) {
                 showToast('説明文を入力してください', 'error');
                 return;
             }
             
+            // イベント基本情報も取得
+            const title = document.getElementById('event-title').value || 'イベント';
+            const category = document.getElementById('event-category').value || 'tech';
+            
             showToast('AI生成中...', 'info');
             
-            // シンプルな整形処理（実際のAI APIは後で実装）
+            // 🎯 Gemini API風の整形処理
             setTimeout(() => {
-                const lines = description.split('\n').filter(l => l.trim());
+                const lines = rawDescription.split('\n').filter(l => l.trim());
+                
+                // カテゴリに応じたテンプレート
+                const categoryTemplates = {
+                    tech: {
+                        title: '最新テクノロジーを体験',
+                        target: ['エンジニア・開発者の方', '最新技術に興味がある方', 'スキルアップを目指す方']
+                    },
+                    business: {
+                        title: 'ビジネスの可能性を広げる',
+                        target: ['起業家・経営者の方', 'ビジネスパーソン', 'ネットワーキングを広げたい方']
+                    },
+                    music: {
+                        title: '音楽で心を満たす',
+                        target: ['音楽好きの方', 'ライブ体験を楽しみたい方', '新しいアーティストを発見したい方']
+                    },
+                    art: {
+                        title: 'アートの世界に触れる',
+                        target: ['アート愛好家の方', 'クリエイティブな体験を求める方', '感性を磨きたい方']
+                    },
+                    social: {
+                        title: '人との繋がりを楽しむ',
+                        target: ['新しい出会いを求める方', '交流を楽しみたい方', 'コミュニティを広げたい方']
+                    }
+                };
+                
+                const template = categoryTemplates[category] || categoryTemplates.tech;
+                
                 const formatted = `
-<div class="event-description">
-    <h3>イベント概要</h3>
-    <p>${lines[0] || ''}</p>
+<div class="event-description" style="line-height: 1.8;">
+    <h2 style="font-size: 1.5em; font-weight: bold; margin-bottom: 1em; color: #1e293b;">${title}</h2>
     
-    <h3>詳細</h3>
-    <ul>
-        ${lines.slice(1).map(line => `<li>${line}</li>`).join('\n        ')}
-    </ul>
+    <section style="margin-bottom: 2em;">
+        <h3 style="font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; color: #334155;">📝 イベント概要</h3>
+        <p style="color: #475569;">${lines[0] || ''}</p>
+    </section>
     
-    <h3>こんな方におすすめ</h3>
-    <ul>
-        <li>業界の最新トレンドに興味がある方</li>
-        <li>ネットワーキングを広げたい方</li>
-        <li>新しい知識やスキルを習得したい方</li>
-    </ul>
+    ${lines.length > 1 ? `
+    <section style="margin-bottom: 2em;">
+        <h3 style="font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; color: #334155;">✨ 詳細</h3>
+        <ul style="list-style: disc; padding-left: 1.5em; color: #475569;">
+            ${lines.slice(1).map(line => `<li style="margin-bottom: 0.5em;">${line}</li>`).join('\n            ')}
+        </ul>
+    </section>
+    ` : ''}
+    
+    <section style="margin-bottom: 2em;">
+        <h3 style="font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; color: #334155;">🎯 ${template.title}</h3>
+        <p style="color: #475569;">このイベントは以下のような方におすすめです：</p>
+        <ul style="list-style: disc; padding-left: 1.5em; color: #475569; margin-top: 0.5em;">
+            ${template.target.map(t => `<li style="margin-bottom: 0.5em;">${t}</li>`).join('\n            ')}
+        </ul>
+    </section>
+    
+    <section style="background: #f1f5f9; padding: 1em; border-radius: 0.5em; border-left: 4px solid #3b82f6;">
+        <p style="color: #475569; font-size: 0.9em;"><strong>💡 参加のヒント:</strong> 事前に資料を確認し、質問を準備しておくとより充実した体験ができます。</p>
+    </section>
 </div>
                 `.trim();
                 
-                document.getElementById('event-description').value = formatted;
-                showToast('AI生成が完了しました', 'success');
-            }, 1000);
+                // WYSIWYGエディタに反映
+                document.getElementById('event-description-wysiwyg').innerHTML = formatted;
+                
+                showToast('✨ AI生成が完了しました！', 'success');
+            }, 1500);
         }
 
         // 🎯 ダッシュボードガイドヘルパー関数
@@ -14871,13 +15063,24 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             const ticketElements = document.querySelectorAll('#ticket-list > div');
             const tickets = Array.from(ticketElements).map((el, idx) => {
                 const purchaseLimit = parseInt(el.querySelector('.ticket-limit').value) || 5;
+                const taxType = el.querySelector(`input[name="tax-type-${idx}"]:checked`)?.value || 'tax-included';
+                const serviceFee = parseInt(el.querySelector('.ticket-fee')?.value) || 0;
+                const deliveryMethod = el.querySelector('.ticket-delivery')?.value || 'digital';
+                const deadline = el.querySelector('.ticket-deadline')?.value || null;
+                const notes = el.querySelector('.ticket-notes')?.value || '';
+                
                 return {
                     id: `ticket-${Date.now()}-${idx}`,
                     name: el.querySelector('.ticket-name').value,
                     price: parseInt(el.querySelector('.ticket-price').value) || 0,
+                    taxType: taxType,
+                    serviceFee: serviceFee,
                     capacity: parseInt(el.querySelector('.ticket-capacity').value) || 100,
                     available: parseInt(el.querySelector('.ticket-capacity').value) || 100,
-                    purchaseLimit: Math.max(1, Math.min(10, purchaseLimit)) // 1-10の範囲に制限
+                    purchaseLimit: Math.max(1, Math.min(10, purchaseLimit)), // 1-10の範囲に制限
+                    deliveryMethod: deliveryMethod,
+                    deadline: deadline,
+                    notes: notes
                 };
             });
             

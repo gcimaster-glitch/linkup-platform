@@ -407,14 +407,14 @@
 
     <!-- 🎨 Modern Header with Brand Gradient -->
     <header class="fixed w-full z-50 header-gradient transition-all duration-300" id="main-header">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <!-- 🔥 New Logo System -->
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-14 sm:h-16">
+                <!-- 🔥 New Logo System - Mobile Optimized -->
                 <div class="flex items-center cursor-pointer group" onclick="router('home')">
                     <!-- Modern Icon Badge -->
                     <div class="relative">
-                        <div class="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform" style="box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform" style="box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#2563EB"/>
                                 <path d="M2 17L12 22L22 17" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <path d="M2 12L12 17L22 12" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -422,9 +422,9 @@
                         </div>
                     </div>
                     <!-- Wordmark -->
-                    <div class="ml-3">
-                        <span class="text-2xl font-bold text-white" style="font-size: 1.5rem; letter-spacing: -0.02em;">LinkUp</span>
-                        <div class="text-[10px] text-white/80 font-medium tracking-wide -mt-1">人と体験をつなぐ</div>
+                    <div class="ml-2 sm:ml-3">
+                        <span class="text-lg sm:text-2xl font-bold text-white" style="letter-spacing: -0.02em;">LinkUp</span>
+                        <div class="hidden sm:block text-[10px] text-white/80 font-medium tracking-wide -mt-1">人と体験をつなぐ</div>
                     </div>
                 </div>
 
@@ -437,13 +437,13 @@
                     <span class="material-icons-outlined absolute left-3 top-2 text-white/70">search</span>
                 </div>
 
-                <!-- Navigation -->
-                <nav class="flex items-center space-x-3">
-                    <button onclick="router('organizer')" class="hidden md:flex items-center px-4 py-2 bg-white/90 text-blue-600 rounded-full hover:bg-white transition backdrop-blur-sm text-sm font-bold border-2 border-white shadow-md hover:shadow-lg" id="organizer-btn" style="display: none;">
-                         📈 主催者管理
+                <!-- Navigation - Mobile Optimized -->
+                <nav class="flex items-center space-x-1 sm:space-x-3">
+                    <button onclick="router('organizer')" class="hidden md:flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-white/90 text-blue-600 rounded-full hover:bg-white transition backdrop-blur-sm text-xs sm:text-sm font-bold border-2 border-white shadow-md hover:shadow-lg" id="organizer-btn" style="display: none;">
+                         <span class="hidden sm:inline">📈 </span>主催者
                     </button>
-                    <button onclick="openCreateModal()" class="hidden md:flex items-center px-5 py-2.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full hover:from-yellow-500 hover:to-orange-600 transition shadow-xl text-sm font-bold border-2 border-white/50 hover:scale-105" id="create-event-btn" style="display: none;">
-                        <span class="material-icons-outlined text-sm mr-1">add_circle</span> イベント作成
+                    <button onclick="openCreateModal()" class="hidden md:flex items-center px-3 sm:px-5 py-1.5 sm:py-2.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full hover:from-yellow-500 hover:to-orange-600 transition shadow-xl text-xs sm:text-sm font-bold border-2 border-white/50 hover:scale-105" id="create-event-btn" style="display: none;">
+                        <span class="material-icons-outlined text-xs sm:text-sm mr-1">add_circle</span> <span class="hidden sm:inline">イベント</span>作成
                     </button>
                     
                     <div id="nav-auth-section" class="flex items-center">
@@ -2615,72 +2615,72 @@
             // 🎨 Enhanced Design by Executive UX Team
             modal.innerHTML = `
                 <div class="max-h-[90vh] overflow-y-auto">
-                    <div class="w-full p-6 md:p-10 flex flex-col relative">
+                    <div class="w-full p-4 sm:p-6 md:p-10 flex flex-col relative">
                         <!-- Close Button -->
-                        <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full p-2" aria-label="閉じる">
-                            <span class="material-icons-outlined">close</span>
+                        <button onclick="closeModal()" class="absolute top-2 right-2 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full p-2" aria-label="閉じる">
+                            <span class="material-icons-outlined text-xl sm:text-2xl">close</span>
                         </button>
                         
                         <!-- Header -->
-                        <div class="text-center mb-8">
-                            <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">LinkUpへようこそ</h2>
-                            <p class="text-slate-600 text-sm md:text-base">日本最大級のイベントプラットフォーム</p>
+                        <div class="text-center mb-6 sm:mb-8">
+                            <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-2">LinkUpへようこそ</h2>
+                            <p class="text-slate-600 text-xs sm:text-sm md:text-base">日本最大級のイベントプラットフォーム</p>
                         </div>
                         
-                        <!-- Social Login (Priority #1) -->
-                        <div class="space-y-3 mb-6">
-                            <button onclick="showToast('Google連携は準備中です', 'info')" class="w-full py-3.5 border-2 border-slate-200 rounded-xl flex items-center justify-center hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 font-semibold text-slate-700 shadow-sm hover:shadow-md">
-                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-5 h-5 mr-3" alt="Google">
+                        <!-- Social Login (Priority #1) - Mobile Optimized -->
+                        <div class="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
+                            <button onclick="showToast('Google連携は準備中です', 'info')" class="w-full py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-xl flex items-center justify-center hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 font-semibold text-sm sm:text-base text-slate-700 shadow-sm hover:shadow-md">
+                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" alt="Google">
                                 Googleで続ける
                             </button>
-                            <button onclick="showToast('LINE連携は準備中です', 'info')" class="w-full py-3.5 border-2 border-slate-200 rounded-xl flex items-center justify-center hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 font-semibold text-slate-700 shadow-sm hover:shadow-md">
-                                <svg class="w-5 h-5 mr-3" fill="#00B900" viewBox="0 0 24 24"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+                            <button onclick="showToast('LINE連携は準備中です', 'info')" class="w-full py-2.5 sm:py-3.5 border-2 border-slate-200 rounded-xl flex items-center justify-center hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 font-semibold text-sm sm:text-base text-slate-700 shadow-sm hover:shadow-md">
+                                <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" fill="#00B900" viewBox="0 0 24 24"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                                 LINEで続ける
                             </button>
                         </div>
                         
                         <!-- Divider -->
-                        <div class="relative my-6">
+                        <div class="relative my-4 sm:my-6">
                             <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
-                            <div class="relative flex justify-center text-sm"><span class="px-4 bg-white text-slate-500 font-medium">またはメールアドレスで</span></div>
+                            <div class="relative flex justify-center text-xs sm:text-sm"><span class="px-3 sm:px-4 bg-white text-slate-500 font-medium">またはメールアドレスで</span></div>
                         </div>
                         
                         <!-- Tab Switcher -->
-                        <div class="flex bg-slate-100 rounded-lg p-1 mb-6">
-                            <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-2.5 font-semibold text-slate-900 bg-white rounded-md shadow-sm transition-all duration-200">ログイン</button>
-                            <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-2.5 font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200">新規登録</button>
+                        <div class="flex bg-slate-100 rounded-lg p-1 mb-4 sm:mb-6">
+                            <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 py-2 sm:py-2.5 font-semibold text-sm sm:text-base text-slate-900 bg-white rounded-md shadow-sm transition-all duration-200">ログイン</button>
+                            <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 py-2 sm:py-2.5 font-semibold text-sm sm:text-base text-slate-600 hover:text-slate-900 transition-all duration-200">新規登録</button>
                         </div>
                         
                         <!-- Login Form -->
                         <div id="login-form-container">
-                            <form id="login-form" class="space-y-4" onsubmit="handleLogin(event)">
+                            <form id="login-form" class="space-y-3 sm:space-y-4" onsubmit="handleLogin(event)">
                                 <div>
-                                    <label class="block text-sm font-semibold text-slate-700 mb-2" for="login-email">メールアドレス <span class="text-red-500">*</span></label>
+                                    <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5 sm:mb-2" for="login-email">メールアドレス <span class="text-red-500">*</span></label>
                                     <input type="email" id="login-email" name="email" required 
-                                           class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
+                                           class="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
                                            placeholder="example@linkup.jp"
                                            autocomplete="email">
                                 </div>
                                 <div>
-                                    <div class="flex justify-between items-center mb-2">
-                                        <label class="block text-sm font-semibold text-slate-700" for="login-password">パスワード <span class="text-red-500">*</span></label>
-                                        <a href="#" onclick="event.preventDefault(); showToast('パスワードリセット機能は準備中です', 'info');" class="text-xs text-primary hover:text-blue-700 font-medium">パスワードを忘れた？</a>
+                                    <div class="flex justify-between items-center mb-1.5 sm:mb-2">
+                                        <label class="block text-xs sm:text-sm font-semibold text-slate-700" for="login-password">パスワード <span class="text-red-500">*</span></label>
+                                        <a href="#" onclick="event.preventDefault(); showToast('パスワードリセット機能は準備中です', 'info');" class="text-xs text-primary hover:text-blue-700 font-medium">忘れた？</a>
                                     </div>
                                     <input type="password" id="login-password" name="password" required 
-                                           class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
+                                           class="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 text-slate-900"
                                            placeholder="••••••••"
                                            autocomplete="current-password">
                                 </div>
-                                <button type="submit" class="w-full py-3.5 bg-primary text-white rounded-lg font-bold hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg mt-6">
+                                <button type="submit" class="w-full py-3 sm:py-3.5 bg-primary text-white rounded-lg font-bold text-sm sm:text-base hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg mt-4 sm:mt-6">
                                     ログイン
                                 </button>
                                 
                                 <!-- Demo Account Info -->
-                                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <p class="text-xs font-semibold text-blue-900 mb-2">💡 テストアカウント</p>
-                                    <div class="space-y-1 text-xs text-blue-800">
-                                        <p><strong>主催者:</strong> organizer@demo.com (password: demo)</p>
-                                        <p><strong>参加者:</strong> user@demo.com (password: demo)</p>
+                                <div class="mt-3 sm:mt-4 p-2.5 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p class="text-xs font-semibold text-blue-900 mb-1.5 sm:mb-2">💡 テストアカウント</p>
+                                    <div class="space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs text-blue-800">
+                                        <p><strong>主催者:</strong> organizer@demo.com (demo)</p>
+                                        <p><strong>参加者:</strong> user@demo.com (demo)</p>
                                     </div>
                                 </div>
                             </form>
@@ -2759,9 +2759,20 @@
             const email = formData.get('email');
             const password = formData.get('password');
             
+            // Disable form button to prevent double submission
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> ログイン中...';
+            
             try {
-                showToast('ログイン中...', 'info');
-                const result = await API.Auth.login(email, password);
+                // Add timeout for better UX
+                const loginPromise = API.Auth.login(email, password);
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('ログインがタイムアウトしました。もう一度お試しください。')), 10000)
+                );
+                
+                const result = await Promise.race([loginPromise, timeoutPromise]);
                 
                 if (result.success) {
                     localStorage.setItem('linkup_token', result.token);
@@ -2774,6 +2785,10 @@
                         role: result.user.role || 'attendee'
                     };
                     
+                    // Quick UI update before closing modal
+                    submitBtn.innerHTML = '✅ 成功！';
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    
                     closeModal();
                     updateNav();
                     showToast('ログインしました', 'check_circle');
@@ -2784,6 +2799,10 @@
                 console.error('Login error:', error);
                 const errorMessage = error.message || error.error || 'ログインに失敗しました。メールアドレスとパスワードをご確認ください。';
                 showToast(errorMessage, 'error');
+            } finally {
+                // Re-enable form
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         }
         
@@ -2929,42 +2948,42 @@
             
             if (store.user) {
                 nav.innerHTML = `
-                    <div class="flex items-center gap-3 ml-4">
-                        <!-- お問い合わせ -->
-                        <button onclick="router('dashboard_support')" class="p-2 text-white/90 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-200" title="お問い合わせ">
-                            <span class="material-icons-outlined text-xl">support_agent</span>
+                    <div class="flex items-center gap-1 sm:gap-3 ml-2 sm:ml-4">
+                        <!-- お問い合わせ - Hidden on mobile -->
+                        <button onclick="router('dashboard_support')" class="hidden sm:flex p-2 text-white/90 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-200" title="お問い合わせ">
+                            <span class="material-icons-outlined text-lg sm:text-xl">support_agent</span>
                         </button>
                         
-                        <!-- ユーザーアイコン -->
+                        <!-- ユーザーアイコン - Smaller on mobile -->
                         <button onclick="router('dashboard')" class="group relative">
-                            <img src="${store.user.icon}" class="w-10 h-10 rounded-xl border-2 border-white/50 hover:border-white transition-all duration-200 group-hover:scale-105" style="box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
-                            <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                            <img src="${store.user.icon}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl border-2 border-white/50 hover:border-white transition-all duration-200 group-hover:scale-105" style="box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                            <div class="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white"></div>
                         </button>
                         
                         <!-- ログアウト -->
-                        <button onclick="logout()" class="p-2 text-white/90 hover:text-red-400 hover:bg-white/20 rounded-lg transition-all duration-200" title="ログアウト">
-                            <span class="material-icons-outlined text-xl">logout</span>
+                        <button onclick="logout()" class="p-1.5 sm:p-2 text-white/90 hover:text-red-400 hover:bg-white/20 rounded-lg transition-all duration-200" title="ログアウト">
+                            <span class="material-icons-outlined text-lg sm:text-xl">logout</span>
                         </button>
                     </div>
                 `;
             } else {
                 nav.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <!-- お問い合わせ (未ログイン) -->
+                    <div class="flex items-center gap-1 sm:gap-2">
+                        <!-- お問い合わせ (未ログイン) - Hidden on mobile -->
                         <button onclick="router('static', {page: 'help'})" class="p-2 text-white/90 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-200 hidden md:flex" title="お問い合わせ">
                             <span class="material-icons-outlined text-xl">support_agent</span>
                         </button>
                         
-                        <!-- ログイン -->
-                        <button onclick="openAuthModal()" class="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white/95 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200 border border-white/30">
-                            <span class="material-icons-outlined text-base">login</span>
-                            <span>ログイン</span>
+                        <!-- ログイン - Compact on mobile -->
+                        <button onclick="openAuthModal()" class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white/95 hover:text-white hover:bg-white/20 rounded-lg sm:rounded-xl transition-all duration-200 border border-white/30">
+                            <span class="material-icons-outlined text-sm sm:text-base">login</span>
+                            <span class="hidden sm:inline">ログイン</span>
                         </button>
                         
-                        <!-- 新規登録 -->
-                        <button onclick="openAuthModal()" class="flex items-center gap-1.5 px-5 py-2.5 text-sm font-bold bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-200 shadow-lg">
-                            <span class="material-icons-outlined text-base">person_add</span>
-                            <span>新規登録</span>
+                        <!-- 新規登録 - Compact on mobile -->
+                        <button onclick="openAuthModal()" class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-5 py-1.5 sm:py-2.5 text-xs sm:text-sm font-bold bg-white text-blue-600 rounded-lg sm:rounded-xl hover:bg-blue-50 transition-all duration-200 shadow-lg">
+                            <span class="material-icons-outlined text-sm sm:text-base">person_add</span>
+                            <span>登録</span>
                         </button>
                     </div>
                 `;

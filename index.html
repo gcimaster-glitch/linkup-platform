@@ -61,6 +61,28 @@
         }
         
         /* ====== DASHBOARD PAGE LAYOUT (Phase 2) ====== */
+        
+        /* Touch Target Optimization */
+        .touch-target {
+            min-width: 44px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        @media (hover: none) and (pointer: coarse) {
+            /* Touch device specific styles */
+            button, a, [onclick] {
+                -webkit-tap-highlight-color: rgba(37, 99, 235, 0.1);
+            }
+            
+            .touch-target {
+                min-width: 48px;
+                min-height: 48px;
+            }
+        }
+        
         .dashboard-layout {
             display: flex;
             flex-direction: column;
@@ -207,6 +229,7 @@
         
         /* Mobile: Bottom Tab Bar */
         @media (max-width: 768px) {
+            /* Header adjustments */
             .dashboard-header-cover {
                 height: 150px;
                 margin-bottom: 60px;
@@ -214,8 +237,9 @@
             
             .dashboard-profile-card {
                 bottom: -40px;
-                padding: 15px;
-                gap: 15px;
+                padding: 12px;
+                gap: 12px;
+                max-width: 90%;
             }
             
             .dashboard-profile-card img {
@@ -223,6 +247,7 @@
                 height: 60px;
             }
             
+            /* Fixed bottom navigation */
             .dashboard-sidenav {
                 position: fixed;
                 bottom: 0;
@@ -230,44 +255,65 @@
                 right: 0;
                 width: 100%;
                 height: auto;
+                max-height: 70px;
                 top: auto;
                 border-right: none;
                 border-top: 1px solid #e2e8f0;
                 display: flex;
                 justify-content: space-around;
-                padding: 8px 0;
-                z-index: 40;
+                align-items: center;
+                padding: 6px 0;
+                z-index: 1000;
                 background: white;
+                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+                overflow: visible;
             }
             
             .dashboard-sidenav .nav-item {
                 flex-direction: column;
-                padding: 8px 12px;
-                font-size: 11px;
-                gap: 4px;
+                padding: 6px 8px;
+                font-size: 10px;
+                gap: 2px;
                 flex: 1;
                 text-align: center;
+                min-width: 60px;
+                max-width: 80px;
+                white-space: nowrap;
+                overflow: hidden;
             }
             
             .dashboard-sidenav .nav-item .material-icons-outlined {
-                font-size: 20px;
+                font-size: 22px;
             }
             
             .dashboard-sidenav .nav-item .badge {
                 position: absolute;
-                top: 4px;
-                right: 8px;
+                top: 2px;
+                right: 50%;
+                transform: translateX(10px);
                 margin: 0;
+                font-size: 9px;
+                min-width: 16px;
+                height: 16px;
+                padding: 0 4px;
             }
             
+            /* Content spacing for bottom nav */
             .dashboard-content {
                 padding: 1rem;
-                padding-bottom: 5rem;
+                padding-bottom: 6rem;
             }
             
             .breadcrumb {
                 font-size: 0.75rem;
                 padding: 8px 12px;
+            }
+            
+            /* Prevent body scroll when modal is open */
+            body.modal-open {
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
             }
         }
         
@@ -2785,13 +2831,22 @@
                         role: result.user.role || 'attendee'
                     };
                     
-                    // Quick UI update before closing modal
-                    submitBtn.innerHTML = '✅ 成功！';
-                    await new Promise(resolve => setTimeout(resolve, 300));
+                    // Optimized UI update
+                    submitBtn.innerHTML = '<span class="inline-block">✅</span> 成功！';
                     
-                    closeModal();
+                    // Update navigation immediately
                     updateNav();
-                    showToast('ログインしました', 'check_circle');
+                    
+                    // Close modal with smooth animation
+                    setTimeout(() => {
+                        closeModal();
+                        showToast('ログインしました', 'check_circle');
+                        
+                        // Route to dashboard if user is organizer/admin
+                        if (store.user.role === 'organizer' || store.user.role === 'admin') {
+                            setTimeout(() => router('organizer'), 200);
+                        }
+                    }, 400);
                 } else {
                     showToast(result.error || 'ログインに失敗しました', 'error');
                 }
@@ -2948,41 +3003,42 @@
             
             if (store.user) {
                 nav.innerHTML = `
-                    <div class="flex items-center gap-1 sm:gap-3 ml-2 sm:ml-4">
+                    <div class="flex items-center gap-2 sm:gap-3 ml-2 sm:ml-4">
                         <!-- お問い合わせ - Hidden on mobile -->
-                        <button onclick="router('dashboard_support')" class="hidden sm:flex p-2 text-white/90 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-200" title="お問い合わせ">
+                        <button onclick="router('dashboard_support')" class="hidden sm:flex p-2 text-white/90 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-200" title="お問い合わせ" aria-label="お問い合わせ">
                             <span class="material-icons-outlined text-lg sm:text-xl">support_agent</span>
                         </button>
                         
-                        <!-- ユーザーアイコン - Smaller on mobile -->
-                        <button onclick="router('dashboard')" class="group relative">
-                            <img src="${store.user.icon}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl border-2 border-white/50 hover:border-white transition-all duration-200 group-hover:scale-105" style="box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                        <!-- ユーザーアイコン - Touch optimized -->
+                        <button onclick="router('dashboard')" class="group relative touch-target" aria-label="ダッシュボード">
+                            <img src="${store.user.icon}" alt="${store.user.name}" class="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl border-2 border-white/50 hover:border-white transition-all duration-200 group-hover:scale-105" style="box-shadow: 0 2px 8px rgba(0,0,0,0.2);" loading="lazy">
                             <div class="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white"></div>
                         </button>
                         
-                        <!-- ログアウト -->
-                        <button onclick="logout()" class="p-1.5 sm:p-2 text-white/90 hover:text-red-400 hover:bg-white/20 rounded-lg transition-all duration-200" title="ログアウト">
-                            <span class="material-icons-outlined text-lg sm:text-xl">logout</span>
+                        <!-- ログアウト - Touch optimized -->
+                        <button onclick="logout()" class="p-2 sm:p-2 text-white/90 hover:text-red-400 hover:bg-white/20 rounded-lg transition-all duration-200 touch-target" title="ログアウト" aria-label="ログアウト">
+                            <span class="material-icons-outlined text-xl sm:text-xl">logout</span>
                         </button>
                     </div>
                 `;
             } else {
                 nav.innerHTML = `
-                    <div class="flex items-center gap-1 sm:gap-2">
+                    <div class="flex items-center gap-2 sm:gap-2">
                         <!-- お問い合わせ (未ログイン) - Hidden on mobile -->
-                        <button onclick="router('static', {page: 'help'})" class="p-2 text-white/90 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-200 hidden md:flex" title="お問い合わせ">
+                        <button onclick="router('static', {page: 'help'})" class="p-2 text-white/90 hover:text-white hover:bg-white/20 rounded-lg transition-all duration-200 hidden md:flex touch-target" title="お問い合わせ" aria-label="お問い合わせ">
                             <span class="material-icons-outlined text-xl">support_agent</span>
                         </button>
                         
-                        <!-- ログイン - Compact on mobile -->
-                        <button onclick="openAuthModal()" class="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white/95 hover:text-white hover:bg-white/20 rounded-lg sm:rounded-xl transition-all duration-200 border border-white/30">
-                            <span class="material-icons-outlined text-sm sm:text-base">login</span>
+                        <!-- ログイン - Touch optimized -->
+                        <button onclick="openAuthModal()" class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2 text-xs sm:text-sm font-semibold text-white/95 hover:text-white hover:bg-white/20 rounded-lg sm:rounded-xl transition-all duration-200 border border-white/30 touch-target" aria-label="ログイン">
+                            <span class="material-icons-outlined text-base sm:text-base">login</span>
                             <span class="hidden sm:inline">ログイン</span>
+                            <span class="sm:hidden">ログイン</span>
                         </button>
                         
-                        <!-- 新規登録 - Compact on mobile -->
-                        <button onclick="openAuthModal()" class="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-5 py-1.5 sm:py-2.5 text-xs sm:text-sm font-bold bg-white text-blue-600 rounded-lg sm:rounded-xl hover:bg-blue-50 transition-all duration-200 shadow-lg">
-                            <span class="material-icons-outlined text-sm sm:text-base">person_add</span>
+                        <!-- 新規登録 - Touch optimized -->
+                        <button onclick="openAuthModal()" class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold bg-white text-blue-600 rounded-lg sm:rounded-xl hover:bg-blue-50 transition-all duration-200 shadow-lg touch-target whitespace-nowrap" aria-label="新規登録">
+                            <span class="material-icons-outlined text-base sm:text-base">person_add</span>
                             <span>登録</span>
                         </button>
                     </div>

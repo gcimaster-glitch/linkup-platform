@@ -659,6 +659,28 @@
             startups: "https://images.unsplash.com/photo-1559136555-930d72f1d300?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80"
         };
 
+        // デモチケットデータ（参加者用）
+        const DEMO_TICKETS = [
+            {
+                id: 'ticket-demo-001',
+                eventId: 'evt-0',
+                title: 'TECH Summit Vol.1',
+                ticketName: '一般参加',
+                count: 1,
+                purchaseDate: '2026-02-10T10:00:00Z',
+                qrCode: 'DEMO-QR-001'
+            },
+            {
+                id: 'ticket-demo-002',
+                eventId: 'evt-1',
+                title: 'BUSINESS Summit Vol.1',
+                ticketName: 'VIP参加',
+                count: 1,
+                purchaseDate: '2026-02-09T15:30:00Z',
+                qrCode: 'DEMO-QR-002'
+            }
+        ];
+
         const MASTER_EVENTS = Array.from({ length: 30 }, (_, i) => {
             const categories = ['tech', 'business', 'art', 'music', 'social'];
             const cat = categories[i % categories.length];
@@ -863,7 +885,9 @@
             },
             
             get tickets() { 
-                return JSON.parse(localStorage.getItem('tickets')) || []; 
+                const savedTickets = JSON.parse(localStorage.getItem('tickets')) || [];
+                // localStorageにデータがなければデモチケットを返す
+                return savedTickets.length > 0 ? savedTickets : DEMO_TICKETS;
             },
             set tickets(v) { 
                 localStorage.setItem('tickets', JSON.stringify(v)); 
@@ -15902,10 +15926,15 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 console.log('✅ Save successful!');
                 showToast('✅ イベントを保存しました', 'success');
                 
+                // 即座に画面遷移（タイムアウトを削除）
+                console.log('🔄 Routing to organizer dashboard...');
+                
+                // イベントリストを更新してから遷移
                 setTimeout(() => {
-                    console.log('🔄 Routing to organizer dashboard...');
+                    // 強制的にオーガナイザーダッシュボードに遷移
+                    window.location.hash = '#/organizer';
                     router('organizer');
-                }, 1000);
+                }, 500);
                 
             } catch (error) {
                 console.error('Save error:', error);

@@ -137,4 +137,42 @@ orderRoutes.post('/', async (c) => {
   }
 });
 
+// ユーザーの注文履歴取得
+orderRoutes.get('/', async (c) => {
+  const db = c.env.DB;
+  const user = c.get('user');
+  const userId = user.sub;
+
+  try {
+    const orders = await db.prepare(`
+      SELECT 
+        o.order_id,
+        o.order_number,
+        o.total_amount,
+        o.platform_fee,
+        o.payment_status,
+        o.payment_method,
+        o.created_at,
+        e.event_id,
+        e.title as event_title,
+        e.cover_image_url,
+        e.start_datetime,
+        e.end_datetime,
+        e.venue_name
+      FROM orders o
+      LEFT JOIN events e ON o.event_id = e.event_id
+      WHERE o.user_id = ?
+      ORDER BY o.created_at DESC
+    `).bind(userId).all();
+
+    return c.json({ 
+      success: true, 
+      orders: orders.results || []
+    });
+  } catch (e: any) {
+    console.error('Get Orders Error:', e);
+    return c.json({ error: e.message || 'Failed to get orders' }, 500);
+  }
+});
+
 export { orderRoutes };

@@ -742,37 +742,78 @@
         const API_URL = "https://linkup-backend.gcimaster.workers.dev";
 
         // API Client
+        // Helper function to get auth headers
+        function getAuthHeaders() {
+            const token = localStorage.getItem('linkup_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
         const API = {
             Event: {
                 async list() {
                     const response = await fetch(`${API_URL}/api/events`);
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
                     return await response.json();
                 },
                 async get(id) {
                     const response = await fetch(`${API_URL}/api/events/${id}`);
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
                     return await response.json();
                 },
                 async create(event) {
                     const response = await fetch(`${API_URL}/api/events`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: getAuthHeaders(),
                         body: JSON.stringify(event)
                     });
-                    return await response.json();
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ API Error:', data);
+                        throw new Error(data.error || 'イベント作成に失敗しました');
+                    }
+                    
+                    return data;
                 },
                 async update(id, updates) {
                     const response = await fetch(`${API_URL}/api/events/${id}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: getAuthHeaders(),
                         body: JSON.stringify(updates)
                     });
-                    return await response.json();
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ API Error:', data);
+                        throw new Error(data.error || 'イベント更新に失敗しました');
+                    }
+                    
+                    return data;
                 },
                 async delete(id) {
                     const response = await fetch(`${API_URL}/api/events/${id}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
                     });
-                    return await response.json();
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ API Error:', data);
+                        throw new Error(data.error || 'イベント削除に失敗しました');
+                    }
+                    
+                    return data;
                 }
             },
             Auth: {
@@ -865,35 +906,22 @@
                 localStorage.setItem('user', JSON.stringify(v)); 
             },
             
-            loadEvents() {
-                console.log('📥 loadEvents called (localStorage mode)');
+            async loadEvents() {
+                console.log('📥 Loading events from API...');
                 try {
-                    // Load from localStorage
-                    const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
-                    
-                    // Merge with master events
-                    const allEvents = [...MASTER_EVENTS, ...savedEvents];
-                    
-                    this._cachedEvents = allEvents;
-                    
-                    console.log('📊 Loaded events:', {
-                        master: MASTER_EVENTS.length,
-                        user: savedEvents.length,
-                        total: allEvents.length
-                    });
-                    
-                    return allEvents;
+                    const response = await API.Event.list();
+                    this._cachedEvents = response.events || [];
+                    console.log('✅ Loaded events from API:', this._cachedEvents.length);
+                    return this._cachedEvents;
                 } catch (error) {
-                    console.error('❌ Failed to load events:', error);
+                    console.error('❌ Failed to load events from API:', error);
+                    console.warn('⚠️ Using fallback MASTER_EVENTS');
                     return MASTER_EVENTS;
                 }
             },
             
             get events() {
-                // Always load fresh from localStorage
-                const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
-                const allEvents = [...MASTER_EVENTS, ...savedEvents];
-                return allEvents.length > 0 ? allEvents : MASTER_EVENTS;
+                return this._cachedEvents.length > 0 ? this._cachedEvents : MASTER_EVENTS;
             },
             
             set events(v) {
@@ -920,88 +948,72 @@
             },
             set venues(v) { localStorage.setItem('venues', JSON.stringify(v)); },
 
-            // Event CRUD - LocalStorage Based (No API)
-            addEvent(newEvent) {
-                console.log('💾 addEvent called (localStorage mode):', newEvent);
+            // Event CRUD - Using Backend API with Authentication
+            async addEvent(newEvent) {
+                console.log('💾 addEvent called (API mode):', newEvent);
                 try {
-                    // Get existing events from localStorage
-                    const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
+                    const result = await API.Event.create(newEvent);
+                    console.log('✅ Event created via API:', result);
                     
-                    // Add new event
-                    savedEvents.push(newEvent);
+                    // Reload events from API
+                    await this.loadEvents();
                     
-                    // Save back to localStorage
-                    localStorage.setItem('userEvents', JSON.stringify(savedEvents));
-                    
-                    // Update cache
-                    this._cachedEvents = savedEvents;
-                    
-                    console.log('✅ Event saved to localStorage:', newEvent.event_id);
-                    console.log('📊 Total events in storage:', savedEvents.length);
-                    
-                    return newEvent;
-                } catch (error) {
-                    console.error('❌ Failed to save event:', error);
-                    showToast('イベント作成に失敗しました', 'error');
-                    throw error;
-                }
-            },
-            
-            updateEvent(eventData) {
-                console.log('📝 updateEvent called (localStorage mode):', eventData);
-                try {
-                    // Get existing events from localStorage
-                    const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
-                    
-                    // Find and update the event
-                    const index = savedEvents.findIndex(e => e.event_id === eventData.event_id);
-                    if (index !== -1) {
-                        savedEvents[index] = eventData;
-                        console.log('✅ Event updated at index:', index);
+                    // ステータスに応じたメッセージ
+                    if (newEvent.status === 'draft') {
+                        showToast('💾 下書きを保存しました', 'success');
+                    } else if (newEvent.status === 'pending') {
+                        showToast('📤 承認申請を送信しました。運営チームが確認次第、公開されます。', 'success');
                     } else {
-                        console.warn('⚠️ Event not found, adding as new');
-                        savedEvents.push(eventData);
+                        showToast('🎉 イベントを公開しました！', 'success');
                     }
                     
-                    // Save back to localStorage
-                    localStorage.setItem('userEvents', JSON.stringify(savedEvents));
-                    
-                    // Update cache
-                    this._cachedEvents = savedEvents;
-                    
-                    console.log('✅ Event saved to localStorage:', eventData.event_id);
-                    console.log('📊 Total events in storage:', savedEvents.length);
-                    
-                    return eventData;
+                    return result;
                 } catch (error) {
-                    console.error('❌ Failed to update event:', error);
-                    showToast('イベント更新に失敗しました', 'error');
+                    console.error('❌ Failed to create event:', error);
+                    showToast('❌ ' + error.message, 'error');
                     throw error;
                 }
             },
             
-            deleteEvent(eventId) {
-                console.log('🗑️ deleteEvent called (localStorage mode):', eventId);
+            async updateEvent(eventData) {
+                console.log('📝 updateEvent called (API mode):', eventData);
                 try {
-                    // Get existing events from localStorage
-                    const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
+                    const result = await API.Event.update(eventData.event_id, eventData);
+                    console.log('✅ Event updated via API:', result);
                     
-                    // Filter out the event
-                    const filtered = savedEvents.filter(e => e.event_id !== eventId);
+                    // Reload events from API
+                    await this.loadEvents();
                     
-                    // Save back to localStorage
-                    localStorage.setItem('userEvents', JSON.stringify(filtered));
+                    // ステータスに応じたメッセージ
+                    if (eventData.status === 'draft') {
+                        showToast('💾 下書きを保存しました', 'success');
+                    } else if (eventData.status === 'pending') {
+                        showToast('📤 承認申請を送信しました。運営チームが確認次第、公開されます。', 'success');
+                    } else {
+                        showToast('🎉 イベントを更新しました！', 'success');
+                    }
                     
-                    // Update cache
-                    this._cachedEvents = filtered;
+                    return result;
+                } catch (error) {
+                    console.error('❌ Failed to update event:', error);
+                    showToast('❌ ' + error.message, 'error');
+                    throw error;
+                }
+            },
+            
+            async deleteEvent(eventId) {
+                console.log('🗑️ deleteEvent called (API mode):', eventId);
+                try {
+                    await API.Event.delete(eventId);
+                    console.log('✅ Event deleted via API');
                     
-                    console.log('✅ Event deleted:', eventId);
-                    console.log('📊 Total events in storage:', filtered.length);
+                    // Reload events from API
+                    await this.loadEvents();
                     
-                    showToast('イベントを削除しました', 'delete');
+                    showToast('イベントを削除しました', 'success');
                 } catch (error) {
                     console.error('❌ Failed to delete event:', error);
-                    showToast('イベント削除に失敗しました', 'error');
+                    showToast('❌ ' + error.message, 'error');
                     throw error;
                 }
             },
@@ -15883,7 +15895,7 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             updateEndDateTime();
         }
 
-        function saveEvent(eventId, status = 'published') {
+        async function saveEvent(eventId, status = 'published') {
             const isNew = eventId === 'new';
             console.log('💾 saveEvent called:', { eventId, status, isNew });
             
@@ -16102,28 +16114,18 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 
                 console.log('💾 Event data to save:', eventData);
                 
-                // 保存
+                // 保存（非同期処理）
                 if (isNew) {
                     console.log('➕ Adding new event...');
-                    store.addEvent(eventData);
+                    await store.addEvent(eventData);
                 } else {
                     console.log('📝 Updating existing event...');
-                    store.updateEvent(eventData);
+                    await store.updateEvent(eventData);
                 }
                 
                 console.log('✅ Save successful!');
                 
-                // ステータスに応じたメッセージ
-                if (status === 'draft') {
-                    showToast('💾 下書きを保存しました', 'success');
-                } else if (status === 'pending') {
-                    showToast('📤 承認申請を送信しました', 'success');
-                } else {
-                    showToast('🎉 イベントを公開しました！', 'success');
-                }
-                
-                // 即座に画面遷移（タイムアウトを削除）
-                console.log('🔄 Routing to organizer dashboard...');
+                // ステータスに応じたメッセージ（store内で既に表示されているので削除）
                 
                 // イベントリストを更新してから遷移
                 setTimeout(() => {
@@ -16134,75 +16136,20 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 
             } catch (error) {
                 console.error('Save error:', error);
-                showToast('❌ 保存に失敗しました: ' + error.message, 'error');
+                // エラーメッセージは既にstore内で表示されている
             }
         }
 
-        function saveEventAsDraft(eventId) {
+        async function saveEventAsDraft(eventId) {
             console.log('📝 下書き保存開始');
-            saveEvent(eventId, 'draft');
+            await saveEvent(eventId, 'draft');
         }
 
-        function submitForApproval(eventId) {
+        async function submitForApproval(eventId) {
             console.log('📤 承認申請開始');
-            
-            // バリデーションチェック
-            const title = document.getElementById('event-title')?.value;
-            const description = currentEditorMode === 'wysiwyg' 
-                ? document.getElementById('event-description-wysiwyg')?.innerHTML 
-                : document.getElementById('event-description-ai')?.value;
-            
-            if (!title || !description || description.trim().length < 50) {
-                showToast('承認申請には、タイトルと詳細な説明文（50文字以上）が必要です', 'error');
-                return;
-            }
-            
-            // 保存して承認申請
-            try {
-                // フォームデータを取得
-                const title = document.getElementById('event-title')?.value;
-                const category = document.getElementById('event-category')?.value;
-                const startDatetime = document.getElementById('event-start')?.value;
-                const endDatetime = document.getElementById('event-end')?.value;
-                
-                // バリデーション
-                if (!title || !startDatetime || !endDatetime) {
-                    showToast('必須項目を入力してください（タイトル、開始日時、終了日時）', 'error');
-                    return;
-                }
-                
-                // 承認申請として保存
-                showToast('📤 承認申請を送信中...', 'info');
-                
-                // イベントを保存（ステータス: pending）
-                saveEvent(eventId, 'pending');
-                
-                // 成功メッセージ
-                setTimeout(() => {
-                    showToast('✅ 承認申請を送信しました。運営チームが確認次第、公開されます。', 'success', 5000);
-                }, 600);
-                
-            } catch (error) {
-                console.error('承認申請エラー:', error);
-                showToast('❌ 承認申請に失敗しました', 'error');
-            }
-            
-            // 承認ステータスを更新
-            setTimeout(() => {
-                const event = store.events.find(e => e.event_id === (eventId === 'new' ? store.events[0].event_id : eventId));
-                if (event) {
-                    event.approval_status = 'pending';
-                    event.submitted_at = new Date().toISOString();
-                    store.updateEvent(event);
-                    
-                    showToast('承認申請を送信しました', 'success');
-                    
-                    setTimeout(() => {
-                        renderOrganizer(document.getElementById('app'), 'events');
-                    }, 1500);
-                }
-            }, 500);
+            await saveEvent(eventId, 'pending');
         }
+                const startDatetime = document.getElementById('event-start')?.value;
 
         function showEventParticipants(eventId) {
             // 参加者詳細ページへ遷移（後で実装）

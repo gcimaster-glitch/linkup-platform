@@ -12,7 +12,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(4),
-  display_name: z.string().min(1).optional(),
+  name: z.string().min(1).optional(),
   role: z.enum(['attendee', 'organizer']).default('attendee'),
 });
 
@@ -23,7 +23,7 @@ const loginSchema = z.object({
 
 // 新規登録（メール認証付き）
 app.post('/register', zValidator('json', registerSchema), async (c) => {
-  const { email, password, display_name, role } = c.req.valid('json');
+  const { email, password, name, role } = c.req.valid('json');
 
   try {
     const db = c.env.DB;
@@ -37,8 +37,8 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
     }
 
     const userId = `u-${Date.now()}`; // Simple ID
-    const name = display_name || email.split('@')[0];
-    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563EB&color=fff`;
+    const userName = name || email.split('@')[0];
+    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=2563EB&color=fff`;
     
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
@@ -50,13 +50,13 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
     if (db) {
         // Insert user with email_verified = 0 (migration required)
         await db.prepare(
-            'INSERT INTO users (user_id, email, password_hash, display_name, role, avatar_url, kyc_status, email_verified, email_verification_token, email_verification_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ).bind(userId, email, passwordHash, name, role, avatarUrl, 'unverified', 0, verificationToken, verificationExpires).run();
+            'INSERT INTO users (user_id, email, password_hash, name, role, avatar_url, kyc_status, email_verified, email_verification_token, email_verification_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).bind(userId, email, passwordHash, userName, role, avatarUrl, 'unverified', 0, verificationToken, verificationExpires).run();
         
         if (role === 'organizer') {
             await db.prepare(
                 'INSERT INTO organizer_profiles (organizer_id, organization_name, rating) VALUES (?, ?, 0.0)'
-            ).bind(userId, name).run();
+            ).bind(userId, userName).run();
         }
         
         // Send verification email
@@ -108,7 +108,7 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
       email_verification_required: true,
       user: { 
         id: userId, 
-        name: name, 
+        name: userName, 
         email, 
         role, 
         icon: avatarUrl,
@@ -171,11 +171,11 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
       token,
       user: {
         id: user.user_id,
-        name: user.display_name,
+        name: user.name,
         email: user.email,
         role: user.role,
         icon: user.avatar_url,
-        kycStatus: user.kyc_status
+        kycStatus: user.kyc_status || 'unverified'
       }
     });
   } catch (error) {
@@ -188,7 +188,7 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
 app.get('/users', async (c) => {
     try {
         if (c.env.DB) {
-            const result = await c.env.DB.prepare('SELECT email, display_name as name, role FROM users LIMIT 50').all();
+            const result = await c.env.DB.prepare('SELECT email, name, role FROM users LIMIT 50').all();
             return c.json({ users: result.results });
         }
         return c.json({ users: [], message: 'DB binding not found' });
@@ -246,11 +246,11 @@ app.get('/verify-email', async (c) => {
             token: token_jwt,
             user: {
                 id: user.user_id,
-                name: user.display_name,
+                name: user.name,
                 email: user.email,
                 role: user.role,
                 icon: user.avatar_url,
-                kycStatus: user.kyc_status,
+                kycStatus: user.kyc_status || 'unverified',
                 emailVerified: true
             }
         });

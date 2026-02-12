@@ -2674,6 +2674,15 @@
                                 <button type="submit" class="w-full py-3.5 bg-primary text-white rounded-lg font-bold hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg mt-6">
                                     ログイン
                                 </button>
+                                
+                                <!-- Demo Account Info -->
+                                <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p class="text-xs font-semibold text-blue-900 mb-2">💡 テストアカウント</p>
+                                    <div class="space-y-1 text-xs text-blue-800">
+                                        <p><strong>主催者:</strong> organizer@demo.com (password: demo)</p>
+                                        <p><strong>参加者:</strong> user@demo.com (password: demo)</p>
+                                    </div>
+                                </div>
                             </form>
                         </div>
                         
@@ -2773,7 +2782,8 @@
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showToast('ログインに失敗しました', 'error');
+                const errorMessage = error.message || error.error || 'ログインに失敗しました。メールアドレスとパスワードをご確認ください。';
+                showToast(errorMessage, 'error');
             }
         }
         

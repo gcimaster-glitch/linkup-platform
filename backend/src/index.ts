@@ -10,6 +10,7 @@ import { seoRoutes } from './routes/seo';
 import { emailRoutes } from './routes/email';
 import { adminRoutes } from './routes/admin';
 import { uploadRoutes } from './routes/upload';
+import { userRoutes } from './routes/users';
 
 export type Bindings = {
   DB: D1Database;
@@ -47,6 +48,7 @@ app.route('/api/email', emailRoutes);
 app.route('/api/campaigns', campaignRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/upload', uploadRoutes);
+app.route('/api/users', userRoutes);
 
 // SEO Routes (sitemap.xml, og-image)
 // Mounted at root so /sitemap.xml works directly

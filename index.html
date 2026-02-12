@@ -1033,6 +1033,50 @@
                     
                     return await response.json();
                 }
+            },
+            User: {
+                async getInterests() {
+                    const response = await fetch(`${API_URL}/api/users/interests`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    return await response.json();
+                },
+                async addInterest(tag) {
+                    const response = await fetch(`${API_URL}/api/users/interests`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ tag })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Add interest error:', data);
+                        throw new Error(data.error || 'タグの追加に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async removeInterest(tag) {
+                    const response = await fetch(`${API_URL}/api/users/interests/${encodeURIComponent(tag)}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Remove interest error:', data);
+                        throw new Error(data.error || 'タグの削除に失敗しました');
+                    }
+                    
+                    return data;
+                }
             }
         };
 
@@ -4418,6 +4462,26 @@
                     `;
                     
                 case 'interests':
+                    // APIから興味タグを取得
+                    let userTags = [];
+                    try {
+                        const result = await API.User.getInterests();
+                        userTags = result.tags || [];
+                    } catch (error) {
+                        console.error('Failed to load interests:', error);
+                        userTags = [];
+                    }
+                    
+                    // store.userInterestsを初期化（後方互換性のため）
+                    if (!store.userInterests) {
+                        store.userInterests = {
+                            categories: [],
+                            tags: userTags
+                        };
+                    } else {
+                        store.userInterests.tags = userTags;
+                    }
+                    
                     const allCategories = ['テクノロジー', 'ビジネス', '音楽', 'アート', 'スポーツ', '食べ物', '旅行', 'ファッション', '健康', '教育', 
                                           '金融', 'エンターテイメント', '科学', '政治', '環境', 'ゲーム', '読書', '映画', 
                                           '写真', 'デザイン', 'マーケティング', 'スタートアップ', 'AI', 'ブロックチェーン', 'VR/AR', 'IoT', 'クラウド', 
@@ -15404,18 +15468,30 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             showToast(`「${category}」を削除しました`, 'remove');
         }
         
-        function addUserTag(tag) {
+        async function addUserTag(tag) {
             if (!store.userInterests.tags.includes(tag) && store.userInterests.tags.length < 50) {
-                store.userInterests.tags.push(tag);
-                router('dashboard_interests');
-                showToast(`「${tag}」を追加しました`, 'add');
+                try {
+                    await API.User.addInterest(tag);
+                    store.userInterests.tags.push(tag);
+                    router('dashboard_interests');
+                    showToast(`「${tag}」を追加しました`, 'add');
+                } catch (error) {
+                    console.error('Failed to add tag:', error);
+                    showToast(error.message || 'タグの追加に失敗しました', 'error');
+                }
             }
         }
         
-        function removeUserTag(tag) {
-            store.userInterests.tags = store.userInterests.tags.filter(t => t !== tag);
-            router('dashboard_interests');
-            showToast(`「${tag}」を削除しました`, 'remove');
+        async function removeUserTag(tag) {
+            try {
+                await API.User.removeInterest(tag);
+                store.userInterests.tags = store.userInterests.tags.filter(t => t !== tag);
+                router('dashboard_interests');
+                showToast(`「${tag}」を削除しました`, 'remove');
+            } catch (error) {
+                console.error('Failed to remove tag:', error);
+                showToast(error.message || 'タグの削除に失敗しました', 'error');
+            }
         }
         
         function approveKYC() {

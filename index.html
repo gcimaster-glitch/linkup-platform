@@ -760,7 +760,17 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password })
                     });
-                    return await response.json();
+                    const data = await response.json();
+                    
+                    // Handle error responses
+                    if (!response.ok) {
+                        return {
+                            success: false,
+                            error: data.error || 'ログインに失敗しました'
+                        };
+                    }
+                    
+                    return data;
                 },
                 async register(name, email, password, role = 'attendee') {
                     const response = await fetch(`${API_URL}/api/auth/register`, {
@@ -2812,7 +2822,9 @@
             submitBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> ログイン中...';
             
             try {
-                // Add timeout for better UX
+                console.log('🔐 Login attempt:', email);
+                
+                // Call login API with timeout
                 const loginPromise = API.Auth.login(email, password);
                 const timeoutPromise = new Promise((_, reject) => 
                     setTimeout(() => reject(new Error('ログインがタイムアウトしました。もう一度お試しください。')), 10000)
@@ -2820,8 +2832,16 @@
                 
                 const result = await Promise.race([loginPromise, timeoutPromise]);
                 
-                if (result.success) {
+                console.log('🔐 Login result:', result);
+                
+                // Check if login was successful
+                if (result && result.success && result.token) {
+                    console.log('✅ Login successful');
+                    
+                    // Save token
                     localStorage.setItem('linkup_token', result.token);
+                    
+                    // Update store
                     store.user = {
                         id: result.user.id,
                         name: result.user.name,
@@ -2831,31 +2851,43 @@
                         role: result.user.role || 'attendee'
                     };
                     
-                    // Optimized UI update
+                    console.log('👤 User stored:', store.user);
+                    
+                    // Update button to show success
                     submitBtn.innerHTML = '<span class="inline-block">✅</span> 成功！';
                     
                     // Update navigation immediately
                     updateNav();
                     
-                    // Close modal with smooth animation
+                    // Close modal and show success message
                     setTimeout(() => {
                         closeModal();
-                        showToast('ログインしました', 'check_circle');
+                        showToast(`ようこそ、${store.user.name}さん！`, 'check_circle');
                         
                         // Route to dashboard if user is organizer/admin
                         if (store.user.role === 'organizer' || store.user.role === 'admin') {
-                            setTimeout(() => router('organizer'), 200);
+                            setTimeout(() => {
+                                console.log('📊 Routing to organizer dashboard');
+                                router('organizer');
+                            }, 300);
                         }
-                    }, 400);
+                    }, 500);
                 } else {
-                    showToast(result.error || 'ログインに失敗しました', 'error');
+                    // Login failed
+                    console.error('❌ Login failed:', result);
+                    const errorMsg = result?.error || 'ログインに失敗しました。メールアドレスとパスワードをご確認ください。';
+                    showToast(errorMsg, 'error');
+                    
+                    // Re-enable button
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
                 }
             } catch (error) {
-                console.error('Login error:', error);
-                const errorMessage = error.message || error.error || 'ログインに失敗しました。メールアドレスとパスワードをご確認ください。';
+                console.error('❌ Login error:', error);
+                const errorMessage = error.message || 'ログインに失敗しました。ネットワーク接続をご確認ください。';
                 showToast(errorMessage, 'error');
-            } finally {
-                // Re-enable form
+                
+                // Re-enable button
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             }

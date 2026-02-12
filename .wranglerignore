@@ -1,0 +1,10 @@
+# Cloudflare Pages デプロイ除外ファイル
+backend/
+database/
+node_modules/
+.git/
+.github/
+*.md
+*.log
+.wrangler/
+.DS_Store

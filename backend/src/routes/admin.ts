@@ -102,6 +102,276 @@ adminRoutes.put('/payouts/:id', async (c) => {
   }
 });
 
+// イベント一覧取得（承認待ち含む）
+adminRoutes.get('/events', async (c) => {
+  try {
+    const status = c.req.query('status'); // 'pending', 'published', 'rejected', 'all'
+    
+    let query = 'SELECT * FROM events';
+    const params: any[] = [];
+    
+    if (status && status !== 'all') {
+      query += ' WHERE status = ?';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const { results } = await c.env.DB.prepare(query).bind(...params).all();
+    return c.json({ success: true, events: results });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// イベント承認
+adminRoutes.put('/events/:id/approve', async (c) => {
+  const eventId = c.req.param('id');
+  const adminId = c.get('user').sub;
+  const db = c.env.DB;
+
+  try {
+    // イベントを承認済みに変更
+    await db.prepare(`
+      UPDATE events 
+      SET 
+        status = 'published', 
+        approval_status = 'approved',
+        approved_at = datetime('now'),
+        approved_by = ?
+      WHERE event_id = ?
+    `).bind(adminId, eventId).run();
+    
+    // TODO: 主催者に承認通知メール送信
+    // const event = await db.prepare('SELECT * FROM events WHERE event_id = ?').bind(eventId).first();
+    // await sendApprovalEmail(event);
+    
+    return c.json({ success: true, message: 'イベントを承認しました' });
+  } catch (e: any) {
+    console.error('Event approval error:', e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// イベント却下
+adminRoutes.put('/events/:id/reject', async (c) => {
+  const eventId = c.req.param('id');
+  const adminId = c.get('user').sub;
+  const db = c.env.DB;
+  const { reason } = await c.req.json();
+
+  if (!reason) {
+    return c.json({ error: '却下理由を入力してください' }, 400);
+  }
+
+  try {
+    // イベントを却下に変更
+    await db.prepare(`
+      UPDATE events 
+      SET 
+        status = 'rejected', 
+        approval_status = 'rejected',
+        rejection_reason = ?,
+        rejected_at = datetime('now'),
+        rejected_by = ?
+      WHERE event_id = ?
+    `).bind(reason, adminId, eventId).run();
+    
+    // TODO: 主催者に却下通知メール送信
+    // const event = await db.prepare('SELECT * FROM events WHERE event_id = ?').bind(eventId).first();
+    // await sendRejectionEmail(event, reason);
+    
+    return c.json({ success: true, message: 'イベントを却下しました' });
+  } catch (e: any) {
+    console.error('Event rejection error:', e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// イベント削除
+adminRoutes.delete('/events/:id', async (c) => {
+  const eventId = c.req.param('id');
+  const db = c.env.DB;
+
+  try {
+    // イベントを論理削除
+    await db.prepare(`
+      UPDATE events 
+      SET status = 'deleted', deleted_at = datetime('now')
+      WHERE event_id = ?
+    `).bind(eventId).run();
+    
+    return c.json({ success: true, message: 'イベントを削除しました' });
+  } catch (e: any) {
+    console.error('Event deletion error:', e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// ユーザー一覧取得
+adminRoutes.get('/users', async (c) => {
+  try {
+    const role = c.req.query('role'); // 'attendee', 'organizer', 'admin', 'all'
+    const kycStatus = c.req.query('kyc'); // 'none', 'pending', 'verified', 'rejected', 'all'
+    
+    let query = 'SELECT user_id, email, display_name, role, avatar_url, kyc_status, email_verified, created_at, last_login FROM users WHERE 1=1';
+    const params: any[] = [];
+    
+    if (role && role !== 'all') {
+      query += ' AND role = ?';
+      params.push(role);
+    }
+    
+    if (kycStatus && kycStatus !== 'all') {
+      query += ' AND kyc_status = ?';
+      params.push(kycStatus);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    const { results } = await c.env.DB.prepare(query).bind(...params).all();
+    return c.json({ success: true, users: results });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// ユーザー詳細取得
+adminRoutes.get('/users/:id', async (c) => {
+  const userId = c.req.param('id');
+  
+  try {
+    const user = await c.env.DB.prepare('SELECT * FROM users WHERE user_id = ?').bind(userId).first();
+    
+    if (!user) {
+      return c.json({ error: 'ユーザーが見つかりません' }, 404);
+    }
+    
+    return c.json({ success: true, user });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// ユーザー更新
+adminRoutes.put('/users/:id', async (c) => {
+  const userId = c.req.param('id');
+  const body = await c.req.json();
+  const db = c.env.DB;
+
+  try {
+    const updates: string[] = [];
+    const params: any[] = [];
+    
+    if (body.display_name !== undefined) {
+      updates.push('display_name = ?');
+      params.push(body.display_name);
+    }
+    if (body.email !== undefined) {
+      updates.push('email = ?');
+      params.push(body.email);
+    }
+    if (body.role !== undefined) {
+      updates.push('role = ?');
+      params.push(body.role);
+    }
+    if (body.kyc_status !== undefined) {
+      updates.push('kyc_status = ?');
+      params.push(body.kyc_status);
+    }
+    
+    if (updates.length === 0) {
+      return c.json({ error: '更新する項目がありません' }, 400);
+    }
+    
+    params.push(userId);
+    
+    await db.prepare(`
+      UPDATE users 
+      SET ${updates.join(', ')}, updated_at = datetime('now')
+      WHERE user_id = ?
+    `).bind(...params).run();
+    
+    return c.json({ success: true, message: 'ユーザー情報を更新しました' });
+  } catch (e: any) {
+    console.error('User update error:', e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// KYC承認
+adminRoutes.put('/users/:id/kyc', async (c) => {
+  const userId = c.req.param('id');
+  const { status } = await c.req.json(); // 'verified' or 'rejected'
+  const db = c.env.DB;
+
+  if (!['verified', 'rejected'].includes(status)) {
+    return c.json({ error: '無効なステータスです' }, 400);
+  }
+
+  try {
+    await db.prepare(`
+      UPDATE users 
+      SET kyc_status = ?, updated_at = datetime('now')
+      WHERE user_id = ?
+    `).bind(status, userId).run();
+    
+    return c.json({ success: true, message: 'KYCステータスを更新しました' });
+  } catch (e: any) {
+    console.error('KYC update error:', e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
+// ダッシュボード統計
+adminRoutes.get('/stats', async (c) => {
+  const db = c.env.DB;
+  
+  try {
+    // ユーザー統計
+    const userStats: any = await db.prepare(`
+      SELECT 
+        COUNT(*) as total_users,
+        SUM(CASE WHEN role = 'organizer' THEN 1 ELSE 0 END) as total_organizers,
+        SUM(CASE WHEN role = 'attendee' THEN 1 ELSE 0 END) as total_attendees,
+        SUM(CASE WHEN kyc_status = 'verified' THEN 1 ELSE 0 END) as verified_users
+      FROM users
+    `).first();
+    
+    // イベント統計
+    const eventStats: any = await db.prepare(`
+      SELECT 
+        COUNT(*) as total_events,
+        SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END) as published_events,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_events,
+        SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft_events
+      FROM events
+    `).first();
+    
+    // 売上統計
+    const revenueStats: any = await db.prepare(`
+      SELECT 
+        COUNT(*) as total_orders,
+        SUM(total_amount) as total_revenue,
+        SUM(platform_fee) as total_platform_fees
+      FROM orders
+      WHERE payment_status = 'completed'
+    `).first();
+    
+    return c.json({ 
+      success: true, 
+      stats: {
+        users: userStats || {},
+        events: eventStats || {},
+        revenue: revenueStats || {}
+      }
+    });
+  } catch (e: any) {
+    console.error('Stats error:', e);
+    return c.json({ error: e.message }, 500);
+  }
+});
+
 // データベース一括リセット & シード (Admin Only)
 adminRoutes.post('/reset', async (c) => {
     const db = c.env.DB;

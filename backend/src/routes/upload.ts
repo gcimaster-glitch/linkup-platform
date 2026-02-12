@@ -3,8 +3,8 @@ import type { Bindings } from '../index';
 
 const uploadRoutes = new Hono<{ Bindings: Bindings }>();
 
-// 画像アップロード API
-uploadRoutes.post('/image', async (c) => {
+// 画像アップロード API (POST /api/upload と POST /api/upload/image の両方に対応)
+const handleUpload = async (c: any) => {
   try {
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
@@ -121,6 +121,12 @@ uploadRoutes.post('/image', async (c) => {
       message: error instanceof Error ? error.message : 'Unknown error'
     }, 500);
   }
-});
+};
+
+// POST /api/upload (メインエンドポイント)
+uploadRoutes.post('/', handleUpload);
+
+// POST /api/upload/image (互換性のため)
+uploadRoutes.post('/image', handleUpload);
 
 export { uploadRoutes };

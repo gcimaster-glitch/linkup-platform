@@ -261,4 +261,75 @@ app.get('/verify-email', async (c) => {
     }
 });
 
+// プロフィール更新（認証必要）
+app.put('/profile', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) return c.json({ error: 'Unauthorized' }, 401);
+  
+  const token = authHeader.split(' ')[1];
+  const db = c.env.DB;
+  
+  try {
+    // JWTトークンの検証
+    const { verify } = await import('hono/jwt');
+    const payload = await verify(token, c.env.JWT_SECRET);
+    const userId = payload.sub;
+    
+    const body = await c.req.json();
+    const { avatar_url, name, bio, cover_image_url } = body;
+    
+    // プロフィール更新
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    if (avatar_url !== undefined) {
+      updates.push('avatar_url = ?');
+      values.push(avatar_url);
+    }
+    if (name !== undefined) {
+      updates.push('name = ?');
+      values.push(name);
+    }
+    if (bio !== undefined) {
+      updates.push('bio = ?');
+      values.push(bio);
+    }
+    if (cover_image_url !== undefined) {
+      updates.push('cover_image_url = ?');
+      values.push(cover_image_url);
+    }
+    
+    if (updates.length === 0) {
+      return c.json({ error: 'No fields to update' }, 400);
+    }
+    
+    values.push(userId);
+    
+    await db.prepare(`
+      UPDATE users 
+      SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = ?
+    `).bind(...values).run();
+    
+    // 更新後のユーザー情報を取得
+    const user: any = await db.prepare('SELECT * FROM users WHERE user_id = ?')
+      .bind(userId).first();
+    
+    return c.json({ 
+      success: true, 
+      message: 'プロフィールを更新しました',
+      user: {
+        id: user.user_id,
+        name: user.name,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        bio: user.bio
+      }
+    });
+  } catch (error: any) {
+    console.error('Profile update error:', error);
+    return c.json({ error: error.message || 'Profile update failed' }, 500);
+  }
+});
+
 export { app as authRoutes };

@@ -17597,25 +17597,53 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             `;
             
             // File upload handler
-            document.getElementById('profile-icon-upload').addEventListener('change', function(e) {
+            document.getElementById('profile-icon-upload').addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (file && file.size <= 5 * 1024 * 1024) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        selectProfileIcon(event.target.result);
-                    };
-                    reader.readAsDataURL(file);
+                    try {
+                        // ローディング表示
+                        showToast('画像をアップロード中...', 'info');
+                        
+                        // サーバーにアップロード
+                        const uploadedUrl = await API.Organizer.uploadImage(file);
+                        
+                        // DBに保存
+                        await selectProfileIcon(uploadedUrl);
+                        
+                        showToast('プロフィールアイコンを更新しました', 'check_circle');
+                    } catch (error) {
+                        console.error('❌ Upload error:', error);
+                        showToast(error.message || 'アップロードに失敗しました', 'error');
+                    }
                 } else {
                     showToast('ファイルサイズは5MB以下にしてください', 'error');
                 }
             });
         }
         
-        function selectProfileIcon(iconUrl) {
-            store.user = { ...store.user, icon: iconUrl };
-            closeModal();
-            showToast('プロフィールアイコンを更新しました', 'check_circle');
-            router('dashboard'); // Refresh dashboard
+        async function selectProfileIcon(iconUrl) {
+            try {
+                // ユーザー情報を更新（APIに送信）
+                const response = await fetch(`${API_URL}/api/auth/profile`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ avatar_url: iconUrl })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('プロフィール更新に失敗しました');
+                }
+                
+                // LocalStorageのキャッシュも更新
+                store.user = { ...store.user, icon: iconUrl, avatar_url: iconUrl };
+                
+                closeModal();
+                showToast('プロフィールアイコンを更新しました', 'check_circle');
+                router('dashboard'); // Refresh dashboard
+            } catch (error) {
+                console.error('❌ Profile update error:', error);
+                showToast(error.message || 'プロフィール更新に失敗しました', 'error');
+            }
         }
         
         // Cover Image Selection Modal
@@ -17662,25 +17690,53 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             `;
             
             // File upload handler
-            document.getElementById('cover-image-upload').addEventListener('change', function(e) {
+            document.getElementById('cover-image-upload').addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (file && file.size <= 10 * 1024 * 1024) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        selectCoverImage(event.target.result);
-                    };
-                    reader.readAsDataURL(file);
+                    try {
+                        // ローディング表示
+                        showToast('画像をアップロード中...', 'info');
+                        
+                        // サーバーにアップロード
+                        const uploadedUrl = await API.Organizer.uploadImage(file);
+                        
+                        // DBに保存
+                        await selectCoverImage(uploadedUrl);
+                        
+                        showToast('カバー画像を更新しました', 'check_circle');
+                    } catch (error) {
+                        console.error('❌ Upload error:', error);
+                        showToast(error.message || 'アップロードに失敗しました', 'error');
+                    }
                 } else {
                     showToast('ファイルサイズは10MB以下にしてください', 'error');
                 }
             });
         }
         
-        function selectCoverImage(imageUrl) {
-            store.user = { ...store.user, coverImage: imageUrl };
-            closeModal();
-            showToast('カバー画像を更新しました', 'check_circle');
-            router('dashboard'); // Refresh dashboard
+        async function selectCoverImage(imageUrl) {
+            try {
+                // ユーザー情報を更新（APIに送信）
+                const response = await fetch(`${API_URL}/api/auth/profile`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ cover_image_url: imageUrl })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('プロフィール更新に失敗しました');
+                }
+                
+                // LocalStorageのキャッシュも更新
+                store.user = { ...store.user, coverImage: imageUrl, cover_image_url: imageUrl };
+                
+                closeModal();
+                showToast('カバー画像を更新しました', 'check_circle');
+                router('dashboard'); // Refresh dashboard
+            } catch (error) {
+                console.error('❌ Profile update error:', error);
+                showToast(error.message || 'プロフィール更新に失敗しました', 'error');
+            }
         }
 
         function openKYCModal() {
@@ -19354,8 +19410,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.7-FAVORITES-DB';
-            const BUILD_DATE = '2026-02-12T19:00:00Z';
+            const VERSION = '3.8-PROFILE-UPLOAD';
+            const BUILD_DATE = '2026-02-12T20:00:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

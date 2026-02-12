@@ -15469,10 +15469,11 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             const title = document.getElementById('event-title').value || 'イベント';
             const category = document.getElementById('event-category').value || 'tech';
             
-            showToast('AI生成中...', 'info');
+            showToast('AI生成中...お待ちください', 'info');
             
             // 🎯 Gemini API風の整形処理
             setTimeout(() => {
+                console.log('🤖 AI生成処理開始');
                 const lines = rawDescription.split('\n').filter(l => l.trim());
                 
                 // カテゴリに応じたテンプレート
@@ -15534,9 +15535,32 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 `.trim();
                 
                 // WYSIWYGエディタに反映
-                document.getElementById('event-description-wysiwyg').innerHTML = formatted;
+                const wysiwygEditor = document.getElementById('event-description-wysiwyg');
+                if (wysiwygEditor) {
+                    wysiwygEditor.innerHTML = formatted;
+                    console.log('✅ WYSIWYGエディタに反映完了');
+                }
                 
-                showToast('✨ AI生成が完了しました！', 'success');
+                // AIエディタにも更新（元のテキストをフォーマット済みに置き換え）
+                const aiEditor = document.getElementById('event-description-ai');
+                if (aiEditor) {
+                    // HTMLタグを除いた純粋なテキストをAIエディタに反映
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = formatted;
+                    const plainText = tempDiv.textContent || tempDiv.innerText || '';
+                    aiEditor.value = plainText;
+                    console.log('✅ AIエディタに反映完了:', plainText.substring(0, 100) + '...');
+                }
+                
+                // 自動的にWYSIWYGタブに切り替えて、生成結果を表示
+                if (typeof switchEditorMode === 'function') {
+                    setTimeout(() => {
+                        switchEditorMode('wysiwyg');
+                        console.log('✅ WYSIWYGタブに切り替え完了');
+                    }, 100);
+                }
+                
+                showToast('✨ AI生成完了！整形された説明文をご確認ください（WYSIWYGタブに表示中）', 'success', 4000);
             }, 1500);
         }
 

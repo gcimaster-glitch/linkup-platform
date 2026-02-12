@@ -865,19 +865,35 @@
                 localStorage.setItem('user', JSON.stringify(v)); 
             },
             
-            async loadEvents() {
+            loadEvents() {
+                console.log('📥 loadEvents called (localStorage mode)');
                 try {
-                    const response = await API.Event.list();
-                    this._cachedEvents = response.events || [];
-                    return this._cachedEvents;
+                    // Load from localStorage
+                    const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
+                    
+                    // Merge with master events
+                    const allEvents = [...MASTER_EVENTS, ...savedEvents];
+                    
+                    this._cachedEvents = allEvents;
+                    
+                    console.log('📊 Loaded events:', {
+                        master: MASTER_EVENTS.length,
+                        user: savedEvents.length,
+                        total: allEvents.length
+                    });
+                    
+                    return allEvents;
                 } catch (error) {
-                    console.error('Failed to load events:', error);
-                    return MASTER_EVENTS; // Fallback only on error
+                    console.error('❌ Failed to load events:', error);
+                    return MASTER_EVENTS;
                 }
             },
             
             get events() {
-                return this._cachedEvents.length > 0 ? this._cachedEvents : MASTER_EVENTS;
+                // Always load fresh from localStorage
+                const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
+                const allEvents = [...MASTER_EVENTS, ...savedEvents];
+                return allEvents.length > 0 ? allEvents : MASTER_EVENTS;
             },
             
             set events(v) {
@@ -904,36 +920,87 @@
             },
             set venues(v) { localStorage.setItem('venues', JSON.stringify(v)); },
 
-            // Event CRUD - Now using API
-            async addEvent(newEvent) {
+            // Event CRUD - LocalStorage Based (No API)
+            addEvent(newEvent) {
+                console.log('💾 addEvent called (localStorage mode):', newEvent);
                 try {
-                    const result = await API.Event.create(newEvent);
-                    await this.loadEvents(); // Reload from API
-                    showToast('イベントを作成しました', 'add_circle');
-                    return result;
+                    // Get existing events from localStorage
+                    const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
+                    
+                    // Add new event
+                    savedEvents.push(newEvent);
+                    
+                    // Save back to localStorage
+                    localStorage.setItem('userEvents', JSON.stringify(savedEvents));
+                    
+                    // Update cache
+                    this._cachedEvents = savedEvents;
+                    
+                    console.log('✅ Event saved to localStorage:', newEvent.event_id);
+                    console.log('📊 Total events in storage:', savedEvents.length);
+                    
+                    return newEvent;
                 } catch (error) {
+                    console.error('❌ Failed to save event:', error);
                     showToast('イベント作成に失敗しました', 'error');
                     throw error;
                 }
             },
             
-            async updateEvent(id, updatedFields) {
+            updateEvent(eventData) {
+                console.log('📝 updateEvent called (localStorage mode):', eventData);
                 try {
-                    await API.Event.update(id, updatedFields);
-                    await this.loadEvents(); // Reload from API
-                    showToast('イベントを更新しました', 'save');
+                    // Get existing events from localStorage
+                    const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
+                    
+                    // Find and update the event
+                    const index = savedEvents.findIndex(e => e.event_id === eventData.event_id);
+                    if (index !== -1) {
+                        savedEvents[index] = eventData;
+                        console.log('✅ Event updated at index:', index);
+                    } else {
+                        console.warn('⚠️ Event not found, adding as new');
+                        savedEvents.push(eventData);
+                    }
+                    
+                    // Save back to localStorage
+                    localStorage.setItem('userEvents', JSON.stringify(savedEvents));
+                    
+                    // Update cache
+                    this._cachedEvents = savedEvents;
+                    
+                    console.log('✅ Event saved to localStorage:', eventData.event_id);
+                    console.log('📊 Total events in storage:', savedEvents.length);
+                    
+                    return eventData;
                 } catch (error) {
+                    console.error('❌ Failed to update event:', error);
                     showToast('イベント更新に失敗しました', 'error');
                     throw error;
                 }
             },
             
-            async deleteEvent(id) {
+            deleteEvent(eventId) {
+                console.log('🗑️ deleteEvent called (localStorage mode):', eventId);
                 try {
-                    await API.Event.delete(id);
-                    await this.loadEvents(); // Reload from API
+                    // Get existing events from localStorage
+                    const savedEvents = JSON.parse(localStorage.getItem('userEvents')) || [];
+                    
+                    // Filter out the event
+                    const filtered = savedEvents.filter(e => e.event_id !== eventId);
+                    
+                    // Save back to localStorage
+                    localStorage.setItem('userEvents', JSON.stringify(filtered));
+                    
+                    // Update cache
+                    this._cachedEvents = filtered;
+                    
+                    console.log('✅ Event deleted:', eventId);
+                    console.log('📊 Total events in storage:', filtered.length);
+                    
                     showToast('イベントを削除しました', 'delete');
                 } catch (error) {
+                    console.error('❌ Failed to delete event:', error);
                     showToast('イベント削除に失敗しました', 'error');
                     throw error;
                 }
@@ -16052,7 +16119,7 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 } else if (status === 'pending') {
                     showToast('📤 承認申請を送信しました', 'success');
                 } else {
-                    showToast('✅ イベントを保存しました', 'success');
+                    showToast('🎉 イベントを公開しました！', 'success');
                 }
                 
                 // 即座に画面遷移（タイムアウトを削除）

@@ -6319,12 +6319,18 @@
                                     </span>
                                 ` : ''}
                             </div>
-                            <div class="flex space-x-2">
-                                <button onclick="previewEvent()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
+                            <div class="flex space-x-3">
+                                <button onclick="previewEvent()" class="px-4 py-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-bold">
                                     <span class="material-icons-outlined text-sm align-middle">visibility</span> プレビュー
                                 </button>
-                                <button onclick="saveEvent('${eventId}')" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold">
-                                    <span class="material-icons-outlined text-sm align-middle">save</span> 保存
+                                <button onclick="saveEventAsDraft('${eventId}')" class="px-5 py-2 bg-slate-100 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-200 font-bold">
+                                    <span class="material-icons-outlined text-sm align-middle">save</span> 下書き保存
+                                </button>
+                                <button onclick="submitForApproval('${eventId}')" class="px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 font-bold shadow-md">
+                                    <span class="material-icons-outlined text-sm align-middle">send</span> 承認申請
+                                </button>
+                                <button onclick="saveEvent('${eventId}', 'published')" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 font-bold shadow-md">
+                                    <span class="material-icons-outlined text-sm align-middle">check_circle</span> 保存して公開
                                 </button>
                             </div>
                         </div>
@@ -15493,67 +15499,182 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             const title = document.getElementById('event-title').value || 'イベント';
             const category = document.getElementById('event-category').value || 'tech';
             
-            showToast('AI生成中...お待ちください', 'info');
+            showToast('✨ AI生成中...魅力的な文章を作成しています', 'info');
             
-            // 🎯 Gemini API風の整形処理
+            // 🎯 プロフェッショナルなAI生成処理
             setTimeout(() => {
                 console.log('🤖 AI生成処理開始');
                 const lines = rawDescription.split('\n').filter(l => l.trim());
                 
-                // カテゴリに応じたテンプレート
+                // カテゴリごとの詳細テンプレート
                 const categoryTemplates = {
                     tech: {
-                        title: '最新テクノロジーを体験',
-                        target: ['エンジニア・開発者の方', '最新技術に興味がある方', 'スキルアップを目指す方']
+                        catchphrase: '最先端テクノロジーが、あなたの未来を変える',
+                        lead: 'テクノロジーの最前線で活躍するプロフェッショナルたちと共に、次世代のイノベーションを体験しませんか？',
+                        features: [
+                            '💡 実践的なハンズオン - 即座に使える技術を習得',
+                            '🚀 最新トレンド解説 - 業界の第一線で活躍する講師陣',
+                            '🤝 ネットワーキング - 同じ志を持つ仲間との出会い'
+                        ],
+                        target: ['エンジニア・開発者の方', 'IT業界でキャリアアップを目指す方', '最新技術のトレンドをキャッチアップしたい方', 'スタートアップ・新規事業担当者'],
+                        benefits: '参加者限定の特別資料や、講師陣との直接交流の機会をご用意しています。',
+                        cta: '今すぐ申し込んで、テクノロジーの最前線に立ちましょう！'
                     },
                     business: {
-                        title: 'ビジネスの可能性を広げる',
-                        target: ['起業家・経営者の方', 'ビジネスパーソン', 'ネットワーキングを広げたい方']
+                        catchphrase: 'ビジネスの未来を、ここから切り拓く',
+                        lead: 'ビジネスの可能性を最大限に引き出すための知識とネットワークを、一度に手に入れるチャンスです。',
+                        features: [
+                            '📊 実践的ケーススタディ - 成功企業の秘訣を徹底解剖',
+                            '💼 即実践できるノウハウ - 明日から使えるビジネススキル',
+                            '🌟 トップリーダーとの対話 - 業界をリードする経営者が登壇'
+                        ],
+                        target: ['起業家・経営者の方', 'ビジネスパーソン', '新規事業開発担当者', 'マーケティング・営業職の方'],
+                        benefits: '参加者限定の交流会で、ビジネスパートナーとの出会いが生まれます。',
+                        cta: 'あなたのビジネスを次のステージへ。今すぐご参加ください！'
                     },
                     music: {
-                        title: '音楽で心を満たす',
-                        target: ['音楽好きの方', 'ライブ体験を楽しみたい方', '新しいアーティストを発見したい方']
+                        catchphrase: '音楽が、心を震わせる瞬間がここに',
+                        lead: '音楽の魔法に包まれる特別な時間を、最高の仲間たちと一緒に過ごしませんか？',
+                        features: [
+                            '🎵 圧倒的なライブパフォーマンス - プロアーティストの生演奏',
+                            '🎸 音楽を通じた交流 - 音楽好きが集まる特別な空間',
+                            '✨ 忘れられない体験 - 心に残る感動の瞬間'
+                        ],
+                        target: ['音楽を愛するすべての方', 'ライブの熱気を体感したい方', '新しいアーティストを発見したい方', '音楽仲間を作りたい方'],
+                        benefits: '参加者特典として、限定グッズや次回イベントの優先予約権をプレゼント。',
+                        cta: '音楽と感動に満ちた時間を、今すぐ予約しましょう！'
                     },
                     art: {
-                        title: 'アートの世界に触れる',
-                        target: ['アート愛好家の方', 'クリエイティブな体験を求める方', '感性を磨きたい方']
+                        catchphrase: 'アートが、新しい視点をくれる',
+                        lead: 'アートの世界に没入し、感性を研ぎ澄ます特別な体験をお届けします。',
+                        features: [
+                            '🎨 一流アーティストの作品展示 - 圧倒的な創造性に触れる',
+                            '🖼️ インタラクティブ体験 - アート作品を五感で楽しむ',
+                            '💫 創造性を刺激 - あなたの感性が目覚める瞬間'
+                        ],
+                        target: ['アート愛好家の方', 'クリエイティブな刺激を求める方', 'デザイン・芸術関係者', '感性を磨きたいすべての方'],
+                        benefits: 'アーティストとの直接対話や、作品制作の裏側を知る特別セッションをご用意。',
+                        cta: 'アートが織りなす感動の世界へ、今すぐ飛び込みましょう！'
                     },
                     social: {
-                        title: '人との繋がりを楽しむ',
-                        target: ['新しい出会いを求める方', '交流を楽しみたい方', 'コミュニティを広げたい方']
+                        catchphrase: '新しい出会いが、人生を変える',
+                        lead: '同じ興味を持つ仲間たちと、心地よい空間で交流を深めませんか？',
+                        features: [
+                            '🤝 自然な出会いの場 - リラックスした雰囲気での交流',
+                            '💬 多様なバックグラウンド - 様々な業界・職種の参加者',
+                            '🌈 生涯の友人が見つかる - 深いつながりを生むイベント設計'
+                        ],
+                        target: ['新しい友人を作りたい方', '人脈を広げたいビジネスパーソン', '趣味の仲間を見つけたい方', '充実した時間を過ごしたい方'],
+                        benefits: '参加者専用のオンラインコミュニティで、イベント後も繋がり続けられます。',
+                        cta: '素敵な出会いが待っています。今すぐ参加登録を！'
                     }
                 };
                 
                 const template = categoryTemplates[category] || categoryTemplates.tech;
                 
+                // 入力テキストから主要ポイントを抽出
+                const mainPoints = lines.slice(0, 3);
+                
                 const formatted = `
-<div class="event-description" style="line-height: 1.8;">
-    <h2 style="font-size: 1.5em; font-weight: bold; margin-bottom: 1em; color: #1e293b;">${title}</h2>
+<div class="event-description" style="line-height: 1.9; color: #334155; font-family: 'Hiragino Sans', 'ヒラギノ角ゴ ProN', 'Hiragino Kaku Gothic ProN', 'メイリオ', Meiryo, sans-serif;">
+    <!-- キャッチコピー -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2em; border-radius: 12px; margin-bottom: 2em; text-align: center;">
+        <h2 style="font-size: 1.8em; font-weight: 900; color: #ffffff; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            ${template.catchphrase}
+        </h2>
+    </div>
     
-    <section style="margin-bottom: 2em;">
-        <h3 style="font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; color: #334155;">📝 イベント概要</h3>
-        <p style="color: #475569;">${lines[0] || ''}</p>
+    <!-- リード文 -->
+    <section style="margin-bottom: 2.5em; padding: 1.5em; background: linear-gradient(to right, #f0f9ff, #e0f2fe); border-left: 5px solid #3b82f6; border-radius: 8px;">
+        <p style="font-size: 1.1em; font-weight: 600; color: #1e293b; line-height: 1.8; margin: 0;">
+            ${template.lead}
+        </p>
     </section>
     
-    ${lines.length > 1 ? `
-    <section style="margin-bottom: 2em;">
-        <h3 style="font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; color: #334155;">✨ 詳細</h3>
-        <ul style="list-style: disc; padding-left: 1.5em; color: #475569;">
-            ${lines.slice(1).map(line => `<li style="margin-bottom: 0.5em;">${line}</li>`).join('\n            ')}
-        </ul>
+    <!-- イベント概要 -->
+    <section style="margin-bottom: 2.5em;">
+        <h3 style="font-size: 1.4em; font-weight: bold; margin-bottom: 1em; color: #1e293b; border-bottom: 3px solid #3b82f6; padding-bottom: 0.5em; display: inline-block;">
+            📋 イベント概要
+        </h3>
+        <div style="background: #ffffff; padding: 1.5em; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <p style="font-size: 1.05em; color: #475569; line-height: 1.8;">
+                ${lines[0] || rawDescription}
+            </p>
+        </div>
+    </section>
+    
+    <!-- 3つの特徴 -->
+    <section style="margin-bottom: 2.5em;">
+        <h3 style="font-size: 1.4em; font-weight: bold; margin-bottom: 1em; color: #1e293b; border-bottom: 3px solid #3b82f6; padding-bottom: 0.5em; display: inline-block;">
+            ✨ このイベントの3つの特徴
+        </h3>
+        <div style="display: grid; gap: 1em;">
+            ${template.features.map((feature, index) => `
+            <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1.5em; border-radius: 12px; border-left: 5px solid #3b82f6; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1); transition: transform 0.2s;">
+                <p style="font-size: 1.05em; font-weight: 600; color: #1e293b; margin: 0; line-height: 1.7;">
+                    ${feature}
+                </p>
+            </div>
+            `).join('')}
+        </div>
+    </section>
+    
+    ${mainPoints.length > 1 ? `
+    <!-- 本文・詳細 -->
+    <section style="margin-bottom: 2.5em;">
+        <h3 style="font-size: 1.4em; font-weight: bold; margin-bottom: 1em; color: #1e293b; border-bottom: 3px solid #3b82f6; padding-bottom: 0.5em; display: inline-block;">
+            📖 詳細内容
+        </h3>
+        <div style="background: #ffffff; padding: 1.5em; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                ${mainPoints.slice(1).map(point => `
+                <li style="margin-bottom: 1em; padding-left: 1.5em; position: relative; font-size: 1.05em; color: #475569; line-height: 1.7;">
+                    <span style="position: absolute; left: 0; color: #3b82f6; font-weight: bold;">▸</span>
+                    ${point}
+                </li>
+                `).join('')}
+            </ul>
+        </div>
     </section>
     ` : ''}
     
-    <section style="margin-bottom: 2em;">
-        <h3 style="font-size: 1.2em; font-weight: bold; margin-bottom: 0.5em; color: #334155;">🎯 ${template.title}</h3>
-        <p style="color: #475569;">このイベントは以下のような方におすすめです：</p>
-        <ul style="list-style: disc; padding-left: 1.5em; color: #475569; margin-top: 0.5em;">
-            ${template.target.map(t => `<li style="margin-bottom: 0.5em;">${t}</li>`).join('\n            ')}
-        </ul>
+    <!-- おすすめのターゲット -->
+    <section style="margin-bottom: 2.5em;">
+        <h3 style="font-size: 1.4em; font-weight: bold; margin-bottom: 1em; color: #1e293b; border-bottom: 3px solid #3b82f6; padding-bottom: 0.5em; display: inline-block;">
+            🎯 こんな方におすすめ
+        </h3>
+        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 1.5em; border-radius: 12px; border: 2px solid #f59e0b;">
+            <p style="font-weight: 600; color: #78350f; margin-bottom: 1em; font-size: 1.05em;">
+                このイベントは、特に以下のような方にぴったりです：
+            </p>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                ${template.target.map(t => `
+                <li style="margin-bottom: 0.8em; padding-left: 2em; position: relative; color: #92400e; font-weight: 500; font-size: 1.05em;">
+                    <span style="position: absolute; left: 0; font-size: 1.2em;">✓</span>
+                    ${t}
+                </li>
+                `).join('')}
+            </ul>
+        </div>
     </section>
     
-    <section style="background: #f1f5f9; padding: 1em; border-radius: 0.5em; border-left: 4px solid #3b82f6;">
-        <p style="color: #475569; font-size: 0.9em;"><strong>💡 参加のヒント:</strong> 事前に資料を確認し、質問を準備しておくとより充実した体験ができます。</p>
+    <!-- 参加特典 -->
+    <section style="margin-bottom: 2.5em;">
+        <h3 style="font-size: 1.4em; font-weight: bold; margin-bottom: 1em; color: #1e293b; border-bottom: 3px solid #3b82f6; padding-bottom: 0.5em; display: inline-block;">
+            🎁 参加特典
+        </h3>
+        <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); padding: 1.5em; border-radius: 12px; border: 2px solid #3b82f6;">
+            <p style="color: #1e40af; font-weight: 600; margin: 0; font-size: 1.05em; line-height: 1.7;">
+                ${template.benefits}
+            </p>
+        </div>
+    </section>
+    
+    <!-- 行動喚起 -->
+    <section style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2em; border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);">
+        <p style="color: #ffffff; font-size: 1.3em; font-weight: bold; margin: 0; line-height: 1.7; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            ${template.cta}
+        </p>
     </section>
 </div>
                 `.trim();
@@ -15695,9 +15816,9 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             updateEndDateTime();
         }
 
-        function saveEvent(eventId) {
+        function saveEvent(eventId, status = 'published') {
             const isNew = eventId === 'new';
-            console.log('💾 saveEvent called:', { eventId, isNew });
+            console.log('💾 saveEvent called:', { eventId, status, isNew });
             
             try {
                 // フォームデータ取得
@@ -15906,8 +16027,8 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     organizer_name: store.organizerProfile?.name || store.user?.name || 'Organizer',
                     organizer_rating: 4.8,
                     user_restriction: userRestriction,
-                    status: 'draft',
-                    approval_status: 'draft',
+                    status: status,
+                    approval_status: status === 'draft' ? 'draft' : (status === 'pending' ? 'pending' : 'approved'),
                     created_at: isNew ? new Date().toISOString() : (store.events.find(e => e.event_id === eventId)?.created_at || new Date().toISOString()),
                     updated_at: new Date().toISOString()
                 };
@@ -15924,7 +16045,15 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 }
                 
                 console.log('✅ Save successful!');
-                showToast('✅ イベントを保存しました', 'success');
+                
+                // ステータスに応じたメッセージ
+                if (status === 'draft') {
+                    showToast('💾 下書きを保存しました', 'success');
+                } else if (status === 'pending') {
+                    showToast('📤 承認申請を送信しました', 'success');
+                } else {
+                    showToast('✅ イベントを保存しました', 'success');
+                }
                 
                 // 即座に画面遷移（タイムアウトを削除）
                 console.log('🔄 Routing to organizer dashboard...');
@@ -15942,9 +16071,54 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             }
         }
 
+        function saveEventAsDraft(eventId) {
+            console.log('📝 下書き保存開始');
+            saveEvent(eventId, 'draft');
+        }
+
         function submitForApproval(eventId) {
-            // まず保存
-            saveEvent(eventId);
+            console.log('📤 承認申請開始');
+            
+            // バリデーションチェック
+            const title = document.getElementById('event-title')?.value;
+            const description = currentEditorMode === 'wysiwyg' 
+                ? document.getElementById('event-description-wysiwyg')?.innerHTML 
+                : document.getElementById('event-description-ai')?.value;
+            
+            if (!title || !description || description.trim().length < 50) {
+                showToast('承認申請には、タイトルと詳細な説明文（50文字以上）が必要です', 'error');
+                return;
+            }
+            
+            // 保存して承認申請
+            try {
+                // フォームデータを取得
+                const title = document.getElementById('event-title')?.value;
+                const category = document.getElementById('event-category')?.value;
+                const startDatetime = document.getElementById('event-start')?.value;
+                const endDatetime = document.getElementById('event-end')?.value;
+                
+                // バリデーション
+                if (!title || !startDatetime || !endDatetime) {
+                    showToast('必須項目を入力してください（タイトル、開始日時、終了日時）', 'error');
+                    return;
+                }
+                
+                // 承認申請として保存
+                showToast('📤 承認申請を送信中...', 'info');
+                
+                // イベントを保存（ステータス: pending）
+                saveEvent(eventId, 'pending');
+                
+                // 成功メッセージ
+                setTimeout(() => {
+                    showToast('✅ 承認申請を送信しました。運営チームが確認次第、公開されます。', 'success', 5000);
+                }, 600);
+                
+            } catch (error) {
+                console.error('承認申請エラー:', error);
+                showToast('❌ 承認申請に失敗しました', 'error');
+            }
             
             // 承認ステータスを更新
             setTimeout(() => {

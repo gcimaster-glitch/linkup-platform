@@ -31,10 +31,14 @@ ENVIRONMENT = "production"
 JWT_SECRET = "your-jwt-secret-change-in-production"
 FRONTEND_URL = "https://link-up.live"
 R2_PUBLIC_DOMAIN = "linkup-storage.r2.cloudflarestorage.com"
+# imgbb API Key (無料画像ホスティング) - https://api.imgbb.com/
+# IMGBB_API_KEY は Cloudflare Dashboard の Workers & Pages → Settings → Variables で設定
+# または wrangler secret put IMGBB_API_KEY で設定
 APP_NAME = "LinkUp"
 APP_TAGLINE = "人と機会を繋げる"
 
 # Secrets (wrangler secret putで設定)
+# IMGBB_API_KEY (推奨: https://api.imgbb.com/ で無料取得)
 # STRIPE_SECRET_KEY
 # STRIPE_WEBHOOK_SECRET
 # GEMINI_API_KEY

@@ -16,6 +16,7 @@ export type Bindings = {
   AI: any;
   R2?: R2Bucket;
   R2_PUBLIC_DOMAIN?: string;
+  IMGBB_API_KEY?: string;
   JWT_SECRET: string;
   RESEND_API_KEY: string;
   ENVIRONMENT: string;

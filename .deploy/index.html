@@ -849,6 +849,54 @@
                     });
                     return await response.json();
                 }
+            },
+            Organizer: {
+                async getProfile() {
+                    const response = await fetch(`${API_URL}/api/organizer/settings`, {
+                        headers: getAuthHeaders()
+                    });
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    return await response.json();
+                },
+                async updateProfile(profileData) {
+                    const response = await fetch(`${API_URL}/api/organizer/settings`, {
+                        method: 'PUT',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify(profileData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ API Error:', data);
+                        throw new Error(data.error || 'プロフィール更新に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async uploadImage(file) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch(`${API_URL}/api/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('linkup_token')}`
+                        },
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Upload Error:', data);
+                        throw new Error(data.error || '画像アップロードに失敗しました');
+                    }
+                    
+                    return data;
+                }
             }
         };
 
@@ -7510,8 +7558,56 @@
             `;
         }
 
-        function renderOrganizerProfileSettings() {
-            const p = store.organizerProfile;
+        async function renderOrganizerProfileSettings() {
+            console.log('📥 Loading profile from API...');
+            
+            // APIからプロフィール取得
+            let apiProfile = null;
+            try {
+                const response = await fetch(`${API_URL}/api/organizer/settings`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.profile) {
+                        apiProfile = result.profile;
+                        console.log('✅ Profile loaded from API:', apiProfile);
+                        
+                        // LocalStorageにもキャッシュ
+                        const cacheProfile = {
+                            name: apiProfile.organization_name || store.user?.name || 'Organizer',
+                            bio: apiProfile.description || '',
+                            img: store.user?.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(store.user?.name || 'User')}`,
+                            cover: apiProfile.banner_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200',
+                            links: {
+                                web: apiProfile.website_url || '',
+                                twitter: ''
+                            }
+                        };
+                        localStorage.setItem('organizerProfile', JSON.stringify(cacheProfile));
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Failed to load profile from API:', error);
+            }
+            
+            // プロフィールデータを決定（API > LocalStorage > デフォルト）
+            let p;
+            if (apiProfile) {
+                p = {
+                    name: apiProfile.organization_name || store.user?.name || 'Organizer',
+                    bio: apiProfile.description || '',
+                    img: store.user?.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(store.user?.name || 'User')}`,
+                    cover: apiProfile.banner_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200',
+                    links: {
+                        web: apiProfile.website_url || '',
+                        twitter: ''
+                    }
+                };
+            } else {
+                p = store.organizerProfile;
+            }
             
             return `
                 <h1 class="text-2xl font-bold text-slate-800 mb-6">プロフィール設定</h1>
@@ -7584,30 +7680,117 @@
 
         // --- ORGANIZER ACTIONS ---
         
-        function handleImageUpload(input, imgId) {
-            if (input.files && input.files[0]) {
+        async function handleImageUpload(input, imgId) {
+            if (!input.files || !input.files[0]) return;
+            
+            const file = input.files[0];
+            console.log('📤 Uploading image:', file.name);
+            
+            try {
+                // 画像をサーバーにアップロード
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch(`${API_URL}/api/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('linkup_token')}`
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    console.error('❌ Upload failed:', result);
+                    showToast(result.error || '画像のアップロードに失敗しました', 'error');
+                    return;
+                }
+                
+                console.log('✅ Upload succeeded:', result.url);
+                
+                // アップロード成功 → プレビューに表示
+                document.getElementById(imgId).src = result.url;
+                showToast('画像をアップロードしました', 'check_circle');
+                
+            } catch (error) {
+                console.error('❌ Upload error:', error);
+                showToast('画像のアップロードに失敗しました', 'error');
+                
+                // フォールバック: ローカルプレビュー
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     document.getElementById(imgId).src = e.target.result;
                 }
-                reader.readAsDataURL(input.files[0]);
+                reader.readAsDataURL(file);
             }
         }
 
-        function saveProfile(e) {
+        async function saveProfile(e) {
             e.preventDefault();
             const form = e.target;
-            const newProfile = {
-                name: form.name.value,
-                bio: form.bio.value,
-                img: document.getElementById('preview-icon').src,
-                cover: document.getElementById('preview-cover').src,
-                links: {
-                    web: form.web.value,
-                    twitter: form.twitter.value
-                }
+            
+            // フォームデータ取得
+            const profileData = {
+                organization_name: form.name.value,
+                description: form.bio.value,
+                website_url: form.web.value || '',
+                type: 'corporate', // TODO: フォームに追加
+                banner_image_url: document.getElementById('preview-cover').src
             };
-            store.updateOrganizerProfile(newProfile);
+            
+            console.log('💾 Saving profile to API:', profileData);
+            
+            try {
+                // APIに保存
+                const response = await fetch(`${API_URL}/api/organizer/settings`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(profileData)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    console.error('❌ Profile save failed:', result);
+                    showToast(result.error || 'プロフィールの保存に失敗しました', 'error');
+                    return;
+                }
+                
+                console.log('✅ Profile saved to database');
+                
+                // LocalStorageにも保存（キャッシュ用）
+                const newProfile = {
+                    name: form.name.value,
+                    bio: form.bio.value,
+                    img: document.getElementById('preview-icon').src,
+                    cover: document.getElementById('preview-cover').src,
+                    links: {
+                        web: form.web.value,
+                        twitter: form.twitter.value
+                    }
+                };
+                localStorage.setItem('organizerProfile', JSON.stringify(newProfile));
+                
+                // ユーザー情報も更新
+                if (store.user) {
+                    store.user = {
+                        ...store.user,
+                        name: form.name.value
+                    };
+                }
+                
+                showToast('プロフィールを保存しました', 'check_circle');
+                
+                // 画面を更新
+                setTimeout(() => {
+                    router('dashboard_profile');
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ Profile save error:', error);
+                showToast('プロフィールの保存に失敗しました', 'error');
+            }
         }
 
         function openEventEditor(eventId = null) {
@@ -18628,8 +18811,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.2.2-DRAFT-FIX';
-            const BUILD_DATE = '2026-02-12T15:15:00Z';
+            const VERSION = '3.3-PROFILE-DB';
+            const BUILD_DATE = '2026-02-12T15:30:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

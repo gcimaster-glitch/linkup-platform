@@ -8943,86 +8943,41 @@
             `;
         }
 
-        function renderAdminUsers() {
-            // Mock user data with comprehensive information
-            const mockUsers = [
-                { 
-                    id: 100001, 
-                    name: store.user?.name || 'Guest User',
-                    furigana: 'ゲスト ユーザー',
-                    displayName: 'Guest',
-                    gender: 'male',
-                    email: store.user?.email || 'guest@example.com',
-                    phone: '090-1234-5678',
-                    kycStatus: store.user?.kycStatus || 'pending',
-                    emailVerified: true,
-                    phoneVerified: false,
-                    personalInfoConsent: true,
-                    termsConsent: true,
-                    favorites: 12,
-                    viewHistory: 45,
-                    upcomingEvents: 3,
-                    purchasedTickets: 8,
-                    totalSpent: 42500,
-                    interests: ['Tech', 'Music', 'Art'],
-                    registeredAt: '2024-01-15',
-                    lastLogin: '2024-02-04',
-                    unreadMessages: 3
-                },
-                { 
-                    id: 100002, 
-                    name: '山田太郎',
-                    furigana: 'ヤマダ タロウ',
-                    displayName: 'タロウ',
-                    gender: 'male',
-                    email: 'yamada@example.com',
-                    phone: '080-9876-5432',
-                    kycStatus: 'verified',
-                    emailVerified: true,
-                    phoneVerified: true,
-                    personalInfoConsent: true,
-                    termsConsent: true,
-                    favorites: 28,
-                    viewHistory: 112,
-                    upcomingEvents: 5,
-                    purchasedTickets: 15,
-                    totalSpent: 125000,
-                    interests: ['Business', 'Tech', 'Sports'],
-                    registeredAt: '2023-11-02',
-                    lastLogin: '2024-02-05',
-                    unreadMessages: 0
-                },
-                { 
-                    id: 100003, 
-                    name: '佐藤花子',
-                    furigana: 'サトウ ハナコ',
-                    displayName: '花子',
-                    gender: 'female',
-                    email: 'hanako@example.com',
-                    phone: '070-1111-2222',
-                    kycStatus: 'unsubmitted',
-                    emailVerified: true,
-                    phoneVerified: false,
-                    personalInfoConsent: true,
-                    termsConsent: true,
-                    favorites: 5,
-                    viewHistory: 23,
-                    upcomingEvents: 1,
-                    purchasedTickets: 3,
-                    totalSpent: 12000,
-                    interests: ['Art', 'Music'],
-                    registeredAt: '2024-01-28',
-                    lastLogin: '2024-02-03',
-                    unreadMessages: 1
+        async function renderAdminUsers() {
+            let users = [];
+            
+            // APIからユーザー一覧を取得
+            try {
+                console.log('📊 Loading users from API...');
+                const filters = adminFilters.users || { status: 'all', kyc: 'all', role: 'all', search: '' };
+                
+                const result = await API.Admin.getUsers({
+                    role: filters.role || 'all',
+                    kyc: filters.kyc || 'all'
+                });
+                
+                users = result.users || [];
+                console.log('✅ Users loaded:', users.length);
+                
+                // 検索フィルタ適用（クライアント側）
+                if (filters.search) {
+                    const search = filters.search.toLowerCase();
+                    users = users.filter(u => 
+                        u.display_name?.toLowerCase().includes(search) ||
+                        u.email?.toLowerCase().includes(search) ||
+                        u.user_id?.toLowerCase().includes(search)
+                    );
                 }
-            ];
+                
+            } catch (error) {
+                console.error('❌ Failed to load users:', error);
+                showToast('ユーザー情報の取得に失敗しました', 'error');
+                users = [];
+            }
             
-            // Filter and search
-            const filters = adminFilters.users || { status: 'all', kyc: 'all', search: '' };
-            let filteredUsers = [...mockUsers];
-            
-            if (filters.kyc !== 'all') {
-                filteredUsers = filteredUsers.filter(u => u.kycStatus === filters.kyc);
+            // Filter
+            const filters = adminFilters.users || { status: 'all', kyc: 'all', role: 'all', search: '' };
+            let filteredUsers = [...users];
             }
             if (filters.search) {
                 const search = filters.search.toLowerCase();
@@ -9068,7 +9023,7 @@
                                 <span class="material-icons-outlined opacity-80">verified_user</span>
                                 <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">KYC</span>
                             </div>
-                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.kycStatus === 'verified').length}</div>
+                            <div class="text-3xl font-bold">${users.filter(u => u.kyc_status === 'verified').length}</div>
                             <div class="text-sm opacity-80 mt-1">本人確認済み</div>
                         </div>
                         <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl shadow-card p-6 text-white">
@@ -9076,7 +9031,7 @@
                                 <span class="material-icons-outlined opacity-80">pending</span>
                                 <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">審査中</span>
                             </div>
-                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.kycStatus === 'pending').length}</div>
+                            <div class="text-3xl font-bold">${users.filter(u => u.kyc_status === 'pending').length}</div>
                             <div class="text-sm opacity-80 mt-1">KYC審査待ち</div>
                         </div>
                         <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-card p-6 text-white">
@@ -9084,21 +9039,30 @@
                                 <span class="material-icons-outlined opacity-80">local_activity</span>
                                 <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">アクティブ</span>
                             </div>
-                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.purchasedTickets > 0).length}</div>
-                            <div class="text-sm opacity-80 mt-1">チケット購入済み</div>
+                            <div class="text-3xl font-bold">${users.filter(u => u.email_verified).length}</div>
+                            <div class="text-sm opacity-80 mt-1">メール認証済み</div>
                         </div>
                     </div>
 
                     <!-- Search and Filters -->
                     <div class="bg-white rounded-2xl shadow-card p-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">ロール</label>
+                                <select onchange="updateAdminFilter('users', 'role', this.value)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
+                                    <option value="all">すべて</option>
+                                    <option value="attendee">参加者</option>
+                                    <option value="organizer">主催者</option>
+                                    <option value="admin">管理者</option>
+                                </select>
+                            </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-2">KYCステータス</label>
                                 <select onchange="updateAdminFilter('users', 'kyc', this.value)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                                     <option value="all">すべて</option>
                                     <option value="verified">認証済</option>
                                     <option value="pending">審査中</option>
-                                    <option value="unsubmitted">未提出</option>
+                                    <option value="none">未提出</option>
                                 </select>
                             </div>
                             <div class="md:col-span-2">
@@ -9138,72 +9102,55 @@
                                         </tr>
                                     ` : filteredUsers.map((user, index) => `
                                         <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100 text-sm">
-                                            <td class="p-4 font-bold text-slate-500">${user.id}</td>
+                                            <td class="p-4 font-bold text-slate-500">${index + 1}</td>
                                             <td class="p-4">
                                                 <div class="flex items-center space-x-3">
-                                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                                                        ${user.name.charAt(0)}
-                                                    </div>
+                                                    <img src="${user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.display_name || 'User')}`}" 
+                                                         class="w-10 h-10 rounded-full object-cover">
                                                     <div>
-                                                        <div class="font-bold text-slate-800">${user.name}</div>
-                                                        <div class="text-xs text-slate-500">${user.furigana}</div>
-                                                        <div class="text-xs text-slate-400">表示名: ${user.displayName}</div>
+                                                        <div class="font-bold text-slate-800">${user.display_name || user.email}</div>
+                                                        <div class="text-xs text-slate-500">ID: ${user.user_id}</div>
+                                                        <div class="text-xs text-slate-400">ロール: ${user.role || 'attendee'}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td class="p-4">
                                                 <div class="flex items-center space-x-1 mb-1">
-                                                    <span class="material-icons-outlined text-xs ${user.emailVerified ? 'text-green-500' : 'text-slate-400'}">mail</span>
+                                                    <span class="material-icons-outlined text-xs ${user.email_verified ? 'text-green-500' : 'text-slate-400'}">mail</span>
                                                     <span class="text-xs text-slate-600">${user.email}</span>
                                                 </div>
-                                                <div class="flex items-center space-x-1">
-                                                    <span class="material-icons-outlined text-xs ${user.phoneVerified ? 'text-green-500' : 'text-slate-400'}">phone</span>
-                                                    <span class="text-xs text-slate-600">${user.phone}</span>
-                                                </div>
+                                                <div class="text-xs text-slate-400">${new Date(user.created_at).toLocaleDateString('ja-JP')}</div>
                                             </td>
                                             <td class="p-4">
                                                 <div class="flex flex-wrap gap-1 justify-center">
                                                     ${user.interests.slice(0, 2).map(interest => `
                                                         <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">${interest}</span>
                                                     `).join('')}
-                                                    ${user.interests.length > 2 ? `
-                                                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">+${user.interests.length - 2}</span>
-                                                    ` : ''}
+                                                    <span class="px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs">-</span>
                                                 </div>
                                             </td>
                                             <td class="p-4 text-center">
                                                 <div class="flex flex-col items-center space-y-1">
                                                     <span class="px-2 py-1 rounded-full text-xs font-bold 
-                                                        ${user.kycStatus === 'verified' ? 'bg-green-100 text-green-600' : 
-                                                          user.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}">
-                                                        ${user.kycStatus === 'verified' ? '認証済' : user.kycStatus === 'pending' ? '審査中' : '未提出'}
+                                                        ${user.kyc_status === 'verified' ? 'bg-green-100 text-green-600' : 
+                                                          user.kyc_status === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}">
+                                                        ${user.kyc_status === 'verified' ? '認証済' : user.kyc_status === 'pending' ? '審査中' : '未提出'}
                                                     </span>
-                                                    <div class="flex space-x-1">
-                                                        <span class="material-icons-outlined text-xs ${user.personalInfoConsent ? 'text-green-500' : 'text-slate-300'}" title="個人情報同意">policy</span>
-                                                        <span class="material-icons-outlined text-xs ${user.termsConsent ? 'text-green-500' : 'text-slate-300'}" title="利用規約同意">gavel</span>
-                                                    </div>
+                                                    ${user.kyc_status === 'pending' ? `
+                                                        <button onclick="verifyUserKYC('${user.user_id}', 'verified')" class="text-xs text-green-600 hover:underline">承認</button>
+                                                    ` : ''}
                                                 </div>
                                             </td>
                                             <td class="p-4 text-center">
                                                 <div class="text-xs space-y-1">
-                                                    <div class="flex items-center justify-center space-x-1">
-                                                        <span class="material-icons-outlined text-xs text-red-400">favorite</span>
-                                                        <span class="font-bold text-slate-700">${user.favorites}</span>
-                                                    </div>
-                                                    <div class="flex items-center justify-center space-x-1">
-                                                        <span class="material-icons-outlined text-xs text-blue-400">visibility</span>
-                                                        <span class="font-bold text-slate-700">${user.viewHistory}</span>
-                                                    </div>
-                                                    <div class="flex items-center justify-center space-x-1">
-                                                        <span class="material-icons-outlined text-xs text-green-400">event</span>
-                                                        <span class="font-bold text-slate-700">${user.upcomingEvents}</span>
-                                                    </div>
+                                                    <div class="text-slate-500">${user.email_verified ? '✓ メール認証済' : '未認証'}</div>
+                                                    <div class="text-slate-400">${user.last_login ? new Date(user.last_login).toLocaleDateString('ja-JP') : '未ログイン'}</div>
                                                 </div>
                                             </td>
                                             <td class="p-4 text-center">
                                                 <div class="text-xs space-y-1">
-                                                    <div class="font-bold text-slate-800">${user.purchasedTickets}枚</div>
-                                                    <div class="text-slate-500">¥${user.totalSpent.toLocaleString()}</div>
+                                                    <div class="font-bold text-slate-800">-</div>
+                                                    <div class="text-slate-500">-</div>
                                                 </div>
                                             </td>
                                             <td class="p-4 text-right space-x-2">
@@ -16967,7 +16914,31 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 showToast('却下に失敗しました: ' + error.message, 'error');
             }
         }
-            }, 500);
+
+        // KYC承認/却下機能
+        async function verifyUserKYC(userId, status) {
+            if (!confirm(`このユーザーのKYCを${status === 'verified' ? '承認' : '却下'}しますか？`)) {
+                return;
+            }
+            
+            try {
+                console.log('📤 Updating KYC status:', userId, status);
+                
+                const result = await API.Admin.verifyKYC(userId, status);
+                
+                console.log('✅ KYC updated:', result);
+                
+                showToast(`KYCステータスを更新しました`, 'check_circle');
+                
+                // 管理画面を再描画
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'users');
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ KYC update error:', error);
+                showToast('KYC更新に失敗しました: ' + error.message, 'error');
+            }
         }
 
         // イベントアーカイブ機能

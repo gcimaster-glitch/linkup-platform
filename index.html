@@ -15909,11 +15909,20 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 
                 console.log('📝 Form values:', { title, category, startDatetime, endDatetime });
                 
-                // バリデーション
-                if (!title || !startDatetime || !endDatetime) {
-                    console.error('❌ Validation failed:', { title, startDatetime, endDatetime });
-                    showToast('必須項目を入力してください（タイトル、開始日時、終了日時）', 'error');
-                    return;
+                // 下書き保存の場合は最小限のバリデーションのみ
+                if (status === 'draft') {
+                    if (!title || title.trim() === '') {
+                        showToast('タイトルを入力してください', 'error');
+                        return;
+                    }
+                    console.log('📝 Draft mode: skipping strict validation');
+                } else {
+                    // 公開・承認申請の場合は厳格なバリデーション
+                    if (!title || !startDatetime || !endDatetime) {
+                        console.error('❌ Validation failed:', { title, startDatetime, endDatetime });
+                        showToast('必須項目を入力してください（タイトル、開始日時、終了日時）', 'error');
+                        return;
+                    }
                 }
                 
                 // タイトル長さチェック
@@ -15926,30 +15935,32 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     return;
                 }
                 
-                // 日時の整合性チェック
-                const startDate = new Date(startDatetime);
-                const endDate = new Date(endDatetime);
-                const now = new Date();
-                
-                if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-                    showToast('日時の形式が正しくありません', 'error');
-                    return;
-                }
-                
-                if (startDate < now) {
-                    showToast('開始日時は現在よりも後に設定してください', 'warning');
-                }
-                
-                if (endDate <= startDate) {
-                    showToast('終了日時は開始日時よりも後に設定してください', 'error');
-                    return;
-                }
-                
-                // 開始日時と終了日時が同じ日の場合、最低30分の時間差を確認
-                const timeDiff = (endDate - startDate) / (1000 * 60); // 分単位
-                if (timeDiff < 30) {
-                    showToast('イベント時間は最低30分以上に設定してください', 'error');
-                    return;
+                // 日時の整合性チェック（公開・承認申請時のみ）
+                if (status !== 'draft' && startDatetime && endDatetime) {
+                    const startDate = new Date(startDatetime);
+                    const endDate = new Date(endDatetime);
+                    const now = new Date();
+                    
+                    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                        showToast('日時の形式が正しくありません', 'error');
+                        return;
+                    }
+                    
+                    if (startDate < now) {
+                        showToast('開始日時は現在よりも後に設定してください', 'warning');
+                    }
+                    
+                    if (endDate <= startDate) {
+                        showToast('終了日時は開始日時よりも後に設定してください', 'error');
+                        return;
+                    }
+                    
+                    // 開始日時と終了日時が同じ日の場合、最低30分の時間差を確認
+                    const timeDiff = (endDate - startDate) / (1000 * 60); // 分単位
+                    if (timeDiff < 30) {
+                        showToast('イベント時間は最低30分以上に設定してください', 'error');
+                        return;
+                    }
                 }
                 
                 // エディタコンテンツ取得（現在のモードから）
@@ -16007,7 +16018,8 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 const ticketElements = document.querySelectorAll('#ticket-list > div');
                 console.log('🎫 Found ticket elements:', ticketElements.length);
                 
-                if (ticketElements.length === 0) {
+                // 下書き保存の場合はチケットがなくてもOK
+                if (status !== 'draft' && ticketElements.length === 0) {
                     console.warn('⚠️ No tickets found!');
                     showToast('チケットを1つ以上追加してください', 'warning');
                     return;
@@ -16077,9 +16089,12 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                         throw new Error('Ticket validation failed');
                     }
                     
-                    // 締め切り日時のバリデーション
-                    if (deadline) {
+                    // 締め切り日時のバリデーション（公開・承認申請時のみ）
+                    if (status !== 'draft' && deadline && startDatetime) {
                         const deadlineDate = new Date(deadline);
+                        const startDate = new Date(startDatetime);
+                        const now = new Date();
+                        
                         if (isNaN(deadlineDate.getTime())) {
                             showToast(`チケット${idx + 1}: 締め切り日時の形式が正しくありません`, 'error');
                             throw new Error('Ticket validation failed');
@@ -16120,15 +16135,15 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 const eventData = {
                     event_id: isNew ? `evt-${Date.now()}` : eventId,
                     title,
-                    category,
-                    start_datetime: new Date(startDatetime).toISOString(),
-                    end_datetime: new Date(endDatetime).toISOString(),
-                    description,
+                    category: category || 'tech',
+                    start_datetime: startDatetime ? new Date(startDatetime).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // デフォルト: 1週間後
+                    end_datetime: endDatetime ? new Date(endDatetime).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString(), // デフォルト: 1週間後+2時間
+                    description: description || '説明未設定',
                     cover_image_url: coverImage || `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80`,
-                    sub_images: sub_images.length > 0 ? sub_images : undefined, // 空の場合はundefinedで保存しない
-                    video_url: video_url || undefined, // 空の場合はundefinedで保存しない
+                    sub_images: sub_images.length > 0 ? sub_images : undefined,
+                    video_url: video_url || undefined,
                     ...venueData,
-                    tickets,
+                    tickets: tickets.length > 0 ? tickets : undefined,
                     organizer_name: store.organizerProfile?.name || store.user?.name || 'Organizer',
                     organizer_rating: 4.8,
                     user_restriction: userRestriction,
@@ -18613,8 +18628,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.2.1-TICKET-FIX';
-            const BUILD_DATE = '2026-02-12T14:50:00Z';
+            const VERSION = '3.2.2-DRAFT-FIX';
+            const BUILD_DATE = '2026-02-12T15:15:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

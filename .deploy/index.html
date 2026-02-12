@@ -15396,24 +15396,25 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             const ticketIndex = ticketList.children.length;
             const newTicket = document.createElement('div');
             newTicket.className = 'border border-slate-200 rounded-lg p-4';
+            newTicket.setAttribute('data-ticket-index', ticketIndex);
             newTicket.innerHTML = `
                 <div class="space-y-4">
                     <!-- 基本情報 -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">チケット名</label>
-                            <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="VIP席">
+                            <input type="text" class="ticket-name w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="VIP席" required>
                         </div>
                         <div>
                             <label class="block text-sm font-bold text-slate-700 mb-2">価格（円）</label>
                             <div class="relative">
-                                <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg pr-32" placeholder="5000">
+                                <input type="number" class="ticket-price w-full px-4 py-2 border border-slate-300 rounded-lg pr-32" placeholder="5000" value="0" min="0" required>
                                 <div class="absolute right-3 top-2.5 flex items-center gap-2">
                                     <label class="text-xs text-slate-500">
-                                        <input type="radio" name="tax-type-${ticketIndex}" value="tax-included" checked class="mr-1">税込
+                                        <input type="radio" name="tax-type-` + ticketIndex + `" value="tax-included" checked class="mr-1 tax-type-radio">税込
                                     </label>
                                     <label class="text-xs text-slate-500">
-                                        <input type="radio" name="tax-type-${ticketIndex}" value="tax-excluded" class="mr-1">税別
+                                        <input type="radio" name="tax-type-` + ticketIndex + `" value="tax-excluded" class="mr-1 tax-type-radio">税別
                                     </label>
                                 </div>
                             </div>
@@ -16016,38 +16017,63 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     console.log(`🎫 Processing ticket ${idx}:`, el);
                     
                     const ticketName = el.querySelector('.ticket-name')?.value || '';
-                    const price = parseInt(el.querySelector('.ticket-price')?.value);
-                    const capacity = parseInt(el.querySelector('.ticket-capacity')?.value);
+                    const priceValue = el.querySelector('.ticket-price')?.value;
+                    const price = priceValue ? parseInt(priceValue) : 0;
+                    const capacityValue = el.querySelector('.ticket-capacity')?.value;
+                    const capacity = capacityValue ? parseInt(capacityValue) : 0;
                     const purchaseLimit = parseInt(el.querySelector('.ticket-limit')?.value) || 5;
-                    const taxType = el.querySelector(`input[name="tax-type-${idx}"]:checked`)?.value || 'tax-included';
+                    
+                    // tax-type: チケット要素内のチェック済みラジオボタンを探す
+                    const taxTypeRadio = el.querySelector('input[type="radio"].tax-type-radio:checked') || el.querySelector('input[type="radio"][value="tax-included"]');
+                    const taxType = taxTypeRadio?.value || 'tax-included';
+                    
                     const serviceFee = parseInt(el.querySelector('.ticket-fee')?.value) || 0;
                     const deliveryMethod = el.querySelector('.ticket-delivery')?.value || 'digital';
                     const deadline = el.querySelector('.ticket-deadline')?.value || null;
                     const notes = el.querySelector('.ticket-notes')?.value || '';
                     
+                    console.log(`🎫 Ticket ${idx} raw data:`, { ticketName, price, capacity, taxType, serviceFee, deliveryMethod });
+                    
                     // チケットバリデーション
                     if (!ticketName || ticketName.trim() === '') {
                         showToast(`チケット${idx + 1}: 名前を入力してください`, 'error');
+                        console.error(`❌ Ticket ${idx}: name validation failed`);
                         throw new Error('Ticket validation failed');
                     }
                     
-                    if (isNaN(price) || price < 0) {
-                        showToast(`チケット${idx + 1}: 有効な価格を入力してください（0円以上）`, 'error');
+                    if (isNaN(price)) {
+                        showToast(`チケット${idx + 1}: 有効な価格を入力してください`, 'error');
+                        console.error(`❌ Ticket ${idx}: price is NaN`, priceValue);
+                        throw new Error('Ticket validation failed');
+                    }
+                    
+                    if (price < 0) {
+                        showToast(`チケット${idx + 1}: 価格は0円以上で設定してください`, 'error');
+                        console.error(`❌ Ticket ${idx}: price is negative`);
                         throw new Error('Ticket validation failed');
                     }
                     
                     if (price > 1000000) {
                         showToast(`チケット${idx + 1}: 価格は100万円以下に設定してください`, 'error');
+                        console.error(`❌ Ticket ${idx}: price too high`);
                         throw new Error('Ticket validation failed');
                     }
                     
-                    if (isNaN(capacity) || capacity < 1) {
+                    if (isNaN(capacity)) {
+                        showToast(`チケット${idx + 1}: 有効な販売枚数を入力してください`, 'error');
+                        console.error(`❌ Ticket ${idx}: capacity is NaN`, capacityValue);
+                        throw new Error('Ticket validation failed');
+                    }
+                    
+                    if (capacity < 1) {
                         showToast(`チケット${idx + 1}: 販売枚数は1枚以上に設定してください`, 'error');
+                        console.error(`❌ Ticket ${idx}: capacity too low`);
                         throw new Error('Ticket validation failed');
                     }
                     
                     if (capacity > 10000) {
                         showToast(`チケット${idx + 1}: 販売枚数は10,000枚以下に設定してください`, 'error');
+                        console.error(`❌ Ticket ${idx}: capacity too high`);
                         throw new Error('Ticket validation failed');
                     }
                     
@@ -18587,8 +18613,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.2-AI-DRAFT-APPROVAL';
-            const BUILD_DATE = '2026-02-12T14:25:36Z';
+            const VERSION = '3.2.1-TICKET-FIX';
+            const BUILD_DATE = '2026-02-12T14:50:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

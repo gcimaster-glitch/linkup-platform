@@ -84,6 +84,131 @@ userRoutes.delete('/interests/:tag', async (c) => {
   }
 });
 
+// ユーザーのお気に入りイベント一覧取得
+userRoutes.get('/favorites', async (c) => {
+  const db = c.env.DB;
+  const userId = c.get('userId');
+
+  try {
+    const { results } = await db.prepare(`
+      SELECT 
+        f.favorite_id,
+        f.created_at as favorited_at,
+        e.event_id,
+        e.title,
+        e.description,
+        e.category,
+        e.cover_image_url,
+        e.venue_name,
+        e.venue_address,
+        e.start_datetime,
+        e.end_datetime,
+        e.organizer_name,
+        e.status
+      FROM user_favorites f
+      LEFT JOIN events e ON f.event_id = e.event_id
+      WHERE f.user_id = ?
+      ORDER BY f.created_at DESC
+    `).bind(userId).all();
+
+    return c.json({ success: true, favorites: results || [] });
+  } catch (error: any) {
+    console.error('Get favorites error:', error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// イベントをお気に入りに追加
+userRoutes.post('/favorites/:eventId', async (c) => {
+  const db = c.env.DB;
+  const userId = c.get('userId');
+  const eventId = c.req.param('eventId');
+
+  try {
+    // イベント存在確認
+    const event = await db.prepare('SELECT event_id FROM events WHERE event_id = ?')
+      .bind(eventId).first();
+    
+    if (!event) {
+      return c.json({ error: 'イベントが見つかりません' }, 404);
+    }
+
+    // 重複チェック
+    const existing = await db.prepare(`
+      SELECT 1 FROM user_favorites 
+      WHERE user_id = ? AND event_id = ?
+    `).bind(userId, eventId).first();
+
+    if (existing) {
+      return c.json({ error: '既にお気に入りに追加されています' }, 400);
+    }
+
+    // お気に入り追加
+    const favoriteId = `fav-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    await db.prepare(`
+      INSERT INTO user_favorites (favorite_id, user_id, event_id, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `).bind(favoriteId, userId, eventId).run();
+
+    return c.json({ 
+      success: true, 
+      message: 'お気に入りに追加しました',
+      favorite_id: favoriteId
+    });
+  } catch (error: any) {
+    console.error('Add favorite error:', error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// イベントをお気に入りから削除
+userRoutes.delete('/favorites/:eventId', async (c) => {
+  const db = c.env.DB;
+  const userId = c.get('userId');
+  const eventId = c.req.param('eventId');
+
+  try {
+    const result = await db.prepare(`
+      DELETE FROM user_favorites 
+      WHERE user_id = ? AND event_id = ?
+    `).bind(userId, eventId).run();
+
+    if (result.meta.changes === 0) {
+      return c.json({ error: 'お気に入りが見つかりません' }, 404);
+    }
+
+    return c.json({ 
+      success: true, 
+      message: 'お気に入りから削除しました'
+    });
+  } catch (error: any) {
+    console.error('Delete favorite error:', error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
+// お気に入り状態確認
+userRoutes.get('/favorites/:eventId/check', async (c) => {
+  const db = c.env.DB;
+  const userId = c.get('userId');
+  const eventId = c.req.param('eventId');
+
+  try {
+    const favorite = await db.prepare(`
+      SELECT favorite_id FROM user_favorites 
+      WHERE user_id = ? AND event_id = ?
+    `).bind(userId, eventId).first();
+
+    return c.json({ 
+      success: true, 
+      isFavorite: !!favorite 
+    });
+  } catch (error: any) {
+    console.error('Check favorite error:', error);
+    return c.json({ error: error.message }, 500);
+  }
+});
+
 const groupRoutes = new Hono<{ Bindings: Bindings }>();
 const ticketRoutes = new Hono<{ Bindings: Bindings }>();
 const orderRoutes = new Hono<{ Bindings: Bindings }>();

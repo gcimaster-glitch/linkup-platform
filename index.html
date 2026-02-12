@@ -1088,6 +1088,60 @@
                     
                     const data = await response.json();
                     return data.orders || [];
+                },
+                async getFavorites() {
+                    const response = await fetch(`${API_URL}/api/users/favorites`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.favorites || [];
+                },
+                async addFavorite(eventId) {
+                    const response = await fetch(`${API_URL}/api/users/favorites/${eventId}`, {
+                        method: 'POST',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Add favorite error:', data);
+                        throw new Error(data.error || 'お気に入り追加に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async removeFavorite(eventId) {
+                    const response = await fetch(`${API_URL}/api/users/favorites/${eventId}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Remove favorite error:', data);
+                        throw new Error(data.error || 'お気に入り削除に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async checkFavorite(eventId) {
+                    const response = await fetch(`${API_URL}/api/users/favorites/${eventId}/check`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.isFavorite || false;
                 }
             }
         };
@@ -4597,82 +4651,7 @@
                     `;
                     
                 case 'events':
-                    // Mock event data
-                    const favoriteEvents = [
-                        { id: 'evt-001', title: 'Tech Conference 2024', date: '2024-03-15', image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400' },
-                        { id: 'evt-002', title: 'Music Festival', date: '2024-04-20', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400' }
-                    ];
-                    const viewHistory = [
-                        { id: 'evt-003', title: 'Art Exhibition', viewedAt: '2024-02-03', image: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=400' },
-                        { id: 'evt-004', title: 'Business Seminar', viewedAt: '2024-02-01', image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=400' }
-                    ];
-                    const upcomingEvents = [
-                        { id: 'evt-005', title: 'Workshop', date: '2024-02-20', time: '14:00', venue: '渋谷ホール', image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=400' }
-                    ];
-                    
-                    return `
-                        <div class="space-y-6">
-                            <!-- Upcoming Events Calendar -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                                    <span class="material-icons-outlined mr-2 text-primary">event</span>
-                                    参加予定のイベント
-                                </h3>
-                                ${upcomingEvents.length > 0 ? upcomingEvents.map(evt => `
-                                    <div class="flex items-start space-x-4 mb-4 pb-4 border-b border-slate-100 last:border-0">
-                                        <img src="${evt.image}" class="w-20 h-20 rounded-lg object-cover">
-                                        <div class="flex-1">
-                                            <h4 class="font-bold text-slate-800 mb-1">${evt.title}</h4>
-                                            <p class="text-sm text-slate-500 flex items-center mb-1">
-                                                <span class="material-icons-outlined text-xs mr-1">event</span>
-                                                ${evt.date} ${evt.time}
-                                            </p>
-                                            <p class="text-sm text-slate-500 flex items-center">
-                                                <span class="material-icons-outlined text-xs mr-1">place</span>
-                                                ${evt.venue}
-                                            </p>
-                                        </div>
-                                        <button onclick="addToGoogleCalendar(store.events.find(e => e.event_id === '${evt.id}'))" class="px-3 py-1 bg-blue-100 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-200">
-                                            カレンダー
-                                        </button>
-                                    </div>
-                                `).join('') : '<p class="text-slate-400 text-sm">参加予定のイベントはありません</p>'}
-                            </div>
-                            
-                            <!-- Favorites -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                                    <span class="material-icons-outlined mr-2 text-pink-500">favorite</span>
-                                    お気に入りイベント
-                                </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    ${favoriteEvents.map(evt => `
-                                        <div class="border border-slate-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer" onclick="router('detail', {id:'${evt.id}'})">
-                                            <img src="${evt.image}" class="w-full h-32 object-cover">
-                                            <div class="p-4">
-                                                <h4 class="font-bold text-slate-800 mb-1">${evt.title}</h4>
-                                                <p class="text-xs text-slate-500">${evt.date}</p>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <!-- View History -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                                    <span class="material-icons-outlined mr-2 text-slate-500">history</span>
-                                    閲覧履歴
-                                </h3>
-                                <div class="space-y-3">
-                                    ${viewHistory.map(evt => `
-                                        <div class="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-primary transition cursor-pointer" onclick="router('detail', {id:'${evt.id}'})">
-                                            <img src="${evt.image}" class="w-16 h-16 rounded-lg object-cover">
-                                            <div class="flex-1">
-                                                <h4 class="font-bold text-slate-800 text-sm">${evt.title}</h4>
-                                                <p class="text-xs text-slate-400">閲覧: ${evt.viewedAt}</p>
-                                            </div>
-                                            <span class="material-icons-outlined text-slate-300">chevron_right</span>
+                    return renderEventsTab();
                                         </div>
                                     `).join('')}
                                 </div>
@@ -4995,10 +4974,12 @@
         
         // Render Subpage Content (reuse existing tab content)
         async function renderDashboardSubpage(container, subpage) {
-            if (subpage === 'tickets') {
-                // 非同期でチケットタブをレンダリング
+            if (subpage === 'tickets' || subpage === 'events') {
+                // 非同期でタブをレンダリング
                 container.innerHTML = '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
-                const content = await renderTicketsTab();
+                const content = subpage === 'tickets' 
+                    ? await renderTicketsTab() 
+                    : await renderEventsTab();
                 container.innerHTML = content;
             } else {
                 container.innerHTML = renderUserDashboardTab(subpage);
@@ -15453,6 +15434,59 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             }
         }
         
+        // 🎯 お気に入りイベント削除
+        async function removeFavoriteEvent(eventId) {
+            try {
+                await API.User.removeFavorite(eventId);
+                showToast('お気に入りから削除しました', 'success');
+                
+                // イベントタブを再レンダリング
+                const contentDiv = document.querySelector('#dashboard-subpage-content');
+                if (contentDiv) {
+                    const content = await renderEventsTab();
+                    contentDiv.innerHTML = content;
+                }
+            } catch (error) {
+                console.error('❌ お気に入り削除エラー:', error);
+                showToast(error.message || 'お気に入り削除に失敗しました', 'error');
+            }
+        }
+
+        // 🎯 お気に入りイベント追加/削除トグル
+        async function toggleFavoriteEvent(eventId) {
+            try {
+                // 現在のお気に入り状態を確認
+                const isFavorite = await API.User.checkFavorite(eventId);
+                
+                if (isFavorite) {
+                    await API.User.removeFavorite(eventId);
+                    showToast('お気に入りから削除しました', 'success');
+                } else {
+                    await API.User.addFavorite(eventId);
+                    showToast('お気に入りに追加しました', 'success');
+                }
+                
+                // ボタンの表示を更新
+                const favoriteBtn = document.querySelector('[data-favorite-btn]');
+                if (favoriteBtn) {
+                    const icon = favoriteBtn.querySelector('.material-icons');
+                    const text = favoriteBtn.querySelector('span:last-child');
+                    if (!isFavorite) {
+                        icon.textContent = 'favorite';
+                        icon.classList.add('text-pink-500');
+                        text.textContent = 'お気に入り済み';
+                    } else {
+                        icon.textContent = 'favorite_border';
+                        icon.classList.remove('text-pink-500');
+                        text.textContent = 'お気に入り';
+                    }
+                }
+            } catch (error) {
+                console.error('❌ お気に入り操作エラー:', error);
+                showToast(error.message || 'お気に入り操作に失敗しました', 'error');
+            }
+        }
+        
         function approveKYC() {
             if(store.user) {
                 const u = store.user;
@@ -16238,6 +16272,145 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                         <span class="material-icons-outlined text-red-300 text-6xl mb-3">error_outline</span>
                         <p class="text-red-600 mb-4">チケット情報を取得できませんでした</p>
                         <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                            再試行
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // 🎯 イベント管理タブ（API連携）
+        async function renderEventsTab() {
+            try {
+                const favorites = await API.User.getFavorites();
+                const orders = await API.User.getOrders();
+                
+                // 参加予定のイベント（購入したチケットから）
+                const upcomingEvents = orders
+                    .filter(order => {
+                        const eventDate = new Date(order.start_datetime);
+                        return eventDate > new Date() && order.payment_status === 'completed';
+                    })
+                    .slice(0, 5);
+                
+                return `
+                    ${renderPageGuide(
+                        'イベント管理',
+                        'お気に入りのイベントや参加予定のイベントを管理できます。',
+                        [
+                            'お気に入りに追加したイベントはここで確認できます',
+                            '購入したチケットのイベントは参加予定に表示されます',
+                            'イベントカードをクリックすると詳細ページへ移動します'
+                        ]
+                    )}
+                    <div class="space-y-6">
+                        <!-- Upcoming Events Calendar -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                <span class="material-icons-outlined mr-2 text-primary">event</span>
+                                参加予定のイベント (${upcomingEvents.length}件)
+                            </h3>
+                            ${upcomingEvents.length > 0 ? upcomingEvents.map(evt => {
+                                const startDate = new Date(evt.start_datetime);
+                                const formattedDate = startDate.toLocaleDateString('ja-JP', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit'
+                                });
+                                const formattedTime = startDate.toLocaleTimeString('ja-JP', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                                
+                                return `
+                                    <div class="flex items-start space-x-4 mb-4 pb-4 border-b border-slate-100 last:border-0 hover:bg-slate-50 rounded-lg p-3 transition cursor-pointer" onclick="navigate('events/${evt.event_id}')">
+                                        <img src="${evt.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'}" 
+                                             class="w-20 h-20 rounded-lg object-cover">
+                                        <div class="flex-1">
+                                            <h4 class="font-bold text-slate-800 mb-1">${evt.event_title || '未設定'}</h4>
+                                            <p class="text-sm text-slate-500 flex items-center mb-1">
+                                                <span class="material-icons-outlined text-xs mr-1">event</span>
+                                                ${formattedDate} ${formattedTime}
+                                            </p>
+                                            <p class="text-sm text-slate-500 flex items-center">
+                                                <span class="material-icons-outlined text-xs mr-1">place</span>
+                                                ${evt.venue_name || '未設定'}
+                                            </p>
+                                        </div>
+                                        <span class="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">
+                                            チケット購入済
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('') : '<p class="text-slate-400 text-sm">参加予定のイベントはありません</p>'}
+                        </div>
+                        
+                        <!-- Favorites -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                <span class="material-icons-outlined mr-2 text-pink-500">favorite</span>
+                                お気に入りイベント (${favorites.length}件)
+                            </h3>
+                            ${favorites.length === 0 ? `
+                                <div class="text-center py-8">
+                                    <span class="material-icons-outlined text-slate-300 text-6xl mb-3">favorite_border</span>
+                                    <p class="text-slate-500 mb-4">お気に入りに追加したイベントはありません</p>
+                                    <button onclick="navigate('events')" class="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700">
+                                        イベントを探す
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${favorites.map(fav => {
+                                        const startDate = new Date(fav.start_datetime);
+                                        const formattedDate = startDate.toLocaleDateString('ja-JP', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit'
+                                        });
+                                        
+                                        return `
+                                            <div class="border border-slate-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer group relative" 
+                                                 onclick="navigate('events/${fav.event_id}')">
+                                                <div class="relative">
+                                                    <img src="${fav.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'}" 
+                                                         class="w-full h-32 object-cover">
+                                                    <button onclick="event.stopPropagation(); removeFavoriteEvent('${fav.event_id}')"
+                                                            class="absolute top-2 right-2 p-2 bg-white/90 hover:bg-white rounded-full shadow-lg transition">
+                                                        <span class="material-icons text-pink-500 text-xl">favorite</span>
+                                                    </button>
+                                                </div>
+                                                <div class="p-4">
+                                                    <h4 class="font-bold text-slate-800 mb-1 line-clamp-1">${fav.title}</h4>
+                                                    <p class="text-xs text-slate-500 flex items-center mb-1">
+                                                        <span class="material-icons-outlined text-xs mr-1">event</span>
+                                                        ${formattedDate}
+                                                    </p>
+                                                    <p class="text-xs text-slate-500 flex items-center">
+                                                        <span class="material-icons-outlined text-xs mr-1">place</span>
+                                                        ${fav.venue_name || '未設定'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ イベント取得エラー:', error);
+                return `
+                    ${renderPageGuide(
+                        'イベント管理',
+                        'イベント情報の取得中にエラーが発生しました。',
+                        []
+                    )}
+                    <div class="text-center py-12 bg-red-50 rounded-xl">
+                        <span class="material-icons-outlined text-red-300 text-6xl mb-3">error_outline</span>
+                        <p class="text-red-600 mb-4">イベント情報を取得できませんでした</p>
+                        <button onclick="renderDashboard(document.getElementById('app'), 'events')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
                             再試行
                         </button>
                     </div>
@@ -19181,8 +19354,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.6-TICKETS-DB';
-            const BUILD_DATE = '2026-02-12T18:00:00Z';
+            const VERSION = '3.7-FAVORITES-DB';
+            const BUILD_DATE = '2026-02-12T19:00:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

@@ -4651,13 +4651,8 @@
                     `;
                     
                 case 'events':
-                    return renderEventsTab();
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    // 非同期関数はrenderDashboardSubpageで処理される
+                    return '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                     
                 case 'kyc':
                     return `
@@ -14734,7 +14729,8 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     `;
                     
                 case 'tickets':
-                    return renderTicketsTab();
+                    // 非同期関数はrenderDashboardSubpageで処理される
+                    return '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                     
                 case 'verification':
                     return `
@@ -19410,8 +19406,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.8-PROFILE-UPLOAD';
-            const BUILD_DATE = '2026-02-12T20:00:00Z';
+            const VERSION = '3.8.1-ASYNC-FIX';
+            const BUILD_DATE = '2026-02-12T20:30:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

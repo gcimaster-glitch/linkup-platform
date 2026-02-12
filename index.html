@@ -15543,6 +15543,42 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     return;
                 }
                 
+                // タイトル長さチェック
+                if (title.length < 3) {
+                    showToast('タイトルは3文字以上で入力してください', 'error');
+                    return;
+                }
+                if (title.length > 100) {
+                    showToast('タイトルは100文字以内で入力してください', 'error');
+                    return;
+                }
+                
+                // 日時の整合性チェック
+                const startDate = new Date(startDatetime);
+                const endDate = new Date(endDatetime);
+                const now = new Date();
+                
+                if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                    showToast('日時の形式が正しくありません', 'error');
+                    return;
+                }
+                
+                if (startDate < now) {
+                    showToast('開始日時は現在よりも後に設定してください', 'warning');
+                }
+                
+                if (endDate <= startDate) {
+                    showToast('終了日時は開始日時よりも後に設定してください', 'error');
+                    return;
+                }
+                
+                // 開始日時と終了日時が同じ日の場合、最低30分の時間差を確認
+                const timeDiff = (endDate - startDate) / (1000 * 60); // 分単位
+                if (timeDiff < 30) {
+                    showToast('イベント時間は最低30分以上に設定してください', 'error');
+                    return;
+                }
+                
                 // エディタコンテンツ取得（現在のモードから）
                 let description;
                 if (currentEditorMode === 'wysiwyg') {
@@ -15607,6 +15643,9 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 const tickets = Array.from(ticketElements).map((el, idx) => {
                     console.log(`🎫 Processing ticket ${idx}:`, el);
                     
+                    const ticketName = el.querySelector('.ticket-name')?.value || '';
+                    const price = parseInt(el.querySelector('.ticket-price')?.value);
+                    const capacity = parseInt(el.querySelector('.ticket-capacity')?.value);
                     const purchaseLimit = parseInt(el.querySelector('.ticket-limit')?.value) || 5;
                     const taxType = el.querySelector(`input[name="tax-type-${idx}"]:checked`)?.value || 'tax-included';
                     const serviceFee = parseInt(el.querySelector('.ticket-fee')?.value) || 0;
@@ -15614,14 +15653,59 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     const deadline = el.querySelector('.ticket-deadline')?.value || null;
                     const notes = el.querySelector('.ticket-notes')?.value || '';
                     
+                    // チケットバリデーション
+                    if (!ticketName || ticketName.trim() === '') {
+                        showToast(`チケット${idx + 1}: 名前を入力してください`, 'error');
+                        throw new Error('Ticket validation failed');
+                    }
+                    
+                    if (isNaN(price) || price < 0) {
+                        showToast(`チケット${idx + 1}: 有効な価格を入力してください（0円以上）`, 'error');
+                        throw new Error('Ticket validation failed');
+                    }
+                    
+                    if (price > 1000000) {
+                        showToast(`チケット${idx + 1}: 価格は100万円以下に設定してください`, 'error');
+                        throw new Error('Ticket validation failed');
+                    }
+                    
+                    if (isNaN(capacity) || capacity < 1) {
+                        showToast(`チケット${idx + 1}: 販売枚数は1枚以上に設定してください`, 'error');
+                        throw new Error('Ticket validation failed');
+                    }
+                    
+                    if (capacity > 10000) {
+                        showToast(`チケット${idx + 1}: 販売枚数は10,000枚以下に設定してください`, 'error');
+                        throw new Error('Ticket validation failed');
+                    }
+                    
+                    // 締め切り日時のバリデーション
+                    if (deadline) {
+                        const deadlineDate = new Date(deadline);
+                        if (isNaN(deadlineDate.getTime())) {
+                            showToast(`チケット${idx + 1}: 締め切り日時の形式が正しくありません`, 'error');
+                            throw new Error('Ticket validation failed');
+                        }
+                        
+                        if (deadlineDate >= startDate) {
+                            showToast(`チケット${idx + 1}: 締め切り日時はイベント開始日時よりも前に設定してください`, 'error');
+                            throw new Error('Ticket validation failed');
+                        }
+                        
+                        if (deadlineDate < now) {
+                            showToast(`チケット${idx + 1}: 締め切り日時は現在よりも後に設定してください`, 'error');
+                            throw new Error('Ticket validation failed');
+                        }
+                    }
+                    
                     const ticket = {
                         id: `ticket-${Date.now()}-${idx}`,
-                        name: el.querySelector('.ticket-name')?.value || 'チケット',
-                        price: parseInt(el.querySelector('.ticket-price')?.value) || 0,
+                        name: ticketName,
+                        price: price,
                         taxType: taxType,
                         serviceFee: serviceFee,
-                        capacity: parseInt(el.querySelector('.ticket-capacity')?.value) || 100,
-                        available: parseInt(el.querySelector('.ticket-capacity')?.value) || 100,
+                        capacity: capacity,
+                        available: capacity,
                         purchaseLimit: Math.max(1, Math.min(10, purchaseLimit)), // 1-10の範囲に制限
                         deliveryMethod: deliveryMethod,
                         deadline: deadline,
@@ -17801,17 +17885,34 @@ function showCheckinMenu(eventId) {
                 
             } catch (error) {
                 console.error('Upload error:', error);
-                statusEl.textContent = '❌ アップロード失敗';
+                statusEl.textContent = '';
                 if (progressBar) progressBar.classList.add('hidden');
                 
+                // エラーの種類に応じてメッセージを変更
+                let errorMessage = 'アップロード失敗';
+                if (error.message.includes('Network')) {
+                    errorMessage = 'ネットワークエラー: インターネット接続を確認してください';
+                } else if (error.message.includes('R2 not configured')) {
+                    errorMessage = 'R2ストレージが設定されていません';
+                } else if (error.message.includes('File too large')) {
+                    errorMessage = 'ファイルサイズが大きすぎます（最大5MB）';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showToast(`❌ ${errorMessage}`, 'error');
+                
                 // Fallback: Use data URL for demo
-                showToast('R2アップロード失敗、ローカルプレビューモード', 'warning');
+                console.log('Using local preview mode as fallback...');
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const dataUrl = e.target.result;
                     document.getElementById('event-cover-image').value = dataUrl;
                     previewCoverImage(dataUrl);
-                    statusEl.textContent = '';
+                    showToast('ローカルプレビューモードで表示しています', 'info');
+                };
+                reader.onerror = () => {
+                    showToast('ファイルの読み込みに失敗しました', 'error');
                 };
                 reader.readAsDataURL(file);
             }
@@ -17874,13 +17975,19 @@ function showCheckinMenu(eventId) {
             const file = input.files[0];
             if (!file) return;
             
+            // ファイルタイプチェック
+            if (!file.type.startsWith('image/')) {
+                showToast('画像ファイルを選択してください', 'error');
+                return;
+            }
+            
             if (file.size > 5 * 1024 * 1024) {
                 showToast('画像サイズは5MB以下にしてください', 'error');
                 return;
             }
             
             const statusEl = document.getElementById(`sub-image-${index}-status`);
-            statusEl.textContent = 'アップロード中...';
+            if (statusEl) statusEl.textContent = 'アップロード中...';
             
             try {
                 const formData = new FormData();
@@ -17891,32 +17998,55 @@ function showCheckinMenu(eventId) {
                     body: formData
                 });
                 
-                if (!response.ok) throw new Error('Upload failed');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Upload failed');
+                }
                 
                 const data = await response.json();
                 const imageUrl = data.url;
                 
                 document.getElementById(`event-sub-image-${index}`).value = imageUrl;
                 const preview = document.getElementById(`sub-image-${index}-preview`);
-                preview.innerHTML = `<img src="${imageUrl}" class="w-full h-24 object-cover rounded">`;
+                if (preview) {
+                    preview.innerHTML = `<img src="${imageUrl}" class="w-full h-24 object-cover rounded">`;
+                }
                 
-                statusEl.textContent = '完了！';
+                if (statusEl) statusEl.textContent = '完了！';
                 showToast(`サブ画像${index}をアップロードしました`, 'check_circle');
                 
-                setTimeout(() => statusEl.textContent = '', 3000);
+                setTimeout(() => {
+                    if (statusEl) statusEl.textContent = '';
+                }, 3000);
                 
             } catch (error) {
                 console.error('Upload error:', error);
-                statusEl.textContent = '';
+                if (statusEl) statusEl.textContent = '';
+                
+                // エラーの種類に応じてメッセージを変更
+                let errorMessage = 'アップロード失敗';
+                if (error.message.includes('Network')) {
+                    errorMessage = 'ネットワークエラー';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                showToast(`❌ ${errorMessage}`, 'error');
                 
                 // Fallback: Use data URL
+                console.log('Using local preview mode as fallback for sub-image...');
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const dataUrl = e.target.result;
                     document.getElementById(`event-sub-image-${index}`).value = dataUrl;
                     const preview = document.getElementById(`sub-image-${index}-preview`);
-                    preview.innerHTML = `<img src="${dataUrl}" class="w-full h-24 object-cover rounded">`;
+                    if (preview) {
+                        preview.innerHTML = `<img src="${dataUrl}" class="w-full h-24 object-cover rounded">`;
+                    }
                     showToast(`サブ画像${index}をローカル保存しました（デモモード）`, 'info');
+                };
+                reader.onerror = () => {
+                    showToast('ファイルの読み込みに失敗しました', 'error');
                 };
                 reader.readAsDataURL(file);
             }

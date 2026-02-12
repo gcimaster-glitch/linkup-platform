@@ -897,6 +897,142 @@
                     
                     return data;
                 }
+            },
+            Admin: {
+                // イベント管理
+                async getEvents(filters = {}) {
+                    const params = new URLSearchParams();
+                    if (filters.status) params.append('status', filters.status);
+                    
+                    const response = await fetch(`${API_URL}/api/admin/events?${params}`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    return await response.json();
+                },
+                async approveEvent(eventId) {
+                    const response = await fetch(`${API_URL}/api/admin/events/${eventId}/approve`, {
+                        method: 'PUT',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Approve Error:', data);
+                        throw new Error(data.error || 'イベント承認に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async rejectEvent(eventId, reason) {
+                    const response = await fetch(`${API_URL}/api/admin/events/${eventId}/reject`, {
+                        method: 'PUT',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ reason })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Reject Error:', data);
+                        throw new Error(data.error || 'イベント却下に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async deleteEvent(eventId) {
+                    const response = await fetch(`${API_URL}/api/admin/events/${eventId}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Delete Error:', data);
+                        throw new Error(data.error || 'イベント削除に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                
+                // ユーザー管理
+                async getUsers(filters = {}) {
+                    const params = new URLSearchParams();
+                    if (filters.role) params.append('role', filters.role);
+                    if (filters.kyc) params.append('kyc', filters.kyc);
+                    
+                    const response = await fetch(`${API_URL}/api/admin/users?${params}`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    return await response.json();
+                },
+                async getUser(userId) {
+                    const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    return await response.json();
+                },
+                async updateUser(userId, userData) {
+                    const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+                        method: 'PUT',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify(userData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Update Error:', data);
+                        throw new Error(data.error || 'ユーザー更新に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async verifyKYC(userId, status) {
+                    const response = await fetch(`${API_URL}/api/admin/users/${userId}/kyc`, {
+                        method: 'PUT',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ status })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ KYC Error:', data);
+                        throw new Error(data.error || 'KYC更新に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                
+                // 統計情報
+                async getStats() {
+                    const response = await fetch(`${API_URL}/api/admin/stats`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    return await response.json();
+                }
             }
         };
 
@@ -16634,33 +16770,91 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             `;
         }
 
-        function approveEvent(eventId) {
+        async function approveEvent(eventId) {
             const event = store.events.find(e => e.event_id === eventId);
             if (!event) {
                 showToast('イベントが見つかりません', 'error');
                 return;
             }
             
-            event.approval_status = 'approved';
-            event.approved_at = new Date().toISOString();
-            event.approved_by = 'スーパー管理者';
-            event.status = 'published';
-            store.updateEvent(event);
+            if (!confirm(`「${event.title}」を承認しますか？`)) {
+                return;
+            }
             
-            showToast(`「${event.title}」を承認しました`, 'success');
-            
-            // モーダルを閉じる
-            const modal = document.getElementById('modal-container');
-            if (modal) modal.innerHTML = '';
-            
-            // 管理画面を再描画
-            setTimeout(() => {
-                renderAdmin(document.getElementById('app'), 'events');
-            }, 500);
+            try {
+                console.log('📤 Approving event:', eventId);
+                
+                // APIで承認
+                const result = await API.Admin.approveEvent(eventId);
+                
+                console.log('✅ Event approved:', result);
+                
+                // ローカルのイベントも更新
+                event.approval_status = 'approved';
+                event.approved_at = new Date().toISOString();
+                event.status = 'published';
+                store.updateEvent(event);
+                
+                showToast(`「${event.title}」を承認しました`, 'check_circle');
+                
+                // モーダルを閉じる
+                const modal = document.getElementById('modal-container');
+                if (modal) modal.classList.add('hidden');
+                
+                // 管理画面を再描画
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'events');
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ Approval error:', error);
+                showToast('承認に失敗しました: ' + error.message, 'error');
+            }
         }
 
-        function rejectEvent(eventId) {
-            showRejectForm(eventId);
+        async function rejectEvent(eventId) {
+            const event = store.events.find(e => e.event_id === eventId);
+            if (!event) {
+                showToast('イベントが見つかりません', 'error');
+                return;
+            }
+            
+            const reason = prompt(`「${event.title}」を却下する理由を入力してください：`);
+            if (!reason || reason.trim() === '') {
+                showToast('却下理由を入力してください', 'warning');
+                return;
+            }
+            
+            try {
+                console.log('📤 Rejecting event:', eventId, 'reason:', reason);
+                
+                // APIで却下
+                const result = await API.Admin.rejectEvent(eventId, reason);
+                
+                console.log('✅ Event rejected:', result);
+                
+                // ローカルのイベントも更新
+                event.approval_status = 'rejected';
+                event.rejection_reason = reason;
+                event.rejected_at = new Date().toISOString();
+                event.status = 'rejected';
+                store.updateEvent(event);
+                
+                showToast(`「${event.title}」を却下しました`, 'check_circle');
+                
+                // モーダルを閉じる
+                const modal = document.getElementById('modal-container');
+                if (modal) modal.classList.add('hidden');
+                
+                // 管理画面を再描画
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'events');
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ Rejection error:', error);
+                showToast('却下に失敗しました: ' + error.message, 'error');
+            }
         }
 
         function showRejectForm(eventId) {
@@ -16702,7 +16896,7 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             `;
         }
 
-        function submitRejection(eventId) {
+        async function submitRejection(eventId) {
             const reason = document.getElementById('rejection-reason').value.trim();
             
             if (!reason) {
@@ -16716,22 +16910,37 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 return;
             }
             
-            event.approval_status = 'rejected';
-            event.rejected_at = new Date().toISOString();
-            event.rejected_by = 'スーパー管理者';
-            event.rejection_reason = reason;
-            event.status = 'draft';
-            store.updateEvent(event);
-            
-            showToast(`「${event.title}」を却下しました`, 'success');
-            
-            // モーダルを閉じる
-            const modal = document.getElementById('modal-container');
-            if (modal) modal.innerHTML = '';
-            
-            // 管理画面を再描画
-            setTimeout(() => {
-                renderAdmin(document.getElementById('app'), 'events');
+            try {
+                console.log('📤 Rejecting event:', eventId, 'reason:', reason);
+                
+                // APIで却下
+                const result = await API.Admin.rejectEvent(eventId, reason);
+                
+                console.log('✅ Event rejected:', result);
+                
+                // ローカルのイベントも更新
+                event.approval_status = 'rejected';
+                event.rejected_at = new Date().toISOString();
+                event.rejection_reason = reason;
+                event.status = 'rejected';
+                store.updateEvent(event);
+                
+                showToast(`「${event.title}」を却下しました`, 'check_circle');
+                
+                // モーダルを閉じる
+                const modal = document.getElementById('modal-container');
+                if (modal) modal.innerHTML = '';
+                
+                // 管理画面を再描画
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'events');
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ Rejection error:', error);
+                showToast('却下に失敗しました: ' + error.message, 'error');
+            }
+        }
             }, 500);
         }
 
@@ -18811,8 +19020,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.3-PROFILE-DB';
-            const BUILD_DATE = '2026-02-12T15:30:00Z';
+            const VERSION = '3.4-ADMIN-APPROVAL';
+            const BUILD_DATE = '2026-02-12T16:45:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

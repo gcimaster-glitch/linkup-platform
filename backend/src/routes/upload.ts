@@ -129,4 +129,77 @@ uploadRoutes.post('/', handleUpload);
 // POST /api/upload/image (互換性のため)
 uploadRoutes.post('/image', handleUpload);
 
+// ドキュメントアップロード API (POST /api/upload/document)
+uploadRoutes.post('/document', async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+
+    if (!file) {
+      return c.json({ error: 'No file provided' }, 400);
+    }
+
+    // 許可されたファイルタイプ
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return c.json({ error: 'File type not allowed. Allowed: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT' }, 400);
+    }
+
+    // ファイルサイズチェック (50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      return c.json({ error: 'File size must be less than 50MB' }, 400);
+    }
+
+    // R2へのアップロード
+    if (c.env.R2) {
+      console.log('Uploading document to R2:', file.name);
+      
+      const fileName = `documents/${Date.now()}-${file.name}`;
+      const arrayBuffer = await file.arrayBuffer();
+      
+      await c.env.R2.put(fileName, arrayBuffer, {
+        httpMetadata: {
+          contentType: file.type,
+          contentDisposition: `attachment; filename="${file.name}"`,
+        },
+      });
+
+      // R2の公開URLを返す
+      const r2Domain = c.env.R2_PUBLIC_DOMAIN || 'linkup-storage.r2.cloudflarestorage.com';
+      const publicUrl = `https://${r2Domain}/${fileName}`;
+      
+      return c.json({
+        success: true,
+        url: publicUrl,
+        fileName: file.name,
+        storage: 'r2',
+        message: 'Document uploaded successfully'
+      });
+    }
+
+    // R2が利用できない場合はエラー
+    return c.json({ 
+      error: 'No storage configured',
+      message: 'Please configure R2 bucket for document storage'
+    }, 503);
+
+  } catch (error) {
+    console.error('Document upload error:', error);
+    return c.json({ 
+      error: 'Upload failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+
 export { uploadRoutes };

@@ -4528,136 +4528,12 @@
                     `;
                     
                 case 'interests':
-                    // APIから興味タグを取得
-                    let userTags = [];
-                    try {
-                        const result = await API.User.getInterests();
-                        userTags = result.tags || [];
-                    } catch (error) {
-                        console.error('Failed to load interests:', error);
-                        userTags = [];
-                    }
-                    
-                    // store.userInterestsを初期化（後方互換性のため）
-                    if (!store.userInterests) {
-                        store.userInterests = {
-                            categories: [],
-                            tags: userTags
-                        };
-                    } else {
-                        store.userInterests.tags = userTags;
-                    }
-                    
-                    const allCategories = ['テクノロジー', 'ビジネス', '音楽', 'アート', 'スポーツ', '食べ物', '旅行', 'ファッション', '健康', '教育', 
-                                          '金融', 'エンターテイメント', '科学', '政治', '環境', 'ゲーム', '読書', '映画', 
-                                          '写真', 'デザイン', 'マーケティング', 'スタートアップ', 'AI', 'ブロックチェーン', 'VR/AR', 'IoT', 'クラウド', 
-                                          'セキュリティ', 'データサイエンス', 'モバイル'];
-                    const allTags = ['AI', '機械学習', 'Web開発', 'モバイルアプリ', 'UI/UX', 'クラウドコンピューティング', 'DevOps', 
-                                    'ブロックチェーン', 'IoT', 'サイバーセキュリティ', 'データ分析', 'ビッグデータ', '自動化', 'SaaS', 'Eコマース',
-                                    'デジタルマーケティング', 'SEO', 'コンテンツ制作', 'SNS', 'ブランディング', 'プロダクト管理', 
-                                    'アジャイル', 'スクラム', 'リモートワーク', 'フリーランス', '起業', '投資', '暗号通貨', 
-                                    'NFT', 'メタバース', 'サステナビリティ', 'ウェルネス', '瞑想', 'ヨガ', 'フィットネス', '栄養',
-                                    'クラシック音楽', 'ジャズ', 'ロック', 'ポップ', 'エレクトロニック', 'ヒップホップ', 'インディー', 'フォーク', 'ダンス', 
-                                    '演劇', '現代アート', '写真', '彫刻', 'デジタルアート', 'アニメーション', '映画'];
-                    
-                    return `
-                        ${renderPageGuide(
-                            '興味・関心',
-                            'あなたの興味・関心を設定すると、おすすめのイベントが表示されるようになります。',
-                            [
-                                'カテゴリは最大30個、タグは最大50個まで選択できます',
-                                '選択した内容はいつでも変更可能です',
-                                'より多くの興味を設定すると、より精度の高いおすすめが届きます'
-                            ]
-                        )}
-                        <div class="space-y-6">
-                            <!-- Categories -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <div class="flex justify-between items-center mb-4">
-                                    <div>
-                                        <h3 class="text-lg font-bold text-slate-800">興味のあるカテゴリ</h3>
-                                        <p class="text-sm text-slate-500">最大30個まで選択できます</p>
-                                    </div>
-                                    <span class="text-sm font-bold text-primary">${store.userInterests.categories.length}/30</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2 mb-4">
-                                    ${store.userInterests.categories.map(cat => `
-                                        <span class="px-3 py-1 bg-primary text-white rounded-full text-sm font-bold flex items-center space-x-1">
-                                            <span>${cat}</span>
-                                            <button onclick="removeUserCategory('${cat}')" class="ml-1 hover:bg-white/20 rounded-full p-0.5">
-                                                <span class="material-icons-outlined text-xs">close</span>
-                                            </button>
-                                        </span>
-                                    `).join('')}
-                                </div>
-                                ${store.userInterests.categories.length < 30 ? `
-                                <div class="border-t border-slate-100 pt-4">
-                                    <p class="text-sm font-bold text-slate-700 mb-2">カテゴリを追加</p>
-                                    <div class="flex flex-wrap gap-2">
-                                        ${allCategories.filter(cat => !store.userInterests.categories.includes(cat)).slice(0, 15).map(cat => `
-                                            <button onclick="addUserCategory('${cat}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-primary hover:text-white transition">
-                                                ${cat}
-                                            </button>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                                ` : ''}
-                            </div>
-                            
-                            <!-- Tags -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <div class="flex justify-between items-center mb-4">
-                                    <div>
-                                        <h3 class="text-lg font-bold text-slate-800">興味のあるタグ</h3>
-                                        <p class="text-sm text-slate-500">最大50個まで選択できます</p>
-                                    </div>
-                                    <span class="text-sm font-bold text-primary">${store.userInterests.tags.length}/50</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2 mb-4">
-                                    ${store.userInterests.tags.map(tag => `
-                                        <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold flex items-center space-x-1">
-                                            <span>${tag}</span>
-                                            <button onclick="removeUserTag('${tag}')" class="ml-1 hover:bg-purple-200 rounded-full p-0.5">
-                                                <span class="material-icons-outlined text-xs">close</span>
-                                            </button>
-                                        </span>
-                                    `).join('')}
-                                </div>
-                                ${store.userInterests.tags.length < 50 ? `
-                                <div class="border-t border-slate-100 pt-4">
-                                    <p class="text-sm font-bold text-slate-700 mb-2">タグを追加</p>
-                                    <div class="flex flex-wrap gap-2">
-                                        ${allTags.filter(tag => !store.userInterests.tags.includes(tag)).slice(0, 20).map(tag => `
-                                            <button onclick="addUserTag('${tag}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-purple-100 hover:text-purple-700 transition">
-                                                ${tag}
-                                            </button>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                                ` : ''}
-                            </div>
-                            
-                            <!-- Recommendation Notice -->
-                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                                <div class="flex items-start">
-                                    <span class="material-icons-outlined text-blue-500 mr-3">lightbulb</span>
-                                    <div>
-                                        <p class="font-bold text-blue-800 mb-1">レコメンド機能</p>
-                                        <p class="text-sm text-blue-700">選択したカテゴリとタグに基づいて、おすすめのイベントが表示されます。</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    // 非同期関数はrenderDashboardSubpageで処理される
+                    return '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                     
                 case 'events':
-                    return renderEventsTab();
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    // 非同期関数はrenderDashboardSubpageで処理される
+                    return '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                     
                 case 'kyc':
                     return `
@@ -4974,12 +4850,17 @@
         
         // Render Subpage Content (reuse existing tab content)
         async function renderDashboardSubpage(container, subpage) {
-            if (subpage === 'tickets' || subpage === 'events') {
+            if (subpage === 'tickets' || subpage === 'events' || subpage === 'interests') {
                 // 非同期でタブをレンダリング
                 container.innerHTML = '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
-                const content = subpage === 'tickets' 
-                    ? await renderTicketsTab() 
-                    : await renderEventsTab();
+                let content;
+                if (subpage === 'tickets') {
+                    content = await renderTicketsTab();
+                } else if (subpage === 'events') {
+                    content = await renderEventsTab();
+                } else if (subpage === 'interests') {
+                    content = await renderInterestsTab();
+                }
                 container.innerHTML = content;
             } else {
                 container.innerHTML = renderUserDashboardTab(subpage);
@@ -14734,7 +14615,8 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     `;
                     
                 case 'tickets':
-                    return renderTicketsTab();
+                    // 非同期関数はrenderDashboardSubpageで処理される
+                    return '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                     
                 case 'verification':
                     return `
@@ -16411,6 +16293,149 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                         <span class="material-icons-outlined text-red-300 text-6xl mb-3">error_outline</span>
                         <p class="text-red-600 mb-4">イベント情報を取得できませんでした</p>
                         <button onclick="renderDashboard(document.getElementById('app'), 'events')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                            再試行
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // 🎯 興味・関心タブ（API連携）
+        async function renderInterestsTab() {
+            try {
+                // APIから興味タグを取得
+                let userTags = [];
+                try {
+                    const result = await API.User.getInterests();
+                    userTags = result.tags || [];
+                } catch (error) {
+                    console.error('Failed to load interests:', error);
+                    userTags = [];
+                }
+                
+                // store.userInterestsを初期化（後方互換性のため）
+                if (!store.userInterests) {
+                    store.userInterests = {
+                        categories: [],
+                        tags: userTags
+                    };
+                } else {
+                    store.userInterests.tags = userTags;
+                }
+                
+                const allCategories = ['テクノロジー', 'ビジネス', '音楽', 'アート', 'スポーツ', '食べ物', '旅行', 'ファッション', '健康', '教育', 
+                                      '金融', 'エンターテイメント', '科学', '政治', '環境', 'ゲーム', '読書', '映画', 
+                                      '写真', 'デザイン', 'マーケティング', 'スタートアップ', 'AI', 'ブロックチェーン', 'VR/AR', 'IoT', 'クラウド', 
+                                      'セキュリティ', 'データサイエンス', 'モバイル'];
+                const allTags = ['AI', '機械学習', 'Web開発', 'モバイルアプリ', 'UI/UX', 'クラウドコンピューティング', 'DevOps', 
+                                'ブロックチェーン', 'IoT', 'サイバーセキュリティ', 'データ分析', 'ビッグデータ', '自動化', 'SaaS', 'Eコマース',
+                                'デジタルマーケティング', 'SEO', 'コンテンツ制作', 'SNS', 'ブランディング', 'プロダクト管理', 
+                                'アジャイル', 'スクラム', 'リモートワーク', 'フリーランス', '起業', '投資', '暗号通貨', 
+                                'NFT', 'メタバース', 'サステナビリティ', 'ウェルネス', '瞑想', 'ヨガ', 'フィットネス', '栄養',
+                                'クラシック音楽', 'ジャズ', 'ロック', 'ポップ', 'エレクトロニック', 'ヒップホップ', 'インディー', 'フォーク', 'ダンス', 
+                                '演劇', '現代アート', '写真', '彫刻', 'デジタルアート', 'アニメーション', '映画'];
+                
+                return `
+                    ${renderPageGuide(
+                        '興味・関心',
+                        'あなたの興味・関心を設定すると、おすすめのイベントが表示されるようになります。',
+                        [
+                            'カテゴリは最大30個、タグは最大50個まで選択できます',
+                            '選択した内容はいつでも変更可能です',
+                            'より多くの興味を設定すると、より精度の高いおすすめが届きます'
+                        ]
+                    )}
+                    <div class="space-y-6">
+                        <!-- Categories -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">興味のあるカテゴリ</h3>
+                                    <p class="text-sm text-slate-500">最大30個まで選択できます</p>
+                                </div>
+                                <span class="text-sm font-bold text-primary">${store.userInterests.categories.length}/30</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                ${store.userInterests.categories.map(cat => `
+                                    <span class="px-3 py-1 bg-primary text-white rounded-full text-sm font-bold flex items-center space-x-1">
+                                        <span>${cat}</span>
+                                        <button onclick="removeUserCategory('${cat}')" class="ml-1 hover:bg-white/20 rounded-full p-0.5">
+                                            <span class="material-icons-outlined text-xs">close</span>
+                                        </button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            ${store.userInterests.categories.length < 30 ? `
+                            <div class="border-t border-slate-100 pt-4">
+                                <p class="text-sm font-bold text-slate-700 mb-2">カテゴリを追加</p>
+                                <div class="flex flex-wrap gap-2">
+                                    ${allCategories.filter(cat => !store.userInterests.categories.includes(cat)).slice(0, 15).map(cat => `
+                                        <button onclick="addUserCategory('${cat}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-primary hover:text-white transition">
+                                            ${cat}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Tags -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">興味のあるタグ</h3>
+                                    <p class="text-sm text-slate-500">最大50個まで選択できます</p>
+                                </div>
+                                <span class="text-sm font-bold text-primary">${store.userInterests.tags.length}/50</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                ${store.userInterests.tags.map(tag => `
+                                    <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold flex items-center space-x-1">
+                                        <span>${tag}</span>
+                                        <button onclick="removeUserTag('${tag}')" class="ml-1 hover:bg-purple-200 rounded-full p-0.5">
+                                            <span class="material-icons-outlined text-xs">close</span>
+                                        </button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            ${store.userInterests.tags.length < 50 ? `
+                            <div class="border-t border-slate-100 pt-4">
+                                <p class="text-sm font-bold text-slate-700 mb-2">タグを追加</p>
+                                <div class="flex flex-wrap gap-2">
+                                    ${allTags.filter(tag => !store.userInterests.tags.includes(tag)).slice(0, 20).map(tag => `
+                                        <button onclick="addUserTag('${tag}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-purple-100 hover:text-purple-700 transition">
+                                            ${tag}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Recommendation Notice -->
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                            <div class="flex items-start">
+                                <span class="material-icons-outlined text-blue-500 mr-3">lightbulb</span>
+                                <div>
+                                    <p class="font-bold text-blue-800 mb-1">レコメンド機能</p>
+                                    <p class="text-sm text-blue-700">選択したカテゴリとタグに基づいて、おすすめのイベントが表示されます。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ 興味タグ取得エラー:', error);
+                return `
+                    ${renderPageGuide(
+                        '興味・関心',
+                        '興味・関心情報の取得中にエラーが発生しました。',
+                        []
+                    )}
+                    <div class="text-center py-12 bg-red-50 rounded-xl">
+                        <span class="material-icons-outlined text-red-300 text-6xl mb-3">error_outline</span>
+                        <p class="text-red-600 mb-4">興味・関心情報を取得できませんでした</p>
+                        <button onclick="router('dashboard_interests')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
                             再試行
                         </button>
                     </div>
@@ -19410,8 +19435,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.8-PROFILE-UPLOAD';
-            const BUILD_DATE = '2026-02-12T20:00:00Z';
+            const VERSION = '3.8.2-ASYNC-FIX-FINAL';
+            const BUILD_DATE = '2026-02-12T21:00:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

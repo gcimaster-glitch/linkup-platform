@@ -28,7 +28,7 @@ bucket_name = "linkup-storage"
 # Environment Variables
 [vars]
 ENVIRONMENT = "production"
-JWT_SECRET = "your-jwt-secret-change-in-production"
+JWT_SECRET = "linkup-production-secret-key-2026-v1-secure"
 FRONTEND_URL = "https://link-up.live"
 R2_PUBLIC_DOMAIN = "linkup-storage.r2.cloudflarestorage.com"
 # imgbb API Key (無料画像ホスティング) - https://api.imgbb.com/

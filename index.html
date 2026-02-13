@@ -769,6 +769,14 @@
                     return await response.json();
                 },
                 async create(event) {
+                    const token = localStorage.getItem('linkup_token');
+                    console.log('🔐 Token check:', token ? `Present (${token.substring(0, 20)}...)` : 'MISSING');
+                    
+                    if (!token) {
+                        console.error('❌ No auth token found. Please login first.');
+                        throw new Error('ログインが必要です。ログインしてからもう一度お試しください。');
+                    }
+                    
                     const response = await fetch(`${API_URL}/api/events`, {
                         method: 'POST',
                         headers: getAuthHeaders(),
@@ -779,6 +787,14 @@
                     
                     if (!response.ok) {
                         console.error('❌ API Error:', data);
+                        console.error('❌ Response status:', response.status);
+                        console.error('❌ Response headers:', [...response.headers.entries()]);
+                        
+                        // 401エラーの場合は特別なメッセージ
+                        if (response.status === 401) {
+                            throw new Error('認証エラー: ログインセッションが切れています。再度ログインしてください。');
+                        }
+                        
                         throw new Error(data.error || 'イベント作成に失敗しました');
                     }
                     
@@ -19422,8 +19438,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.8.3-SYNTAX-FIX';
-            const BUILD_DATE = '2026-02-13T01:00:00Z';
+            const VERSION = '3.8.4-AUTH-FIX';
+            const BUILD_DATE = '2026-02-13T02:00:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

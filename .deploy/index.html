@@ -1033,6 +1033,116 @@
                     
                     return await response.json();
                 }
+            },
+            User: {
+                async getInterests() {
+                    const response = await fetch(`${API_URL}/api/users/interests`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    return await response.json();
+                },
+                async addInterest(tag) {
+                    const response = await fetch(`${API_URL}/api/users/interests`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ tag })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Add interest error:', data);
+                        throw new Error(data.error || 'タグの追加に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async removeInterest(tag) {
+                    const response = await fetch(`${API_URL}/api/users/interests/${encodeURIComponent(tag)}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Remove interest error:', data);
+                        throw new Error(data.error || 'タグの削除に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async getOrders() {
+                    const response = await fetch(`${API_URL}/api/orders`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.orders || [];
+                },
+                async getFavorites() {
+                    const response = await fetch(`${API_URL}/api/users/favorites`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.favorites || [];
+                },
+                async addFavorite(eventId) {
+                    const response = await fetch(`${API_URL}/api/users/favorites/${eventId}`, {
+                        method: 'POST',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Add favorite error:', data);
+                        throw new Error(data.error || 'お気に入り追加に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async removeFavorite(eventId) {
+                    const response = await fetch(`${API_URL}/api/users/favorites/${eventId}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        console.error('❌ Remove favorite error:', data);
+                        throw new Error(data.error || 'お気に入り削除に失敗しました');
+                    }
+                    
+                    return data;
+                },
+                async checkFavorite(eventId) {
+                    const response = await fetch(`${API_URL}/api/users/favorites/${eventId}/check`, {
+                        headers: getAuthHeaders()
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.isFavorite || false;
+                }
             }
         };
 
@@ -4418,191 +4528,12 @@
                     `;
                     
                 case 'interests':
-                    const allCategories = ['テクノロジー', 'ビジネス', '音楽', 'アート', 'スポーツ', '食べ物', '旅行', 'ファッション', '健康', '教育', 
-                                          '金融', 'エンターテイメント', '科学', '政治', '環境', 'ゲーム', '読書', '映画', 
-                                          '写真', 'デザイン', 'マーケティング', 'スタートアップ', 'AI', 'ブロックチェーン', 'VR/AR', 'IoT', 'クラウド', 
-                                          'セキュリティ', 'データサイエンス', 'モバイル'];
-                    const allTags = ['AI', '機械学習', 'Web開発', 'モバイルアプリ', 'UI/UX', 'クラウドコンピューティング', 'DevOps', 
-                                    'ブロックチェーン', 'IoT', 'サイバーセキュリティ', 'データ分析', 'ビッグデータ', '自動化', 'SaaS', 'Eコマース',
-                                    'デジタルマーケティング', 'SEO', 'コンテンツ制作', 'SNS', 'ブランディング', 'プロダクト管理', 
-                                    'アジャイル', 'スクラム', 'リモートワーク', 'フリーランス', '起業', '投資', '暗号通貨', 
-                                    'NFT', 'メタバース', 'サステナビリティ', 'ウェルネス', '瞑想', 'ヨガ', 'フィットネス', '栄養',
-                                    'クラシック音楽', 'ジャズ', 'ロック', 'ポップ', 'エレクトロニック', 'ヒップホップ', 'インディー', 'フォーク', 'ダンス', 
-                                    '演劇', '現代アート', '写真', '彫刻', 'デジタルアート', 'アニメーション', '映画'];
-                    
-                    return `
-                        ${renderPageGuide(
-                            '興味・関心',
-                            'あなたの興味・関心を設定すると、おすすめのイベントが表示されるようになります。',
-                            [
-                                'カテゴリは最大30個、タグは最大50個まで選択できます',
-                                '選択した内容はいつでも変更可能です',
-                                'より多くの興味を設定すると、より精度の高いおすすめが届きます'
-                            ]
-                        )}
-                        <div class="space-y-6">
-                            <!-- Categories -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <div class="flex justify-between items-center mb-4">
-                                    <div>
-                                        <h3 class="text-lg font-bold text-slate-800">興味のあるカテゴリ</h3>
-                                        <p class="text-sm text-slate-500">最大30個まで選択できます</p>
-                                    </div>
-                                    <span class="text-sm font-bold text-primary">${store.userInterests.categories.length}/30</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2 mb-4">
-                                    ${store.userInterests.categories.map(cat => `
-                                        <span class="px-3 py-1 bg-primary text-white rounded-full text-sm font-bold flex items-center space-x-1">
-                                            <span>${cat}</span>
-                                            <button onclick="removeUserCategory('${cat}')" class="ml-1 hover:bg-white/20 rounded-full p-0.5">
-                                                <span class="material-icons-outlined text-xs">close</span>
-                                            </button>
-                                        </span>
-                                    `).join('')}
-                                </div>
-                                ${store.userInterests.categories.length < 30 ? `
-                                <div class="border-t border-slate-100 pt-4">
-                                    <p class="text-sm font-bold text-slate-700 mb-2">カテゴリを追加</p>
-                                    <div class="flex flex-wrap gap-2">
-                                        ${allCategories.filter(cat => !store.userInterests.categories.includes(cat)).slice(0, 15).map(cat => `
-                                            <button onclick="addUserCategory('${cat}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-primary hover:text-white transition">
-                                                ${cat}
-                                            </button>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                                ` : ''}
-                            </div>
-                            
-                            <!-- Tags -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <div class="flex justify-between items-center mb-4">
-                                    <div>
-                                        <h3 class="text-lg font-bold text-slate-800">興味のあるタグ</h3>
-                                        <p class="text-sm text-slate-500">最大50個まで選択できます</p>
-                                    </div>
-                                    <span class="text-sm font-bold text-primary">${store.userInterests.tags.length}/50</span>
-                                </div>
-                                <div class="flex flex-wrap gap-2 mb-4">
-                                    ${store.userInterests.tags.map(tag => `
-                                        <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold flex items-center space-x-1">
-                                            <span>${tag}</span>
-                                            <button onclick="removeUserTag('${tag}')" class="ml-1 hover:bg-purple-200 rounded-full p-0.5">
-                                                <span class="material-icons-outlined text-xs">close</span>
-                                            </button>
-                                        </span>
-                                    `).join('')}
-                                </div>
-                                ${store.userInterests.tags.length < 50 ? `
-                                <div class="border-t border-slate-100 pt-4">
-                                    <p class="text-sm font-bold text-slate-700 mb-2">タグを追加</p>
-                                    <div class="flex flex-wrap gap-2">
-                                        ${allTags.filter(tag => !store.userInterests.tags.includes(tag)).slice(0, 20).map(tag => `
-                                            <button onclick="addUserTag('${tag}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-purple-100 hover:text-purple-700 transition">
-                                                ${tag}
-                                            </button>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                                ` : ''}
-                            </div>
-                            
-                            <!-- Recommendation Notice -->
-                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
-                                <div class="flex items-start">
-                                    <span class="material-icons-outlined text-blue-500 mr-3">lightbulb</span>
-                                    <div>
-                                        <p class="font-bold text-blue-800 mb-1">レコメンド機能</p>
-                                        <p class="text-sm text-blue-700">選択したカテゴリとタグに基づいて、おすすめのイベントが表示されます。</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    // 非同期関数はrenderDashboardSubpageで処理される
+                    return '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                     
                 case 'events':
-                    // Mock event data
-                    const favoriteEvents = [
-                        { id: 'evt-001', title: 'Tech Conference 2024', date: '2024-03-15', image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400' },
-                        { id: 'evt-002', title: 'Music Festival', date: '2024-04-20', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400' }
-                    ];
-                    const viewHistory = [
-                        { id: 'evt-003', title: 'Art Exhibition', viewedAt: '2024-02-03', image: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=400' },
-                        { id: 'evt-004', title: 'Business Seminar', viewedAt: '2024-02-01', image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=400' }
-                    ];
-                    const upcomingEvents = [
-                        { id: 'evt-005', title: 'Workshop', date: '2024-02-20', time: '14:00', venue: '渋谷ホール', image: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=400' }
-                    ];
-                    
-                    return `
-                        <div class="space-y-6">
-                            <!-- Upcoming Events Calendar -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                                    <span class="material-icons-outlined mr-2 text-primary">event</span>
-                                    参加予定のイベント
-                                </h3>
-                                ${upcomingEvents.length > 0 ? upcomingEvents.map(evt => `
-                                    <div class="flex items-start space-x-4 mb-4 pb-4 border-b border-slate-100 last:border-0">
-                                        <img src="${evt.image}" class="w-20 h-20 rounded-lg object-cover">
-                                        <div class="flex-1">
-                                            <h4 class="font-bold text-slate-800 mb-1">${evt.title}</h4>
-                                            <p class="text-sm text-slate-500 flex items-center mb-1">
-                                                <span class="material-icons-outlined text-xs mr-1">event</span>
-                                                ${evt.date} ${evt.time}
-                                            </p>
-                                            <p class="text-sm text-slate-500 flex items-center">
-                                                <span class="material-icons-outlined text-xs mr-1">place</span>
-                                                ${evt.venue}
-                                            </p>
-                                        </div>
-                                        <button onclick="addToGoogleCalendar(store.events.find(e => e.event_id === '${evt.id}'))" class="px-3 py-1 bg-blue-100 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-200">
-                                            カレンダー
-                                        </button>
-                                    </div>
-                                `).join('') : '<p class="text-slate-400 text-sm">参加予定のイベントはありません</p>'}
-                            </div>
-                            
-                            <!-- Favorites -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                                    <span class="material-icons-outlined mr-2 text-pink-500">favorite</span>
-                                    お気に入りイベント
-                                </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    ${favoriteEvents.map(evt => `
-                                        <div class="border border-slate-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer" onclick="router('detail', {id:'${evt.id}'})">
-                                            <img src="${evt.image}" class="w-full h-32 object-cover">
-                                            <div class="p-4">
-                                                <h4 class="font-bold text-slate-800 mb-1">${evt.title}</h4>
-                                                <p class="text-xs text-slate-500">${evt.date}</p>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <!-- View History -->
-                            <div class="bg-white rounded-2xl shadow-card p-6">
-                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
-                                    <span class="material-icons-outlined mr-2 text-slate-500">history</span>
-                                    閲覧履歴
-                                </h3>
-                                <div class="space-y-3">
-                                    ${viewHistory.map(evt => `
-                                        <div class="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-primary transition cursor-pointer" onclick="router('detail', {id:'${evt.id}'})">
-                                            <img src="${evt.image}" class="w-16 h-16 rounded-lg object-cover">
-                                            <div class="flex-1">
-                                                <h4 class="font-bold text-slate-800 text-sm">${evt.title}</h4>
-                                                <p class="text-xs text-slate-400">閲覧: ${evt.viewedAt}</p>
-                                            </div>
-                                            <span class="material-icons-outlined text-slate-300">chevron_right</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    // 非同期関数はrenderDashboardSubpageで処理される
+                    return '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                     
                 case 'kyc':
                     return `
@@ -4918,8 +4849,22 @@
         }
         
         // Render Subpage Content (reuse existing tab content)
-        function renderDashboardSubpage(container, subpage) {
-            container.innerHTML = renderUserDashboardTab(subpage);
+        async function renderDashboardSubpage(container, subpage) {
+            if (subpage === 'tickets' || subpage === 'events' || subpage === 'interests') {
+                // 非同期でタブをレンダリング
+                container.innerHTML = '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
+                let content;
+                if (subpage === 'tickets') {
+                    content = await renderTicketsTab();
+                } else if (subpage === 'events') {
+                    content = await renderEventsTab();
+                } else if (subpage === 'interests') {
+                    content = await renderInterestsTab();
+                }
+                container.innerHTML = content;
+            } else {
+                container.innerHTML = renderUserDashboardTab(subpage);
+            }
         }
         
         function renderDashboard(container, activeTab = 'overview') {
@@ -8638,39 +8583,63 @@
             `;
         }
 
-        function renderAdminDashboard() {
-            // Stats
-            const totalUsers = 1240; // Mock
-            const totalUsersLastMonth = 1185; // Mock
-            const userGrowth = ((totalUsers - totalUsersLastMonth) / totalUsersLastMonth * 100).toFixed(1);
+        async function renderAdminDashboard() {
+            let stats = null;
             
-            const totalPartners = 127; // Mock
-            const totalPartnersLastMonth = 118; // Mock
-            const partnerGrowth = ((totalPartners - totalPartnersLastMonth) / totalPartnersLastMonth * 100).toFixed(1);
+            // APIから統計情報を取得
+            try {
+                console.log('📊 Loading admin stats from API...');
+                const result = await API.Admin.getStats();
+                stats = result.stats;
+                console.log('✅ Stats loaded:', stats);
+            } catch (error) {
+                console.error('❌ Failed to load stats:', error);
+                showToast('統計情報の取得に失敗しました', 'error');
+                // フォールバック: モックデータ
+                stats = {
+                    users: { total_users: 0, total_organizers: 0, total_attendees: 0, verified_users: 0 },
+                    events: { total_events: 0, published_events: 0, pending_events: 0, draft_events: 0 },
+                    revenue: { total_orders: 0, total_revenue: 0, total_platform_fees: 0 }
+                };
+            }
             
-            const totalEvents = store.events.length;
-            const totalTicketsSold = 8542; // Mock
-            const totalRevenue = 42750000; // Mock ¥42,750,000
-            const totalSales = store.participants.reduce((sum, p) => sum + p.amount, 0);
-            const platformFee = totalRevenue * 0.05; // 5% platform fee
+            // ユーザー統計
+            const totalUsers = stats.users.total_users || 0;
+            const totalUsersLastMonth = Math.floor(totalUsers * 0.95); // 前月を推定（-5%）
+            const userGrowth = totalUsersLastMonth > 0 
+                ? ((totalUsers - totalUsersLastMonth) / totalUsersLastMonth * 100).toFixed(1) 
+                : '0.0';
+            
+            // パートナー統計
+            const totalPartners = stats.users.total_organizers || 0;
+            const totalPartnersLastMonth = Math.floor(totalPartners * 0.93); // 前月を推定（-7%）
+            const partnerGrowth = totalPartnersLastMonth > 0
+                ? ((totalPartners - totalPartnersLastMonth) / totalPartnersLastMonth * 100).toFixed(1)
+                : '0.0';
+            
+            // イベント統計
+            const totalEvents = stats.events.total_events || 0;
+            const publishedEvents = stats.events.published_events || 0;
+            const pendingEvents = stats.events.pending_events || 0;
+            
+            // 売上統計
+            const totalOrders = stats.revenue.total_orders || 0;
+            const totalRevenue = stats.revenue.total_revenue || 0;
+            const platformFee = stats.revenue.total_platform_fees || (totalRevenue * 0.05);
             
             // Recent events (last 10)
             const recentEvents = [...store.events].sort((a, b) => 
                 new Date(b.created_at || b.start_datetime) - new Date(a.created_at || a.start_datetime)
             ).slice(0, 10);
             
-            // Mock error logs
+            // Mock error logs (TODO: 実装)
             const errorLogs = [
-                { id: 1, type: 'error', message: '決済処理でタイムアウトが発生しました', time: '2024-01-15 14:23', status: 'resolved' },
-                { id: 2, type: 'warning', message: 'API レート制限に近づいています', time: '2024-01-15 13:45', status: 'monitoring' },
-                { id: 3, type: 'critical', message: 'データベース接続エラー', time: '2024-01-15 12:30', status: 'investigating' }
+                { id: 1, type: 'info', message: 'システム正常稼働中', time: new Date().toLocaleString('ja-JP'), status: 'resolved' }
             ];
             
-            // Mock announcements
+            // Mock announcements (TODO: 実装)
             const announcements = [
-                { id: 1, title: '新機能リリースのお知らせ', date: '2024-01-15', priority: 'high' },
-                { id: 2, title: 'メンテナンス予定（1/20）', date: '2024-01-14', priority: 'medium' },
-                { id: 3, title: '年末年始の営業時間について', date: '2024-01-10', priority: 'low' }
+                { id: 1, title: '管理画面v3.4リリース', date: new Date().toLocaleDateString('ja-JP'), priority: 'high' }
             ];
             
             return `
@@ -8710,15 +8679,17 @@
                             <p class="text-xs opacity-75 mt-2">前月比 ${partnerGrowth >= 0 ? '+' : ''}${partnerGrowth}%</p>
                         </div>
                         
-                        <!-- Ticket Sales -->
+                        <!-- Events -->
                         <div class="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl shadow-card text-white">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="material-icons-outlined text-3xl opacity-80">confirmation_number</span>
-                                <span class="text-xs font-bold px-2 py-1 rounded-full bg-white/20">今月</span>
+                                <span class="material-icons-outlined text-3xl opacity-80">event</span>
+                                <span class="text-xs font-bold px-2 py-1 rounded-full bg-white/20">
+                                    ${pendingEvents > 0 ? `${pendingEvents}件承認待ち` : '全承認'}
+                                </span>
                             </div>
-                            <p class="text-sm opacity-90 mb-1">チケット売上数</p>
-                            <p class="text-3xl font-bold">${totalTicketsSold.toLocaleString()}</p>
-                            <p class="text-xs opacity-75 mt-2">売上高 ¥${totalRevenue.toLocaleString()}</p>
+                            <p class="text-sm opacity-90 mb-1">総イベント数</p>
+                            <p class="text-3xl font-bold">${totalEvents.toLocaleString()}</p>
+                            <p class="text-xs opacity-75 mt-2">公開中 ${publishedEvents}件</p>
                         </div>
                         
                         <!-- Platform Revenue -->
@@ -8729,7 +8700,7 @@
                             </div>
                             <p class="text-sm opacity-90 mb-1">プラットフォーム収益</p>
                             <p class="text-3xl font-bold">¥${platformFee.toLocaleString()}</p>
-                            <p class="text-xs opacity-75 mt-2">手数料率 5%</p>
+                            <p class="text-xs opacity-75 mt-2">総売上 ¥${totalRevenue.toLocaleString()}</p>
                         </div>
                     </div>
                     
@@ -8917,86 +8888,41 @@
             `;
         }
 
-        function renderAdminUsers() {
-            // Mock user data with comprehensive information
-            const mockUsers = [
-                { 
-                    id: 100001, 
-                    name: store.user?.name || 'Guest User',
-                    furigana: 'ゲスト ユーザー',
-                    displayName: 'Guest',
-                    gender: 'male',
-                    email: store.user?.email || 'guest@example.com',
-                    phone: '090-1234-5678',
-                    kycStatus: store.user?.kycStatus || 'pending',
-                    emailVerified: true,
-                    phoneVerified: false,
-                    personalInfoConsent: true,
-                    termsConsent: true,
-                    favorites: 12,
-                    viewHistory: 45,
-                    upcomingEvents: 3,
-                    purchasedTickets: 8,
-                    totalSpent: 42500,
-                    interests: ['Tech', 'Music', 'Art'],
-                    registeredAt: '2024-01-15',
-                    lastLogin: '2024-02-04',
-                    unreadMessages: 3
-                },
-                { 
-                    id: 100002, 
-                    name: '山田太郎',
-                    furigana: 'ヤマダ タロウ',
-                    displayName: 'タロウ',
-                    gender: 'male',
-                    email: 'yamada@example.com',
-                    phone: '080-9876-5432',
-                    kycStatus: 'verified',
-                    emailVerified: true,
-                    phoneVerified: true,
-                    personalInfoConsent: true,
-                    termsConsent: true,
-                    favorites: 28,
-                    viewHistory: 112,
-                    upcomingEvents: 5,
-                    purchasedTickets: 15,
-                    totalSpent: 125000,
-                    interests: ['Business', 'Tech', 'Sports'],
-                    registeredAt: '2023-11-02',
-                    lastLogin: '2024-02-05',
-                    unreadMessages: 0
-                },
-                { 
-                    id: 100003, 
-                    name: '佐藤花子',
-                    furigana: 'サトウ ハナコ',
-                    displayName: '花子',
-                    gender: 'female',
-                    email: 'hanako@example.com',
-                    phone: '070-1111-2222',
-                    kycStatus: 'unsubmitted',
-                    emailVerified: true,
-                    phoneVerified: false,
-                    personalInfoConsent: true,
-                    termsConsent: true,
-                    favorites: 5,
-                    viewHistory: 23,
-                    upcomingEvents: 1,
-                    purchasedTickets: 3,
-                    totalSpent: 12000,
-                    interests: ['Art', 'Music'],
-                    registeredAt: '2024-01-28',
-                    lastLogin: '2024-02-03',
-                    unreadMessages: 1
+        async function renderAdminUsers() {
+            let users = [];
+            
+            // APIからユーザー一覧を取得
+            try {
+                console.log('📊 Loading users from API...');
+                const filters = adminFilters.users || { status: 'all', kyc: 'all', role: 'all', search: '' };
+                
+                const result = await API.Admin.getUsers({
+                    role: filters.role || 'all',
+                    kyc: filters.kyc || 'all'
+                });
+                
+                users = result.users || [];
+                console.log('✅ Users loaded:', users.length);
+                
+                // 検索フィルタ適用（クライアント側）
+                if (filters.search) {
+                    const search = filters.search.toLowerCase();
+                    users = users.filter(u => 
+                        u.display_name?.toLowerCase().includes(search) ||
+                        u.email?.toLowerCase().includes(search) ||
+                        u.user_id?.toLowerCase().includes(search)
+                    );
                 }
-            ];
+                
+            } catch (error) {
+                console.error('❌ Failed to load users:', error);
+                showToast('ユーザー情報の取得に失敗しました', 'error');
+                users = [];
+            }
             
-            // Filter and search
-            const filters = adminFilters.users || { status: 'all', kyc: 'all', search: '' };
-            let filteredUsers = [...mockUsers];
-            
-            if (filters.kyc !== 'all') {
-                filteredUsers = filteredUsers.filter(u => u.kycStatus === filters.kyc);
+            // Filter
+            const filters = adminFilters.users || { status: 'all', kyc: 'all', role: 'all', search: '' };
+            let filteredUsers = [...users];
             }
             if (filters.search) {
                 const search = filters.search.toLowerCase();
@@ -9042,7 +8968,7 @@
                                 <span class="material-icons-outlined opacity-80">verified_user</span>
                                 <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">KYC</span>
                             </div>
-                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.kycStatus === 'verified').length}</div>
+                            <div class="text-3xl font-bold">${users.filter(u => u.kyc_status === 'verified').length}</div>
                             <div class="text-sm opacity-80 mt-1">本人確認済み</div>
                         </div>
                         <div class="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl shadow-card p-6 text-white">
@@ -9050,7 +8976,7 @@
                                 <span class="material-icons-outlined opacity-80">pending</span>
                                 <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">審査中</span>
                             </div>
-                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.kycStatus === 'pending').length}</div>
+                            <div class="text-3xl font-bold">${users.filter(u => u.kyc_status === 'pending').length}</div>
                             <div class="text-sm opacity-80 mt-1">KYC審査待ち</div>
                         </div>
                         <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-card p-6 text-white">
@@ -9058,21 +8984,30 @@
                                 <span class="material-icons-outlined opacity-80">local_activity</span>
                                 <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">アクティブ</span>
                             </div>
-                            <div class="text-3xl font-bold">${mockUsers.filter(u => u.purchasedTickets > 0).length}</div>
-                            <div class="text-sm opacity-80 mt-1">チケット購入済み</div>
+                            <div class="text-3xl font-bold">${users.filter(u => u.email_verified).length}</div>
+                            <div class="text-sm opacity-80 mt-1">メール認証済み</div>
                         </div>
                     </div>
 
                     <!-- Search and Filters -->
                     <div class="bg-white rounded-2xl shadow-card p-4">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-2">ロール</label>
+                                <select onchange="updateAdminFilter('users', 'role', this.value)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
+                                    <option value="all">すべて</option>
+                                    <option value="attendee">参加者</option>
+                                    <option value="organizer">主催者</option>
+                                    <option value="admin">管理者</option>
+                                </select>
+                            </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-2">KYCステータス</label>
                                 <select onchange="updateAdminFilter('users', 'kyc', this.value)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
                                     <option value="all">すべて</option>
                                     <option value="verified">認証済</option>
                                     <option value="pending">審査中</option>
-                                    <option value="unsubmitted">未提出</option>
+                                    <option value="none">未提出</option>
                                 </select>
                             </div>
                             <div class="md:col-span-2">
@@ -9112,72 +9047,55 @@
                                         </tr>
                                     ` : filteredUsers.map((user, index) => `
                                         <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-blue-50 border-b border-slate-100 text-sm">
-                                            <td class="p-4 font-bold text-slate-500">${user.id}</td>
+                                            <td class="p-4 font-bold text-slate-500">${index + 1}</td>
                                             <td class="p-4">
                                                 <div class="flex items-center space-x-3">
-                                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold">
-                                                        ${user.name.charAt(0)}
-                                                    </div>
+                                                    <img src="${user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.display_name || 'User')}`}" 
+                                                         class="w-10 h-10 rounded-full object-cover">
                                                     <div>
-                                                        <div class="font-bold text-slate-800">${user.name}</div>
-                                                        <div class="text-xs text-slate-500">${user.furigana}</div>
-                                                        <div class="text-xs text-slate-400">表示名: ${user.displayName}</div>
+                                                        <div class="font-bold text-slate-800">${user.display_name || user.email}</div>
+                                                        <div class="text-xs text-slate-500">ID: ${user.user_id}</div>
+                                                        <div class="text-xs text-slate-400">ロール: ${user.role || 'attendee'}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td class="p-4">
                                                 <div class="flex items-center space-x-1 mb-1">
-                                                    <span class="material-icons-outlined text-xs ${user.emailVerified ? 'text-green-500' : 'text-slate-400'}">mail</span>
+                                                    <span class="material-icons-outlined text-xs ${user.email_verified ? 'text-green-500' : 'text-slate-400'}">mail</span>
                                                     <span class="text-xs text-slate-600">${user.email}</span>
                                                 </div>
-                                                <div class="flex items-center space-x-1">
-                                                    <span class="material-icons-outlined text-xs ${user.phoneVerified ? 'text-green-500' : 'text-slate-400'}">phone</span>
-                                                    <span class="text-xs text-slate-600">${user.phone}</span>
-                                                </div>
+                                                <div class="text-xs text-slate-400">${new Date(user.created_at).toLocaleDateString('ja-JP')}</div>
                                             </td>
                                             <td class="p-4">
                                                 <div class="flex flex-wrap gap-1 justify-center">
                                                     ${user.interests.slice(0, 2).map(interest => `
                                                         <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">${interest}</span>
                                                     `).join('')}
-                                                    ${user.interests.length > 2 ? `
-                                                        <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs">+${user.interests.length - 2}</span>
-                                                    ` : ''}
+                                                    <span class="px-2 py-1 bg-blue-100 text-blue-600 rounded text-xs">-</span>
                                                 </div>
                                             </td>
                                             <td class="p-4 text-center">
                                                 <div class="flex flex-col items-center space-y-1">
                                                     <span class="px-2 py-1 rounded-full text-xs font-bold 
-                                                        ${user.kycStatus === 'verified' ? 'bg-green-100 text-green-600' : 
-                                                          user.kycStatus === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}">
-                                                        ${user.kycStatus === 'verified' ? '認証済' : user.kycStatus === 'pending' ? '審査中' : '未提出'}
+                                                        ${user.kyc_status === 'verified' ? 'bg-green-100 text-green-600' : 
+                                                          user.kyc_status === 'pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}">
+                                                        ${user.kyc_status === 'verified' ? '認証済' : user.kyc_status === 'pending' ? '審査中' : '未提出'}
                                                     </span>
-                                                    <div class="flex space-x-1">
-                                                        <span class="material-icons-outlined text-xs ${user.personalInfoConsent ? 'text-green-500' : 'text-slate-300'}" title="個人情報同意">policy</span>
-                                                        <span class="material-icons-outlined text-xs ${user.termsConsent ? 'text-green-500' : 'text-slate-300'}" title="利用規約同意">gavel</span>
-                                                    </div>
+                                                    ${user.kyc_status === 'pending' ? `
+                                                        <button onclick="verifyUserKYC('${user.user_id}', 'verified')" class="text-xs text-green-600 hover:underline">承認</button>
+                                                    ` : ''}
                                                 </div>
                                             </td>
                                             <td class="p-4 text-center">
                                                 <div class="text-xs space-y-1">
-                                                    <div class="flex items-center justify-center space-x-1">
-                                                        <span class="material-icons-outlined text-xs text-red-400">favorite</span>
-                                                        <span class="font-bold text-slate-700">${user.favorites}</span>
-                                                    </div>
-                                                    <div class="flex items-center justify-center space-x-1">
-                                                        <span class="material-icons-outlined text-xs text-blue-400">visibility</span>
-                                                        <span class="font-bold text-slate-700">${user.viewHistory}</span>
-                                                    </div>
-                                                    <div class="flex items-center justify-center space-x-1">
-                                                        <span class="material-icons-outlined text-xs text-green-400">event</span>
-                                                        <span class="font-bold text-slate-700">${user.upcomingEvents}</span>
-                                                    </div>
+                                                    <div class="text-slate-500">${user.email_verified ? '✓ メール認証済' : '未認証'}</div>
+                                                    <div class="text-slate-400">${user.last_login ? new Date(user.last_login).toLocaleDateString('ja-JP') : '未ログイン'}</div>
                                                 </div>
                                             </td>
                                             <td class="p-4 text-center">
                                                 <div class="text-xs space-y-1">
-                                                    <div class="font-bold text-slate-800">${user.purchasedTickets}枚</div>
-                                                    <div class="text-slate-500">¥${user.totalSpent.toLocaleString()}</div>
+                                                    <div class="font-bold text-slate-800">-</div>
+                                                    <div class="text-slate-500">-</div>
                                                 </div>
                                             </td>
                                             <td class="p-4 text-right space-x-2">
@@ -14697,67 +14615,8 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                     `;
                     
                 case 'tickets':
-                    return `
-                        ${renderPageGuide(
-                            'チケット管理',
-                            'ここでは購入したすべてのチケットを確認・管理できます。',
-                            [
-                                'チケットをクリックすると詳細とQRコードが表示されます',
-                                'イベント名をクリックするとイベント詳細ページへ移動します',
-                                '過去のチケットも履歴として確認できます'
-                            ]
-                        )}
-                        <div class="space-y-6">
-                            <div>
-                                <h4 class="font-bold text-slate-800 mb-3">チケット購入履歴 (${user.tickets.length}件)</h4>
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-left text-sm">
-                                        <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
-                                            <tr>
-                                                <th class="p-3">チケットID</th>
-                                                <th class="p-3">イベント名</th>
-                                                <th class="p-3">購入日</th>
-                                                <th class="p-3">金額</th>
-                                                <th class="p-3">ステータス</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${user.tickets.map((ticket, index) => `
-                                                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} border-b border-slate-100">
-                                                    <td class="p-3 font-mono text-xs">${ticket.id}</td>
-                                                    <td class="p-3 font-bold">${ticket.eventTitle}</td>
-                                                    <td class="p-3 text-slate-600">${ticket.purchaseDate}</td>
-                                                    <td class="p-3 font-bold">¥${ticket.price.toLocaleString()}</td>
-                                                    <td class="p-3">
-                                                        <span class="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">
-                                                            ${ticket.status === 'paid' ? '支払済' : 'キャンセル'}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            `).join('')}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-slate-800 mb-3">決済履歴</h4>
-                                <div class="space-y-2">
-                                    ${user.payments.map(payment => `
-                                        <div class="p-3 border border-slate-200 rounded-lg flex items-center justify-between">
-                                            <div class="flex items-center space-x-3">
-                                                <span class="material-icons-outlined text-green-500">credit_card</span>
-                                                <div>
-                                                    <div class="text-sm font-bold text-slate-800">¥${payment.amount.toLocaleString()}</div>
-                                                    <div class="text-xs text-slate-500">${payment.method} • ${payment.date}</div>
-                                                </div>
-                                            </div>
-                                            <span class="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">成功</span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    // 非同期関数はrenderDashboardSubpageで処理される
+                    return '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                     
                 case 'verification':
                     return `
@@ -15431,18 +15290,83 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             showToast(`「${category}」を削除しました`, 'remove');
         }
         
-        function addUserTag(tag) {
+        async function addUserTag(tag) {
             if (!store.userInterests.tags.includes(tag) && store.userInterests.tags.length < 50) {
-                store.userInterests.tags.push(tag);
-                router('dashboard_interests');
-                showToast(`「${tag}」を追加しました`, 'add');
+                try {
+                    await API.User.addInterest(tag);
+                    store.userInterests.tags.push(tag);
+                    router('dashboard_interests');
+                    showToast(`「${tag}」を追加しました`, 'add');
+                } catch (error) {
+                    console.error('Failed to add tag:', error);
+                    showToast(error.message || 'タグの追加に失敗しました', 'error');
+                }
             }
         }
         
-        function removeUserTag(tag) {
-            store.userInterests.tags = store.userInterests.tags.filter(t => t !== tag);
-            router('dashboard_interests');
-            showToast(`「${tag}」を削除しました`, 'remove');
+        async function removeUserTag(tag) {
+            try {
+                await API.User.removeInterest(tag);
+                store.userInterests.tags = store.userInterests.tags.filter(t => t !== tag);
+                router('dashboard_interests');
+                showToast(`「${tag}」を削除しました`, 'remove');
+            } catch (error) {
+                console.error('Failed to remove tag:', error);
+                showToast(error.message || 'タグの削除に失敗しました', 'error');
+            }
+        }
+        
+        // 🎯 お気に入りイベント削除
+        async function removeFavoriteEvent(eventId) {
+            try {
+                await API.User.removeFavorite(eventId);
+                showToast('お気に入りから削除しました', 'success');
+                
+                // イベントタブを再レンダリング
+                const contentDiv = document.querySelector('#dashboard-subpage-content');
+                if (contentDiv) {
+                    const content = await renderEventsTab();
+                    contentDiv.innerHTML = content;
+                }
+            } catch (error) {
+                console.error('❌ お気に入り削除エラー:', error);
+                showToast(error.message || 'お気に入り削除に失敗しました', 'error');
+            }
+        }
+
+        // 🎯 お気に入りイベント追加/削除トグル
+        async function toggleFavoriteEvent(eventId) {
+            try {
+                // 現在のお気に入り状態を確認
+                const isFavorite = await API.User.checkFavorite(eventId);
+                
+                if (isFavorite) {
+                    await API.User.removeFavorite(eventId);
+                    showToast('お気に入りから削除しました', 'success');
+                } else {
+                    await API.User.addFavorite(eventId);
+                    showToast('お気に入りに追加しました', 'success');
+                }
+                
+                // ボタンの表示を更新
+                const favoriteBtn = document.querySelector('[data-favorite-btn]');
+                if (favoriteBtn) {
+                    const icon = favoriteBtn.querySelector('.material-icons');
+                    const text = favoriteBtn.querySelector('span:last-child');
+                    if (!isFavorite) {
+                        icon.textContent = 'favorite';
+                        icon.classList.add('text-pink-500');
+                        text.textContent = 'お気に入り済み';
+                    } else {
+                        icon.textContent = 'favorite_border';
+                        icon.classList.remove('text-pink-500');
+                        text.textContent = 'お気に入り';
+                    }
+                }
+            } catch (error) {
+                console.error('❌ お気に入り操作エラー:', error);
+                showToast(error.message || 'お気に入り操作に失敗しました', 'error');
+            }
         }
         
         function approveKYC() {
@@ -16106,6 +16030,417 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 
                 showToast('✨ AI生成完了！整形された説明文をご確認ください（WYSIWYGタブに表示中）', 'success', 4000);
             }, 1500);
+        }
+
+        // 🎯 チケット管理タブ（API連携）
+        async function renderTicketsTab() {
+            try {
+                const orders = await API.User.getOrders();
+                
+                return `
+                    ${renderPageGuide(
+                        'チケット管理',
+                        'ここでは購入したすべてのチケットを確認・管理できます。',
+                        [
+                            'チケットをクリックすると詳細とQRコードが表示されます',
+                            'イベント名をクリックするとイベント詳細ページへ移動します',
+                            '過去のチケットも履歴として確認できます'
+                        ]
+                    )}
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="font-bold text-slate-800 mb-3">チケット購入履歴 (${orders.length}件)</h4>
+                            ${orders.length === 0 ? `
+                                <div class="text-center py-12 bg-slate-50 rounded-xl">
+                                    <span class="material-icons-outlined text-slate-300 text-6xl mb-3">confirmation_number</span>
+                                    <p class="text-slate-500">まだチケットを購入していません</p>
+                                    <button onclick="navigate('events')" class="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                        イベントを探す
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                            <tr>
+                                                <th class="p-3">注文番号</th>
+                                                <th class="p-3">イベント名</th>
+                                                <th class="p-3">購入日</th>
+                                                <th class="p-3">金額</th>
+                                                <th class="p-3">ステータス</th>
+                                                <th class="p-3">会場</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${orders.map((order, index) => {
+                                                const date = new Date(order.created_at);
+                                                const formattedDate = date.toLocaleDateString('ja-JP', {
+                                                    year: 'numeric',
+                                                    month: '2-digit',
+                                                    day: '2-digit'
+                                                });
+                                                
+                                                return `
+                                                    <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} border-b border-slate-100 hover:bg-blue-50 cursor-pointer" onclick="navigate('events/${order.event_id}')">
+                                                        <td class="p-3 font-mono text-xs">${order.order_number}</td>
+                                                        <td class="p-3">
+                                                            <div class="font-bold">${order.event_title || '未設定'}</div>
+                                                            <div class="text-xs text-slate-500">${order.venue_name || ''}</div>
+                                                        </td>
+                                                        <td class="p-3 text-slate-600">${formattedDate}</td>
+                                                        <td class="p-3 font-bold text-slate-800">¥${order.total_amount.toLocaleString()}</td>
+                                                        <td class="p-3">
+                                                            <span class="px-2 py-1 rounded text-xs font-bold ${
+                                                                order.payment_status === 'completed' 
+                                                                    ? 'bg-green-100 text-green-600' 
+                                                                    : order.payment_status === 'pending'
+                                                                    ? 'bg-yellow-100 text-yellow-600'
+                                                                    : 'bg-red-100 text-red-600'
+                                                            }">
+                                                                ${
+                                                                    order.payment_status === 'completed' ? '支払済' :
+                                                                    order.payment_status === 'pending' ? '保留中' :
+                                                                    'キャンセル'
+                                                                }
+                                                            </span>
+                                                        </td>
+                                                        <td class="p-3 text-xs text-slate-600">${order.venue_name || '未設定'}</td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `}
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-bold text-slate-800 mb-3">決済サマリー</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-white p-6 rounded-xl shadow-card">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-bold text-slate-700">総購入件数</span>
+                                        <span class="material-icons-outlined text-blue-500">confirmation_number</span>
+                                    </div>
+                                    <p class="text-2xl font-bold text-slate-800">${orders.length}件</p>
+                                </div>
+                                <div class="bg-white p-6 rounded-xl shadow-card">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-bold text-slate-700">総支払額</span>
+                                        <span class="material-icons-outlined text-green-500">payments</span>
+                                    </div>
+                                    <p class="text-2xl font-bold text-slate-800">¥${orders.reduce((sum, o) => sum + o.total_amount, 0).toLocaleString()}</p>
+                                </div>
+                                <div class="bg-white p-6 rounded-xl shadow-card">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-sm font-bold text-slate-700">完了済み</span>
+                                        <span class="material-icons-outlined text-purple-500">check_circle</span>
+                                    </div>
+                                    <p class="text-2xl font-bold text-slate-800">${orders.filter(o => o.payment_status === 'completed').length}件</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ チケット取得エラー:', error);
+                return `
+                    ${renderPageGuide(
+                        'チケット管理',
+                        'チケット情報の取得中にエラーが発生しました。',
+                        []
+                    )}
+                    <div class="text-center py-12 bg-red-50 rounded-xl">
+                        <span class="material-icons-outlined text-red-300 text-6xl mb-3">error_outline</span>
+                        <p class="text-red-600 mb-4">チケット情報を取得できませんでした</p>
+                        <button onclick="renderDashboard(document.getElementById('app'), 'tickets')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                            再試行
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // 🎯 イベント管理タブ（API連携）
+        async function renderEventsTab() {
+            try {
+                const favorites = await API.User.getFavorites();
+                const orders = await API.User.getOrders();
+                
+                // 参加予定のイベント（購入したチケットから）
+                const upcomingEvents = orders
+                    .filter(order => {
+                        const eventDate = new Date(order.start_datetime);
+                        return eventDate > new Date() && order.payment_status === 'completed';
+                    })
+                    .slice(0, 5);
+                
+                return `
+                    ${renderPageGuide(
+                        'イベント管理',
+                        'お気に入りのイベントや参加予定のイベントを管理できます。',
+                        [
+                            'お気に入りに追加したイベントはここで確認できます',
+                            '購入したチケットのイベントは参加予定に表示されます',
+                            'イベントカードをクリックすると詳細ページへ移動します'
+                        ]
+                    )}
+                    <div class="space-y-6">
+                        <!-- Upcoming Events Calendar -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                <span class="material-icons-outlined mr-2 text-primary">event</span>
+                                参加予定のイベント (${upcomingEvents.length}件)
+                            </h3>
+                            ${upcomingEvents.length > 0 ? upcomingEvents.map(evt => {
+                                const startDate = new Date(evt.start_datetime);
+                                const formattedDate = startDate.toLocaleDateString('ja-JP', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit'
+                                });
+                                const formattedTime = startDate.toLocaleTimeString('ja-JP', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                                
+                                return `
+                                    <div class="flex items-start space-x-4 mb-4 pb-4 border-b border-slate-100 last:border-0 hover:bg-slate-50 rounded-lg p-3 transition cursor-pointer" onclick="navigate('events/${evt.event_id}')">
+                                        <img src="${evt.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'}" 
+                                             class="w-20 h-20 rounded-lg object-cover">
+                                        <div class="flex-1">
+                                            <h4 class="font-bold text-slate-800 mb-1">${evt.event_title || '未設定'}</h4>
+                                            <p class="text-sm text-slate-500 flex items-center mb-1">
+                                                <span class="material-icons-outlined text-xs mr-1">event</span>
+                                                ${formattedDate} ${formattedTime}
+                                            </p>
+                                            <p class="text-sm text-slate-500 flex items-center">
+                                                <span class="material-icons-outlined text-xs mr-1">place</span>
+                                                ${evt.venue_name || '未設定'}
+                                            </p>
+                                        </div>
+                                        <span class="px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-bold">
+                                            チケット購入済
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('') : '<p class="text-slate-400 text-sm">参加予定のイベントはありません</p>'}
+                        </div>
+                        
+                        <!-- Favorites -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                                <span class="material-icons-outlined mr-2 text-pink-500">favorite</span>
+                                お気に入りイベント (${favorites.length}件)
+                            </h3>
+                            ${favorites.length === 0 ? `
+                                <div class="text-center py-8">
+                                    <span class="material-icons-outlined text-slate-300 text-6xl mb-3">favorite_border</span>
+                                    <p class="text-slate-500 mb-4">お気に入りに追加したイベントはありません</p>
+                                    <button onclick="navigate('events')" class="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700">
+                                        イベントを探す
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${favorites.map(fav => {
+                                        const startDate = new Date(fav.start_datetime);
+                                        const formattedDate = startDate.toLocaleDateString('ja-JP', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit'
+                                        });
+                                        
+                                        return `
+                                            <div class="border border-slate-200 rounded-lg overflow-hidden hover:shadow-lg transition cursor-pointer group relative" 
+                                                 onclick="navigate('events/${fav.event_id}')">
+                                                <div class="relative">
+                                                    <img src="${fav.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400'}" 
+                                                         class="w-full h-32 object-cover">
+                                                    <button onclick="event.stopPropagation(); removeFavoriteEvent('${fav.event_id}')"
+                                                            class="absolute top-2 right-2 p-2 bg-white/90 hover:bg-white rounded-full shadow-lg transition">
+                                                        <span class="material-icons text-pink-500 text-xl">favorite</span>
+                                                    </button>
+                                                </div>
+                                                <div class="p-4">
+                                                    <h4 class="font-bold text-slate-800 mb-1 line-clamp-1">${fav.title}</h4>
+                                                    <p class="text-xs text-slate-500 flex items-center mb-1">
+                                                        <span class="material-icons-outlined text-xs mr-1">event</span>
+                                                        ${formattedDate}
+                                                    </p>
+                                                    <p class="text-xs text-slate-500 flex items-center">
+                                                        <span class="material-icons-outlined text-xs mr-1">place</span>
+                                                        ${fav.venue_name || '未設定'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ イベント取得エラー:', error);
+                return `
+                    ${renderPageGuide(
+                        'イベント管理',
+                        'イベント情報の取得中にエラーが発生しました。',
+                        []
+                    )}
+                    <div class="text-center py-12 bg-red-50 rounded-xl">
+                        <span class="material-icons-outlined text-red-300 text-6xl mb-3">error_outline</span>
+                        <p class="text-red-600 mb-4">イベント情報を取得できませんでした</p>
+                        <button onclick="renderDashboard(document.getElementById('app'), 'events')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                            再試行
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // 🎯 興味・関心タブ（API連携）
+        async function renderInterestsTab() {
+            try {
+                // APIから興味タグを取得
+                let userTags = [];
+                try {
+                    const result = await API.User.getInterests();
+                    userTags = result.tags || [];
+                } catch (error) {
+                    console.error('Failed to load interests:', error);
+                    userTags = [];
+                }
+                
+                // store.userInterestsを初期化（後方互換性のため）
+                if (!store.userInterests) {
+                    store.userInterests = {
+                        categories: [],
+                        tags: userTags
+                    };
+                } else {
+                    store.userInterests.tags = userTags;
+                }
+                
+                const allCategories = ['テクノロジー', 'ビジネス', '音楽', 'アート', 'スポーツ', '食べ物', '旅行', 'ファッション', '健康', '教育', 
+                                      '金融', 'エンターテイメント', '科学', '政治', '環境', 'ゲーム', '読書', '映画', 
+                                      '写真', 'デザイン', 'マーケティング', 'スタートアップ', 'AI', 'ブロックチェーン', 'VR/AR', 'IoT', 'クラウド', 
+                                      'セキュリティ', 'データサイエンス', 'モバイル'];
+                const allTags = ['AI', '機械学習', 'Web開発', 'モバイルアプリ', 'UI/UX', 'クラウドコンピューティング', 'DevOps', 
+                                'ブロックチェーン', 'IoT', 'サイバーセキュリティ', 'データ分析', 'ビッグデータ', '自動化', 'SaaS', 'Eコマース',
+                                'デジタルマーケティング', 'SEO', 'コンテンツ制作', 'SNS', 'ブランディング', 'プロダクト管理', 
+                                'アジャイル', 'スクラム', 'リモートワーク', 'フリーランス', '起業', '投資', '暗号通貨', 
+                                'NFT', 'メタバース', 'サステナビリティ', 'ウェルネス', '瞑想', 'ヨガ', 'フィットネス', '栄養',
+                                'クラシック音楽', 'ジャズ', 'ロック', 'ポップ', 'エレクトロニック', 'ヒップホップ', 'インディー', 'フォーク', 'ダンス', 
+                                '演劇', '現代アート', '写真', '彫刻', 'デジタルアート', 'アニメーション', '映画'];
+                
+                return `
+                    ${renderPageGuide(
+                        '興味・関心',
+                        'あなたの興味・関心を設定すると、おすすめのイベントが表示されるようになります。',
+                        [
+                            'カテゴリは最大30個、タグは最大50個まで選択できます',
+                            '選択した内容はいつでも変更可能です',
+                            'より多くの興味を設定すると、より精度の高いおすすめが届きます'
+                        ]
+                    )}
+                    <div class="space-y-6">
+                        <!-- Categories -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">興味のあるカテゴリ</h3>
+                                    <p class="text-sm text-slate-500">最大30個まで選択できます</p>
+                                </div>
+                                <span class="text-sm font-bold text-primary">${store.userInterests.categories.length}/30</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                ${store.userInterests.categories.map(cat => `
+                                    <span class="px-3 py-1 bg-primary text-white rounded-full text-sm font-bold flex items-center space-x-1">
+                                        <span>${cat}</span>
+                                        <button onclick="removeUserCategory('${cat}')" class="ml-1 hover:bg-white/20 rounded-full p-0.5">
+                                            <span class="material-icons-outlined text-xs">close</span>
+                                        </button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            ${store.userInterests.categories.length < 30 ? `
+                            <div class="border-t border-slate-100 pt-4">
+                                <p class="text-sm font-bold text-slate-700 mb-2">カテゴリを追加</p>
+                                <div class="flex flex-wrap gap-2">
+                                    ${allCategories.filter(cat => !store.userInterests.categories.includes(cat)).slice(0, 15).map(cat => `
+                                        <button onclick="addUserCategory('${cat}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-primary hover:text-white transition">
+                                            ${cat}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Tags -->
+                        <div class="bg-white rounded-2xl shadow-card p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">興味のあるタグ</h3>
+                                    <p class="text-sm text-slate-500">最大50個まで選択できます</p>
+                                </div>
+                                <span class="text-sm font-bold text-primary">${store.userInterests.tags.length}/50</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                ${store.userInterests.tags.map(tag => `
+                                    <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold flex items-center space-x-1">
+                                        <span>${tag}</span>
+                                        <button onclick="removeUserTag('${tag}')" class="ml-1 hover:bg-purple-200 rounded-full p-0.5">
+                                            <span class="material-icons-outlined text-xs">close</span>
+                                        </button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            ${store.userInterests.tags.length < 50 ? `
+                            <div class="border-t border-slate-100 pt-4">
+                                <p class="text-sm font-bold text-slate-700 mb-2">タグを追加</p>
+                                <div class="flex flex-wrap gap-2">
+                                    ${allTags.filter(tag => !store.userInterests.tags.includes(tag)).slice(0, 20).map(tag => `
+                                        <button onclick="addUserTag('${tag}')" class="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-sm hover:bg-purple-100 hover:text-purple-700 transition">
+                                            ${tag}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Recommendation Notice -->
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                            <div class="flex items-start">
+                                <span class="material-icons-outlined text-blue-500 mr-3">lightbulb</span>
+                                <div>
+                                    <p class="font-bold text-blue-800 mb-1">レコメンド機能</p>
+                                    <p class="text-sm text-blue-700">選択したカテゴリとタグに基づいて、おすすめのイベントが表示されます。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('❌ 興味タグ取得エラー:', error);
+                return `
+                    ${renderPageGuide(
+                        '興味・関心',
+                        '興味・関心情報の取得中にエラーが発生しました。',
+                        []
+                    )}
+                    <div class="text-center py-12 bg-red-50 rounded-xl">
+                        <span class="material-icons-outlined text-red-300 text-6xl mb-3">error_outline</span>
+                        <p class="text-red-600 mb-4">興味・関心情報を取得できませんでした</p>
+                        <button onclick="router('dashboard_interests')" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                            再試行
+                        </button>
+                    </div>
+                `;
+            }
         }
 
         // 🎯 ダッシュボードガイドヘルパー関数
@@ -16941,7 +17276,31 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
                 showToast('却下に失敗しました: ' + error.message, 'error');
             }
         }
-            }, 500);
+
+        // KYC承認/却下機能
+        async function verifyUserKYC(userId, status) {
+            if (!confirm(`このユーザーのKYCを${status === 'verified' ? '承認' : '却下'}しますか？`)) {
+                return;
+            }
+            
+            try {
+                console.log('📤 Updating KYC status:', userId, status);
+                
+                const result = await API.Admin.verifyKYC(userId, status);
+                
+                console.log('✅ KYC updated:', result);
+                
+                showToast(`KYCステータスを更新しました`, 'check_circle');
+                
+                // 管理画面を再描画
+                setTimeout(() => {
+                    renderAdmin(document.getElementById('app'), 'users');
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ KYC update error:', error);
+                showToast('KYC更新に失敗しました: ' + error.message, 'error');
+            }
         }
 
         // イベントアーカイブ機能
@@ -17263,25 +17622,53 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             `;
             
             // File upload handler
-            document.getElementById('profile-icon-upload').addEventListener('change', function(e) {
+            document.getElementById('profile-icon-upload').addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (file && file.size <= 5 * 1024 * 1024) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        selectProfileIcon(event.target.result);
-                    };
-                    reader.readAsDataURL(file);
+                    try {
+                        // ローディング表示
+                        showToast('画像をアップロード中...', 'info');
+                        
+                        // サーバーにアップロード
+                        const uploadedUrl = await API.Organizer.uploadImage(file);
+                        
+                        // DBに保存
+                        await selectProfileIcon(uploadedUrl);
+                        
+                        showToast('プロフィールアイコンを更新しました', 'check_circle');
+                    } catch (error) {
+                        console.error('❌ Upload error:', error);
+                        showToast(error.message || 'アップロードに失敗しました', 'error');
+                    }
                 } else {
                     showToast('ファイルサイズは5MB以下にしてください', 'error');
                 }
             });
         }
         
-        function selectProfileIcon(iconUrl) {
-            store.user = { ...store.user, icon: iconUrl };
-            closeModal();
-            showToast('プロフィールアイコンを更新しました', 'check_circle');
-            router('dashboard'); // Refresh dashboard
+        async function selectProfileIcon(iconUrl) {
+            try {
+                // ユーザー情報を更新（APIに送信）
+                const response = await fetch(`${API_URL}/api/auth/profile`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ avatar_url: iconUrl })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('プロフィール更新に失敗しました');
+                }
+                
+                // LocalStorageのキャッシュも更新
+                store.user = { ...store.user, icon: iconUrl, avatar_url: iconUrl };
+                
+                closeModal();
+                showToast('プロフィールアイコンを更新しました', 'check_circle');
+                router('dashboard'); // Refresh dashboard
+            } catch (error) {
+                console.error('❌ Profile update error:', error);
+                showToast(error.message || 'プロフィール更新に失敗しました', 'error');
+            }
         }
         
         // Cover Image Selection Modal
@@ -17328,25 +17715,53 @@ R1-1,R1,1,1階席 右ブロック R1,standard,available
             `;
             
             // File upload handler
-            document.getElementById('cover-image-upload').addEventListener('change', function(e) {
+            document.getElementById('cover-image-upload').addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (file && file.size <= 10 * 1024 * 1024) {
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        selectCoverImage(event.target.result);
-                    };
-                    reader.readAsDataURL(file);
+                    try {
+                        // ローディング表示
+                        showToast('画像をアップロード中...', 'info');
+                        
+                        // サーバーにアップロード
+                        const uploadedUrl = await API.Organizer.uploadImage(file);
+                        
+                        // DBに保存
+                        await selectCoverImage(uploadedUrl);
+                        
+                        showToast('カバー画像を更新しました', 'check_circle');
+                    } catch (error) {
+                        console.error('❌ Upload error:', error);
+                        showToast(error.message || 'アップロードに失敗しました', 'error');
+                    }
                 } else {
                     showToast('ファイルサイズは10MB以下にしてください', 'error');
                 }
             });
         }
         
-        function selectCoverImage(imageUrl) {
-            store.user = { ...store.user, coverImage: imageUrl };
-            closeModal();
-            showToast('カバー画像を更新しました', 'check_circle');
-            router('dashboard'); // Refresh dashboard
+        async function selectCoverImage(imageUrl) {
+            try {
+                // ユーザー情報を更新（APIに送信）
+                const response = await fetch(`${API_URL}/api/auth/profile`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ cover_image_url: imageUrl })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('プロフィール更新に失敗しました');
+                }
+                
+                // LocalStorageのキャッシュも更新
+                store.user = { ...store.user, coverImage: imageUrl, cover_image_url: imageUrl };
+                
+                closeModal();
+                showToast('カバー画像を更新しました', 'check_circle');
+                router('dashboard'); // Refresh dashboard
+            } catch (error) {
+                console.error('❌ Profile update error:', error);
+                showToast(error.message || 'プロフィール更新に失敗しました', 'error');
+            }
         }
 
         function openKYCModal() {
@@ -19020,8 +19435,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.4-ADMIN-APPROVAL';
-            const BUILD_DATE = '2026-02-12T16:45:00Z';
+            const VERSION = '3.8.2-ASYNC-FIX-FINAL';
+            const BUILD_DATE = '2026-02-12T21:00:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');

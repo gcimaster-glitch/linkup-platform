@@ -485,6 +485,9 @@
 
                 <!-- Navigation - Mobile Optimized -->
                 <nav class="flex items-center space-x-1 sm:space-x-3">
+                    <button onclick="router('admin')" class="hidden md:flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full hover:from-red-600 hover:to-red-700 transition shadow-lg text-xs sm:text-sm font-bold border-2 border-white/50 hover:scale-105" id="admin-btn" style="display: none;">
+                        <span class="material-icons-outlined text-xs sm:text-sm mr-1">admin_panel_settings</span> 管理者
+                    </button>
                     <button onclick="router('organizer')" class="hidden md:flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-white/90 text-blue-600 rounded-full hover:bg-white transition backdrop-blur-sm text-xs sm:text-sm font-bold border-2 border-white shadow-md hover:shadow-lg" id="organizer-btn" style="display: none;">
                          <span class="hidden sm:inline">📈 </span>主催者
                     </button>
@@ -744,7 +747,7 @@
         // API Client
         // Helper function to get auth headers
         function getAuthHeaders() {
-            const token = localStorage.getItem('linkup_token');
+            const token = localStorage.getItem('authToken'); // 統一されたトークンキー
             const headers = { 'Content-Type': 'application/json' };
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
@@ -769,7 +772,7 @@
                     return await response.json();
                 },
                 async create(event) {
-                    const token = localStorage.getItem('linkup_token');
+                    const token = localStorage.getItem('authToken');
                     console.log('🔐 Token check:', token ? `Present (${token.substring(0, 20)}...)` : 'MISSING');
                     
                     if (!token) {
@@ -859,11 +862,26 @@
                     });
                     return await response.json();
                 },
-                async me(token) {
+                async me() {
                     const response = await fetch(`${API_URL}/api/auth/me`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
+                        headers: getAuthHeaders()
                     });
+                    if (!response.ok) {
+                        throw new Error(`Auth check failed: ${response.status}`);
+                    }
                     return await response.json();
+                },
+                async logout() {
+                    try {
+                        const response = await fetch(`${API_URL}/api/auth/logout`, {
+                            method: 'POST',
+                            headers: getAuthHeaders()
+                        });
+                        return await response.json();
+                    } catch (e) {
+                        // ログアウトAPIエラーは無視
+                        return { success: true };
+                    }
                 }
             },
             Organizer: {
@@ -899,7 +917,7 @@
                     const response = await fetch(`${API_URL}/api/upload`, {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('linkup_token')}`
+                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
                         },
                         body: formData
                     });
@@ -1672,9 +1690,48 @@
             }
             else if (view === 'checkout_session') renderStripeMock(app);
             else if (view === 'organizer_profile') renderOrganizerProfile(app, params.id);
-            else if (view === 'organizer') renderOrganizer(app);
-            else if (view === 'organizer_event_edit') renderOrganizerEventEdit(app, params.id);
-            else if (view === 'admin') renderAdmin(app);
+            else if (view === 'organizer') {
+                // オーガナイザー権限チェック
+                if (!store.user) {
+                    openAuthModal();
+                    showToast('ログインが必要です', 'warning');
+                    return;
+                }
+                if (store.user.role !== 'organizer' && store.user.role !== 'admin') {
+                    showToast('イベント主催者または管理者の権限が必要です', 'error');
+                    navigate('home');
+                    return;
+                }
+                renderOrganizer(app);
+            }
+            else if (view === 'organizer_event_edit') {
+                // オーガナイザー権限チェック
+                if (!store.user) {
+                    openAuthModal();
+                    showToast('ログインが必要です', 'warning');
+                    return;
+                }
+                if (store.user.role !== 'organizer' && store.user.role !== 'admin') {
+                    showToast('イベント主催者または管理者の権限が必要です', 'error');
+                    navigate('home');
+                    return;
+                }
+                renderOrganizerEventEdit(app, params.id);
+            }
+            else if (view === 'admin') {
+                // 管理者権限チェック
+                if (!store.user) {
+                    openAuthModal();
+                    showToast('ログインが必要です', 'warning');
+                    return;
+                }
+                if (store.user.role !== 'admin') {
+                    showToast('管理者権限が必要です', 'error');
+                    navigate('home');
+                    return;
+                }
+                renderAdmin(app);
+            }
             else if (view === 'static') renderStaticPage(app, params.page);
             else if (view === 'category') renderCategoryPage(app, params.category);
             else if (view === 'verify_email') renderEmailVerification(app, params.token);
@@ -1791,7 +1848,7 @@
                 if (data.success) {
                     // Save token if provided
                     if (data.token) {
-                        localStorage.setItem('linkup_token', data.token);
+                        localStorage.setItem('authToken', data.token);
                         store.user = data.user;
                     }
 
@@ -3277,17 +3334,17 @@
                 if (result && result.success && result.token) {
                     console.log('✅ Login successful');
                     
-                    // Save token
-                    localStorage.setItem('linkup_token', result.token);
+                    // Save token (統一されたキー名)
+                    localStorage.setItem('authToken', result.token);
                     
-                    // Update store
+                    // Update store (バックエンドのレスポンス形式に対応)
                     store.user = {
-                        id: result.user.id,
-                        name: result.user.name,
+                        id: result.user.user_id || result.user.id,
+                        name: result.user.display_name || result.user.name,
                         email: result.user.email,
-                        icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
-                        kycStatus: result.user.kycStatus || 'none',
-                        role: result.user.role || 'attendee'
+                        icon: result.user.icon_url || result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.display_name || result.user.name)}`,
+                        kycStatus: result.user.kyc_status || result.user.kycStatus || 'none',
+                        role: result.user.role || 'user'
                     };
                     
                     console.log('👤 User stored:', store.user);
@@ -3303,13 +3360,19 @@
                         closeModal();
                         showToast(`ようこそ、${store.user.name}さん！`, 'check_circle');
                         
-                        // Route to dashboard if user is organizer/admin
-                        if (store.user.role === 'organizer' || store.user.role === 'admin') {
-                            setTimeout(() => {
+                        // Role に応じて適切な画面にリダイレクト
+                        setTimeout(() => {
+                            if (store.user.role === 'admin') {
+                                console.log('📊 Routing to admin dashboard');
+                                router('admin');
+                            } else if (store.user.role === 'organizer') {
                                 console.log('📊 Routing to organizer dashboard');
                                 router('organizer');
-                            }, 300);
-                        }
+                            } else {
+                                console.log('📊 Routing to user dashboard');
+                                router('dashboard');
+                            }
+                        }, 300);
                     }, 500);
                 } else {
                     // Login failed
@@ -3352,7 +3415,7 @@
                         showToast('確認メールを送信しました。メールを確認してください。', 'mail');
                     } else {
                         // Old flow: immediate login
-                        localStorage.setItem('linkup_token', result.token);
+                        localStorage.setItem('authToken', result.token);
                         store.user = {
                             id: result.user.id,
                             name: result.user.name,
@@ -3429,11 +3492,42 @@
             showToast('ログインしました', 'login');
         }
 
-        function logout() {
+        async function logout() {
+            try {
+                // バックエンドにログアウト通知（オプション）
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    try {
+                        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                    } catch (e) {
+                        // エラーは無視
+                        console.log('Logout API call failed (non-critical):', e);
+                    }
+                }
+            } catch (e) {
+                console.error('Logout error:', e);
+            }
+            
+            // ローカルストレージをクリア
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
+            
+            // storeをクリア
             store.user = null;
+            store.events = [];
+            store.tickets = [];
+            store.organizerProfile = null;
+            
+            // UIを更新
             updateNav();
+            
+            // ホームにリダイレクト
             router('home');
-            showToast('ログアウトしました', 'logout');
+            
+            showToast('ログアウトしました', 'success');
         }
 
         // 🎨 ヘッダーグラデーション切り替えマネージャー
@@ -3460,10 +3554,18 @@
 
         function updateNav() {
             const nav = document.getElementById('nav-auth-section');
+            const adminBtn = document.getElementById('admin-btn');
             const organizerBtn = document.getElementById('organizer-btn');
             const createEventBtn = document.getElementById('create-event-btn');
             
-            // 主催者ボタンの表示/非表示を制御
+            // 管理者ボタンの表示/非表示を制御（admin のみ）
+            if (store.user && store.user.role === 'admin') {
+                adminBtn.style.display = 'flex';
+            } else {
+                adminBtn.style.display = 'none';
+            }
+            
+            // 主催者ボタンの表示/非表示を制御（organizer または admin）
             if (store.user && (store.user.role === 'organizer' || store.user.role === 'admin')) {
                 organizerBtn.style.display = 'flex';
                 createEventBtn.style.display = 'flex';
@@ -7846,7 +7948,7 @@
                 const response = await fetch(`${API_URL}/api/upload`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('linkup_token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
                     },
                     body: formData
                 });
@@ -19591,8 +19693,8 @@ function showCheckinMenu(eventId) {
         // --- INIT ---
         window.addEventListener('DOMContentLoaded', async () => {
             // Version info
-            const VERSION = '3.9.0-APPROVAL-COMPLETE';
-            const BUILD_DATE = '2026-02-13T11:30:00Z';
+            const VERSION = '4.0.0-RBAC-SECURITY';
+            const BUILD_DATE = '2026-02-13T15:45:00Z';
             
             console.log('%c🚀 LinkUp Platform v' + VERSION, 'font-size: 16px; font-weight: bold; color: #2563EB;');
             console.log('%cBuild: ' + BUILD_DATE + ' | API-Connected | Auth: Real Backend', 'color: #10B981;');
@@ -19622,26 +19724,34 @@ function showCheckinMenu(eventId) {
             Promise.all([
                 // Restore user session from token
                 (async () => {
-                    const token = localStorage.getItem('linkup_token');
+                    const token = localStorage.getItem('authToken'); // 統一されたトークンキー
                     if (token && !store.user) {
                         try {
-                            const result = await API.Auth.me(token);
-                            if (result.success) {
+                            const result = await API.Auth.me();
+                            if (result.success && result.user) {
                                 store.user = {
-                                    id: result.user.id,
-                                    name: result.user.name,
+                                    id: result.user.user_id || result.user.id,
+                                    name: result.user.display_name || result.user.name,
                                     email: result.user.email,
-                                    icon: result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.name)}`,
-                                    kycStatus: result.user.kycStatus || 'none',
-                                    role: result.user.role || 'attendee'
+                                    icon: result.user.icon_url || result.user.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.user.display_name || result.user.name)}`,
+                                    kycStatus: result.user.kyc_status || result.user.kycStatus || 'none',
+                                    role: result.user.role || 'user'
                                 };
                                 updateNav(); // Update nav with user info
+                                console.log('✅ User session restored:', store.user.role, store.user.name);
                             } else {
-                                localStorage.removeItem('linkup_token');
+                                // トークンが無効
+                                localStorage.removeItem('authToken');
+                                console.log('❌ Token invalid, cleared');
                             }
                         } catch (error) {
                             console.error('Session restore failed:', error);
-                            localStorage.removeItem('linkup_token');
+                            localStorage.removeItem('authToken');
+                        }
+                    }
+                })(),                        } catch (error) {
+                            console.error('Session restore failed:', error);
+                            localStorage.removeItem('authToken');
                         }
                     }
                 })(),

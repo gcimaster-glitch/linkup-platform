@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "build": "echo 'Build not required for Cloudflare Workers'",
     "test": "vitest",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "eslint src --ext .ts"

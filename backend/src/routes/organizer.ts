@@ -200,4 +200,82 @@ app.put('/settings', zValidator('json', profileSchema), async (c) => {
     }
 });
 
+// Download attendees CSV for an event
+app.get('/events/:event_id/attendees/csv', async (c) => {
+    const db = c.env.DB;
+    const organizerId = c.get('userId');
+    const eventId = c.req.param('event_id');
+
+    try {
+        // Verify event ownership
+        const event: any = await db.prepare('SELECT organizer_id, title FROM events WHERE event_id = ?')
+            .bind(eventId).first();
+        
+        if (!event) {
+            return c.json({ error: 'Event not found' }, 404);
+        }
+
+        if (event.organizer_id !== organizerId) {
+            return c.json({ error: 'Forbidden' }, 403);
+        }
+
+        // Fetch attendees data
+        const attendees = await db.prepare(`
+            SELECT 
+                u.user_id,
+                u.display_name,
+                u.name,
+                u.email,
+                u.phone,
+                o.order_number,
+                o.total_amount,
+                o.created_at as purchase_date,
+                ot.ticket_name,
+                ot.quantity,
+                ot.check_in_status,
+                ot.checked_in_at
+            FROM orders o
+            LEFT JOIN users u ON o.user_id = u.user_id
+            LEFT JOIN order_tickets ot ON o.order_id = ot.order_id
+            WHERE o.event_id = ? AND o.payment_status = 'completed'
+            ORDER BY o.created_at ASC
+        `).bind(eventId).all();
+
+        // Generate CSV
+        const csvHeader = 'ユーザーID,氏名,表示名,メールアドレス,電話番号,注文番号,購入金額,購入日時,チケット名,数量,チェックイン状態,チェックイン日時\n';
+        
+        const csvRows = (attendees.results || []).map((a: any) => {
+            const displayName = a.display_name || a.name || '';
+            const phone = a.phone || '';
+            const checkedInAt = a.checked_in_at || '';
+            const checkInStatus = a.check_in_status === 'checked_in' ? 'チェック済み' : '未チェック';
+            
+            // Escape commas and quotes in CSV
+            const escape = (str: string) => {
+                if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                    return `"${str.replace(/"/g, '""')}"`;
+                }
+                return str;
+            };
+
+            return `${escape(a.user_id)},${escape(a.name || '')},${escape(displayName)},${escape(a.email)},${escape(phone)},${escape(a.order_number)},${a.total_amount},${a.purchase_date},${escape(a.ticket_name)},${a.quantity},${escape(checkInStatus)},${checkedInAt}`;
+        }).join('\n');
+
+        const csv = csvHeader + csvRows;
+        const fileName = `attendees_${eventId}_${new Date().toISOString().slice(0, 10)}.csv`;
+
+        // Return CSV with proper headers
+        return new Response(csv, {
+            headers: {
+                'Content-Type': 'text/csv; charset=utf-8',
+                'Content-Disposition': `attachment; filename="${fileName}"`,
+                'Access-Control-Allow-Origin': '*'
+            }
+        });
+    } catch (e: any) {
+        console.error('Error generating attendees CSV:', e);
+        return c.json({ error: e.message }, 500);
+    }
+});
+
 export { app as organizerRoutes };

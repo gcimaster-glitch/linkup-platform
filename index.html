@@ -19749,11 +19749,6 @@ function showCheckinMenu(eventId) {
                             localStorage.removeItem('authToken');
                         }
                     }
-                })(),                        } catch (error) {
-                            console.error('Session restore failed:', error);
-                            localStorage.removeItem('authToken');
-                        }
-                    }
                 })(),
                 
                 // Load events from API

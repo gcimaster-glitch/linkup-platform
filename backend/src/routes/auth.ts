@@ -370,6 +370,39 @@ app.get('/verify-email', async (c) => {
     }
 });
 
+// プロフィール取得（認証必要）
+app.get('/profile', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const db = c.env.DB;
+    
+    const user: any = await db.prepare(
+      'SELECT user_id, email, name, display_name, role, user_type, avatar_url, bio, cover_image_url, kyc_status, email_verified, created_at FROM users WHERE user_id = ?'
+    ).bind(userId).first();
+    
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+    
+    return c.json({
+      id: user.user_id,
+      email: user.email,
+      name: user.name || user.display_name,
+      display_name: user.display_name,
+      role: user.role || user.user_type,
+      avatar_url: user.avatar_url,
+      bio: user.bio,
+      cover_image_url: user.cover_image_url,
+      kyc_status: user.kyc_status,
+      email_verified: user.email_verified,
+      created_at: user.created_at
+    });
+  } catch (error: any) {
+    console.error('Profile fetch error:', error);
+    return c.json({ error: error.message || 'Profile fetch failed' }, 500);
+  }
+});
+
 // プロフィール更新（認証必要）
 app.put('/profile', async (c) => {
   const authHeader = c.req.header('Authorization');

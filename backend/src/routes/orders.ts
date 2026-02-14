@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import type { Bindings } from '../index';
 import { authMiddleware } from '../middleware/auth';
+import { ResendService } from '../services/resend';
 
 const orderRoutes = new Hono<{ Bindings: Bindings }>();
 
@@ -107,6 +108,67 @@ orderRoutes.post('/', async (c) => {
     }
 
     await db.batch(batch);
+
+    // チケット購入メール送信
+    if (c.env.RESEND_API_KEY) {
+        try {
+            const resend = new ResendService(c.env.RESEND_API_KEY);
+            const userRecord: any = await db.prepare('SELECT email, name, display_name FROM users WHERE user_id = ?').bind(userId).first();
+            const userName = userRecord?.display_name || userRecord?.name || 'お客様';
+            const userEmail = userRecord?.email;
+            
+            if (userEmail) {
+                await resend.sendEmail(
+                    userEmail,
+                    `LinkUp - チケット購入完了: ${event.title}`,
+                    `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>
+                            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+                            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                            h1 { color: #2563EB; font-size: 24px; margin-bottom: 20px; }
+                            .ticket-info { background: #f1f5f9; border-radius: 8px; padding: 20px; margin: 20px 0; }
+                            .ticket-info p { margin: 8px 0; color: #475569; }
+                            .total { font-size: 20px; font-weight: bold; color: #2563EB; margin-top: 10px; }
+                            .footer { color: #94a3b8; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <h1>🎫 チケット購入完了</h1>
+                            <p>${userName}様</p>
+                            <p>チケットのご購入ありがとうございます。</p>
+                            
+                            <div class="ticket-info">
+                                <p><strong>イベント名:</strong> ${event.title}</p>
+                                <p><strong>チケット:</strong> ${ticket.ticket_name}</p>
+                                <p><strong>数量:</strong> ${quantity}枚</p>
+                                <p><strong>開催日時:</strong> ${new Date(event.start_datetime).toLocaleString('ja-JP')}</p>
+                                <p><strong>会場:</strong> ${event.venue_name || 'オンライン'}</p>
+                                ${appliedPromoCode ? `<p><strong>プロモコード:</strong> ${appliedPromoCode} (¥${discountAmount.toLocaleString()}割引)</p>` : ''}
+                                <p class="total">合計金額: ¥${finalAmount.toLocaleString()}</p>
+                            </div>
+                            
+                            <p>ご購入いただいたチケットは、マイページの「チケット」タブからご確認いただけます。</p>
+                            
+                            <div class="footer">
+                                <p>このメールは自動送信されています。</p>
+                                <p>© 2026 LinkUp. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                    `
+                );
+                console.log(`[Ticket Purchase Email] Sent to ${userEmail} for order ${orderNumber}`);
+            }
+        } catch (emailError: any) {
+            console.error('Failed to send purchase email:', emailError);
+            // メール送信失敗は非致命的エラー（注文自体は成功）
+        }
+    }
 
     return c.json({ 
       success: true, 

@@ -49,14 +49,34 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
 
     if (db) {
-        // Insert user (メール認証カラムが存在しない場合に備えて基本カラムのみ使用)
+        // Insert user with email verification fields
         try {
+            // マイグレーション0008実行後は以下のカラムが存在する想定
             await db.prepare(
-                'INSERT INTO users (user_id, email, password_hash, display_name, role, avatar_url, kyc_status) VALUES (?, ?, ?, ?, ?, ?, ?)'
-            ).bind(userId, email, passwordHash, userName, role, avatarUrl, 'unverified').run();
+                `INSERT INTO users (
+                    user_id, email, password_hash, name, display_name, 
+                    user_type, role, avatar_url, 
+                    kyc_status, email_verified, 
+                    email_verification_token, email_verification_expires,
+                    created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+            ).bind(
+                userId, email, passwordHash, userName, userName,
+                role, role, avatarUrl,
+                'unverified', 0,
+                verificationToken, verificationExpires
+            ).run();
         } catch (insertError: any) {
             console.error('User insert error:', insertError);
-            return c.json({ error: 'ユーザー登録に失敗しました' }, 500);
+            // フォールバック: 基本カラムのみで挿入（マイグレーション前対応）
+            try {
+                await db.prepare(
+                    'INSERT INTO users (user_id, email, password_hash, name, user_type, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime(\'now\'))'
+                ).bind(userId, email, passwordHash, userName, role, avatarUrl).run();
+            } catch (fallbackError: any) {
+                console.error('Fallback insert error:', fallbackError);
+                return c.json({ error: 'ユーザー登録に失敗しました' }, 500);
+            }
         }
         
         if (role === 'organizer') {
@@ -70,53 +90,78 @@ app.post('/register', zValidator('json', registerSchema), async (c) => {
             }
         }
         
-        // メール認証機能は一旦スキップ（カラムが存在しない可能性があるため）
-        // 将来的にマイグレーションで追加可能
-        /*
         // Send verification email
-        const resend = new ResendService(c.env.RESEND_API_KEY);
-        const verificationUrl = `${c.env.FRONTEND_URL || 'https://link-up.live'}/verify-email?token=${verificationToken}`;
-        
-        const emailResult = await resend.sendEmail(
-            email,
-            'LinkUp - メールアドレスの確認',
-            `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
-                    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-                    h1 { color: #2563EB; font-size: 28px; margin-bottom: 20px; }
-                    p { color: #475569; font-size: 16px; line-height: 1.6; margin: 15px 0; }
-                    .button { display: inline-block; background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; margin: 20px 0; }
-                    .footer { color: #94a3b8; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>🎉 LinkUpへようこそ！</h1>
-                    <p>アカウント登録ありがとうございます。</p>
-                    <p>以下のボタンをクリックして、メールアドレスを確認してください：</p>
-                    <a href="${verificationUrl}" class="button">メールアドレスを確認する</a>
-                    <p style="color: #64748b; font-size: 14px;">このリンクは24時間有効です。</p>
-                    <div class="footer">
-                        <p>このメールに心当たりがない場合は、このメールを無視してください。</p>
-                        <p>© 2026 LinkUp. All rights reserved.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            `
-        );
-        
-        console.log(`[Email Verification] Token: ${verificationToken}, URL: ${verificationUrl}, Result:`, emailResult);
-        */
+        if (c.env.RESEND_API_KEY) {
+            try {
+                const resend = new ResendService(c.env.RESEND_API_KEY);
+                const verificationUrl = `${c.env.FRONTEND_URL || 'https://link-up.live'}/verify-email?token=${verificationToken}`;
+                
+                const emailResult = await resend.sendEmail(
+                    email,
+                    'LinkUp - メールアドレスの確認',
+                    `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <style>
+                            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+                            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                            h1 { color: #2563EB; font-size: 28px; margin-bottom: 20px; }
+                            p { color: #475569; font-size: 16px; line-height: 1.6; margin: 15px 0; }
+                            .button { display: inline-block; background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+                            .footer { color: #94a3b8; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <h1>🎉 LinkUpへようこそ！</h1>
+                            <p>アカウント登録ありがとうございます。</p>
+                            <p>以下のボタンをクリックして、メールアドレスを確認してください：</p>
+                            <a href="${verificationUrl}" class="button">メールアドレスを確認する</a>
+                            <p style="color: #64748b; font-size: 14px;">このリンクは24時間有効です。</p>
+                            <div class="footer">
+                                <p>このメールに心当たりがない場合は、このメールを無視してください。</p>
+                                <p>© 2026 LinkUp. All rights reserved.</p>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                    `
+                );
+                
+                console.log(`[Email Verification] Token: ${verificationToken}, URL: ${verificationUrl}, Result:`, emailResult);
+                
+                // メール送信成功: 確認待ち状態で返す
+                return c.json({ 
+                    success: true, 
+                    message: '登録が完了しました。確認メールを送信しました。',
+                    email_verification_required: true,
+                    user: { 
+                        id: userId,
+                        user_id: userId, 
+                        name: userName,
+                        display_name: userName, 
+                        email, 
+                        role, 
+                        icon: avatarUrl,
+                        avatar_url: avatarUrl,
+                        kycStatus: 'unverified',
+                        kyc_status: 'unverified',
+                        emailVerified: false
+                    } 
+                }, 201);
+                
+            } catch (emailError: any) {
+                console.error('Email sending error:', emailError);
+                // メール送信失敗時は即座にログイン可能にする（フォールバック）
+            }
+        }
     } else {
         console.warn('DB binding not found, skipping persistence');
     }
 
-    // メール認証なしで即座にログイン可能（簡易版）
+    // Resend API キーがない場合、またはメール送信失敗時のフォールバック
+    // メール認証なしで即座にログイン可能
     // JWTトークンを生成
     const token = await sign({ 
         sub: userId, 

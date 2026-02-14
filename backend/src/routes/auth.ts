@@ -6,6 +6,7 @@ import { sign } from 'hono/jwt';
 import * as bcrypt from 'bcryptjs';
 import type { Bindings } from '../index';
 import { ResendService } from '../services/resend';
+import { authMiddleware } from '../middleware/auth';
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -170,17 +171,53 @@ app.post('/login', zValidator('json', loginSchema), async (c) => {
       success: true,
       token,
       user: {
+        user_id: user.user_id,
         id: user.user_id,
-        name: user.name,
+        display_name: user.display_name,
+        name: user.display_name,
         email: user.email,
         role: user.role,
+        icon_url: user.avatar_url,
         icon: user.avatar_url,
+        avatar_url: user.avatar_url,
+        kyc_status: user.kyc_status || 'unverified',
         kycStatus: user.kyc_status || 'unverified'
       }
     });
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Login failed' }, 500);
+  }
+});
+
+// 現在のユーザー情報取得（認証必須）
+app.get('/me', authMiddleware, async (c) => {
+  try {
+    const user = c.get('user');
+    
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    
+    return c.json({
+      success: true,
+      user: {
+        user_id: user.user_id,
+        id: user.user_id,
+        display_name: user.display_name,
+        name: user.display_name,
+        email: user.email,
+        role: user.role,
+        icon_url: user.avatar_url,
+        icon: user.avatar_url,
+        avatar_url: user.avatar_url,
+        kyc_status: user.kyc_status || 'unverified',
+        kycStatus: user.kyc_status || 'unverified'
+      }
+    });
+  } catch (error) {
+    console.error('Get me error:', error);
+    return c.json({ error: 'Failed to get user info' }, 500);
   }
 });
 

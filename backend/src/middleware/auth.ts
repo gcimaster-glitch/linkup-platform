@@ -26,7 +26,7 @@ export async function authMiddleware(
     // ユーザーの存在確認とrole取得
     if (c.env.DB) {
         const user: any = await c.env.DB
-          .prepare('SELECT user_id, email, role, display_name, kyc_status FROM users WHERE user_id = ?')
+          .prepare('SELECT user_id, email, role, display_name, avatar_url, kyc_status FROM users WHERE user_id = ?')
           .bind(decoded.sub)
           .first();
 

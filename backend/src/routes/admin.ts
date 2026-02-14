@@ -102,7 +102,8 @@ adminRoutes.get('/payouts', async (c) => {
 adminRoutes.put('/payouts/:id', async (c) => {
   const payoutId = c.req.param('id');
   const { status } = await c.req.json();
-  const adminId = c.get('user').sub;
+  const user = c.get('user');
+  const adminId = user.user_id;
 
   if (!['approved', 'rejected', 'paid'].includes(status)) {
       return c.json({ error: 'Invalid status' }, 400);
@@ -146,7 +147,8 @@ adminRoutes.get('/events', async (c) => {
 // イベント承認
 adminRoutes.put('/events/:id/approve', async (c) => {
   const eventId = c.req.param('id');
-  const adminId = c.get('user').sub;
+  const user = c.get('user');
+  const adminId = user.user_id;
   const db = c.env.DB;
 
   try {
@@ -175,7 +177,8 @@ adminRoutes.put('/events/:id/approve', async (c) => {
 // イベント却下
 adminRoutes.put('/events/:id/reject', async (c) => {
   const eventId = c.req.param('id');
-  const adminId = c.get('user').sub;
+  const user = c.get('user');
+  const adminId = user.user_id;
   const db = c.env.DB;
   const { reason } = await c.req.json();
 

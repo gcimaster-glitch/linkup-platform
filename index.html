@@ -1653,41 +1653,19 @@
             else if (view === 'detail') renderDetail(app, params.id);
             else if (view === 'seat_selection') renderSeatSelection(app);
             else if (view === 'checkout_confirm') renderCheckoutConfirm(app);
-            else if (view === 'dashboard') {
+            else if (view === 'dashboard' || view === 'dashboard_tickets' || view === 'dashboard_inbox' || view === 'dashboard_profile' || view === 'dashboard_interests' || view === 'dashboard_events' || view === 'dashboard_payments' || view === 'dashboard_support' || view === 'dashboard_kyc') {
+                // 旧ダッシュボードは廃止、役割別ダッシュボードにリダイレクト
                 if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'overview');
-            }
-            else if (view === 'dashboard_tickets') {
-                if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'tickets');
-            }
-            else if (view === 'dashboard_inbox') {
-                if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'inbox');
-            }
-            else if (view === 'dashboard_profile') {
-                if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'profile');
-            }
-            else if (view === 'dashboard_interests') {
-                if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'interests');
-            }
-            else if (view === 'dashboard_events') {
-                if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'events');
-            }
-            else if (view === 'dashboard_payments') {
-                if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'payments');
-            }
-            else if (view === 'dashboard_support') {
-                if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'support');
-            }
-            else if (view === 'dashboard_kyc') {
-                if(!store.user) { openAuthModal(); return; }
-                renderDashboardPage(app, 'kyc');
+                
+                // 役割に応じたダッシュボードへリダイレクト
+                if (store.user.role === 'admin') {
+                    router('admin', {}, false);  // pushState=false で無限ループ防止
+                } else if (store.user.role === 'organizer') {
+                    router('organizer', {}, false);
+                } else {
+                    // 一般ユーザー: 新しい統合ダッシュボード（renderDashboardPage）
+                    renderDashboardPage(app, view.replace('dashboard_', '') || 'overview');
+                }
             }
             else if (view === 'checkout_session') renderStripeMock(app);
             else if (view === 'organizer_profile') renderOrganizerProfile(app, params.id);

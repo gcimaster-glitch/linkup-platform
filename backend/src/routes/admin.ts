@@ -12,13 +12,32 @@ adminRoutes.use('/*', async (c, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const payload = await verify(token, c.env.JWT_SECRET);
-    // デモ用: adminロールまたは特定のIDを許可
-    if (payload.role !== 'admin' && payload.sub !== 'u-admin-001') { 
-        // return c.json({ error: 'Forbidden' }, 403);
+    
+    // DBからユーザー情報を取得
+    const user: any = await c.env.DB
+      .prepare('SELECT user_id, email, role, display_name, avatar_url, kyc_status FROM users WHERE user_id = ?')
+      .bind(payload.sub)
+      .first();
+    
+    if (!user) {
+      return c.json({ error: 'User not found' }, 401);
     }
-    c.set('user', payload);
+    
+    // adminロールのみ許可
+    if (user.role !== 'admin') {
+      return c.json({ 
+        error: 'Forbidden: Admin role required',
+        message: '管理者権限が必要です',
+        your_role: user.role
+      }, 403);
+    }
+    
+    c.set('user', user);
+    c.set('userId', user.user_id);
+    c.set('role', user.role);
     await next();
   } catch (e) {
+    console.error('Admin auth error:', e);
     return c.json({ error: 'Invalid token' }, 401);
   }
 });

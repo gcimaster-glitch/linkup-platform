@@ -1,29 +1,18 @@
 import { Hono } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import type { Bindings } from '../index';
-import { verify } from 'hono/jwt';
+import { authMiddleware } from '../middleware/auth';
 
 const orderRoutes = new Hono<{ Bindings: Bindings }>();
 
-// 認証ミドルウェア
-orderRoutes.use('/*', async (c, next) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader) return c.json({ error: 'Unauthorized' }, 401);
-  const token = authHeader.split(' ')[1];
-  try {
-    const payload = await verify(token, c.env.JWT_SECRET);
-    c.set('user', payload);
-    await next();
-  } catch (e) {
-    return c.json({ error: 'Invalid token' }, 401);
-  }
-});
+// 認証ミドルウェアを適用
+orderRoutes.use('/*', authMiddleware);
 
 orderRoutes.post('/', async (c) => {
   const db = c.env.DB;
   const { ticket_id, quantity, event_id, promo_code } = await c.req.json();
   const user = c.get('user');
-  const userId = user.sub;
+  const userId = user.user_id;
 
   if (!ticket_id || !quantity || quantity <= 0) {
     return c.json({ error: 'Invalid request' }, 400);
@@ -141,7 +130,7 @@ orderRoutes.post('/', async (c) => {
 orderRoutes.get('/', async (c) => {
   const db = c.env.DB;
   const user = c.get('user');
-  const userId = user.sub;
+  const userId = user.user_id;
 
   try {
     const orders = await db.prepare(`

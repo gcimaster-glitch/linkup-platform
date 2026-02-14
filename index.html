@@ -1842,7 +1842,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/auth/verify-email?token=${token}`);
+                const response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`);
                 const data = await response.json();
 
                 if (data.success) {
@@ -3495,10 +3495,10 @@
         async function logout() {
             try {
                 // バックエンドにログアウト通知（オプション）
-                const token = localStorage.getItem('authToken');
+                const token = localStorage.getItem('linkup_token');
                 if (token) {
                     try {
-                        await fetch(`${API_BASE_URL}/api/auth/logout`, {
+                        await fetch(`${API_URL}/api/auth/logout`, {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${token}` }
                         });
@@ -3512,13 +3512,13 @@
             }
             
             // ローカルストレージをクリア
-            localStorage.removeItem('authToken');
+            localStorage.removeItem('linkup_token');
             localStorage.removeItem('refreshToken');
             
             // storeをクリア
             store.user = null;
             store.events = [];
-            store.tickets = [];
+            store.tickets = [];;
             store.organizerProfile = null;
             
             // UIを更新

@@ -747,7 +747,7 @@
         // API Client
         // Helper function to get auth headers
         function getAuthHeaders() {
-            const token = localStorage.getItem('authToken'); // 統一されたトークンキー
+            const token = localStorage.getItem('linkup_token'); // 統一されたトークンキー
             const headers = { 'Content-Type': 'application/json' };
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
@@ -772,7 +772,7 @@
                     return await response.json();
                 },
                 async create(event) {
-                    const token = localStorage.getItem('authToken');
+                    const token = localStorage.getItem('linkup_token');
                     console.log('🔐 Token check:', token ? `Present (${token.substring(0, 20)}...)` : 'MISSING');
                     
                     if (!token) {
@@ -917,7 +917,7 @@
                     const response = await fetch(`${API_URL}/api/upload`, {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                            'Authorization': `Bearer ${localStorage.getItem('linkup_token')}`
                         },
                         body: formData
                     });
@@ -1848,7 +1848,7 @@
                 if (data.success) {
                     // Save token if provided
                     if (data.token) {
-                        localStorage.setItem('authToken', data.token);
+                        localStorage.setItem('linkup_token', data.token);
                         store.user = data.user;
                     }
 
@@ -3335,7 +3335,7 @@
                     console.log('✅ Login successful');
                     
                     // Save token (統一されたキー名)
-                    localStorage.setItem('authToken', result.token);
+                    localStorage.setItem('linkup_token', result.token);
                     
                     // Update store (バックエンドのレスポンス形式に対応)
                     store.user = {
@@ -3415,7 +3415,7 @@
                         showToast('確認メールを送信しました。メールを確認してください。', 'mail');
                     } else {
                         // Old flow: immediate login
-                        localStorage.setItem('authToken', result.token);
+                        localStorage.setItem('linkup_token', result.token);
                         store.user = {
                             id: result.user.id,
                             name: result.user.name,
@@ -7948,7 +7948,7 @@
                 const response = await fetch(`${API_URL}/api/upload`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                        'Authorization': `Bearer ${localStorage.getItem('linkup_token')}`
                     },
                     body: formData
                 });
@@ -8440,9 +8440,23 @@
         }
 
         function renderAdminContent(tab) {
-            if (tab === 'dashboard') return renderAdminDashboard();
+            if (tab === 'dashboard') {
+                // 非同期関数のため、プレースホルダーを返してから非同期でロード
+                setTimeout(() => renderAdminDashboard().then(html => {
+                    const content = document.querySelector('.p-4.md\\:p-8.pb-24.max-w-7xl');
+                    if (content) content.innerHTML = html;
+                }), 0);
+                return '<div class="flex justify-center items-center h-64"><span class="material-icons-outlined text-4xl text-slate-400 animate-spin">refresh</span></div>';
+            }
             if (tab === 'organizers') return renderAdminPartners();
-            if (tab === 'users') return renderAdminUsers();
+            if (tab === 'users') {
+                // 非同期関数のため、プレースホルダーを返してから非同期でロード
+                setTimeout(() => renderAdminUsers().then(html => {
+                    const content = document.querySelector('.p-4.md\\:p-8.pb-24.max-w-7xl');
+                    if (content) content.innerHTML = html;
+                }), 0);
+                return '<div class="flex justify-center items-center h-64"><span class="material-icons-outlined text-4xl text-slate-400 animate-spin">refresh</span></div>';
+            }
             if (tab === 'events') return renderAdminEvents();
             if (tab === 'venues') return renderAdminVenues();
             if (tab === 'tickets') return renderAdminTickets();
@@ -8520,13 +8534,14 @@
         }
 
         function renderAdminPaymentHistory() {
-            const paymentHistory = store.paymentHistory;
-            const totalAmount = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
+            const paymentHistory = store.paymentHistory || [];
+            const totalAmount = paymentHistory.reduce((sum, p) => sum + (p.amount || 0), 0);
             const todayPayments = paymentHistory.filter(p => {
+                if (!p.paymentDate) return false;
                 const today = new Date().toISOString().split('T')[0];
                 return p.paymentDate.split('T')[0] === today;
             });
-            const todayAmount = todayPayments.reduce((sum, p) => sum + p.amount, 0);
+            const todayAmount = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
             
             return `
                 <div class="flex justify-between items-center mb-6">
@@ -9120,7 +9135,7 @@
                                 <span class="material-icons-outlined opacity-80">people</span>
                                 <span class="text-xs font-bold bg-white/20 px-2 py-1 rounded">総数</span>
                             </div>
-                            <div class="text-3xl font-bold">${mockUsers.length}</div>
+                            <div class="text-3xl font-bold">${users.length}</div>
                             <div class="text-sm opacity-80 mt-1">登録ユーザー</div>
                         </div>
                         <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-card p-6 text-white">
@@ -19724,7 +19739,7 @@ function showCheckinMenu(eventId) {
             Promise.all([
                 // Restore user session from token
                 (async () => {
-                    const token = localStorage.getItem('authToken'); // 統一されたトークンキー
+                    const token = localStorage.getItem('linkup_token'); // 統一されたトークンキー
                     if (token && !store.user) {
                         try {
                             const result = await API.Auth.me();
@@ -19741,12 +19756,12 @@ function showCheckinMenu(eventId) {
                                 console.log('✅ User session restored:', store.user.role, store.user.name);
                             } else {
                                 // トークンが無効
-                                localStorage.removeItem('authToken');
+                                localStorage.removeItem('linkup_token');
                                 console.log('❌ Token invalid, cleared');
                             }
                         } catch (error) {
                             console.error('Session restore failed:', error);
-                            localStorage.removeItem('authToken');
+                            localStorage.removeItem('linkup_token');
                         }
                     }
                 })(),

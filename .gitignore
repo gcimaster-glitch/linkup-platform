@@ -45,7 +45,7 @@ coverage/
 *.temp
 *.tar.gz
 *.zip
-core
+# core  ← 無効化（assets/js/core を許可するため）
 
 # Vercel
 .vercel/

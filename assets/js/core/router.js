@@ -3,7 +3,7 @@
  * クライアントサイドルーティングを管理
  */
 
-export class Router {
+class Router {
     constructor() {
         this.routes = new Map();
         this.currentView = null;
@@ -251,8 +251,9 @@ export class Router {
     }
 }
 
-// シングルトンインスタンス作成
-export const router = new Router();
+// シングルトンインスタンス作成（app-legacy.js の function router() と衝突しないよう別名使用）
+const moduleRouter = new Router();
 
 // グローバルに公開（後方互換性）
-window.router = router;
+window.moduleRouter = moduleRouter;
+// ※ app-legacy.js が function router() を持つため、window.router は app-legacy.js 読み込み後に設定される

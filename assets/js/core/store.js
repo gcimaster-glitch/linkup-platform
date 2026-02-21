@@ -164,7 +164,7 @@ class Store {
 }
 
 // シングルトンインスタンス作成
-export const store = new Store();
+const store = new Store();
 
 // グローバルに公開（後方互換性）
 window.store = store;

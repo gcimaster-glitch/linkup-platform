@@ -7,7 +7,8 @@
  * Phase: 1 - Core Module Separation
  */
 
-const API_URL = "https://linkup-backend.gcimaster.workers.dev";
+var API_URL = "https://linkup-backend.gcimaster.workers.dev"; // var: 重複宣言を許容
+window.API_URL = API_URL; // グローバルに公開（後方互換性）
 
 // Helper function to get auth headers
 function getAuthHeaders() {
@@ -20,7 +21,7 @@ function getAuthHeaders() {
     return headers;
 }
 
-const API = {
+var API = {  // var: app-legacy.js との重複宣言を許容
     Event: {
         async list() {
             const response = await fetch(`${API_URL}/api/events`);

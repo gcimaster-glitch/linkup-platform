@@ -3,10 +3,11 @@
  * 認証・ログイン・ログアウト管理
  */
 
-import { store } from './store.js';
-import { API } from './api.js';
+// store と API はグローバル変数として利用（非ES Module形式）
+// store は store.js で window.store として公開済み
+// API は api.js で window.API として公開済み
 
-export class Auth {
+class Auth {
     /**
      * トークン取得
      */

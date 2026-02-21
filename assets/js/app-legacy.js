@@ -4220,6 +4220,150 @@
                         </div>
                     `;
                 
+                case 'tickets':
+                    return `
+                        ${renderPageGuide(
+                            'チケット一覧',
+                            '購入済みのチケットをここで確認できます。',
+                            [
+                                'QRコードボタンをクリックすると入場用QRコードが表示されます',
+                                'チケットをクリックすると詳細情報が確認できます',
+                                '開催まで残り日数がバッジで表示されます'
+                            ]
+                        )}
+                        <div class="space-y-4">
+                            ${myTickets.length === 0 ? `
+                                <div class="bg-white rounded-2xl shadow-card p-12 text-center">
+                                    <span class="material-icons-outlined text-slate-300 text-6xl mb-4 block">confirmation_number</span>
+                                    <h3 class="text-lg font-bold text-slate-700 mb-2">チケットがありません</h3>
+                                    <p class="text-slate-500 mb-6">イベントに参加してチケットを取得しましょう</p>
+                                    <button onclick="router('home')" class="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-blue-700 transition">
+                                        イベントを探す
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    ${myTickets.map((t, index) => {
+                                        const event = store.events.find(e => e.event_id === t.eventId) || {};
+                                        const coverImage = event.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800';
+                                        const daysUntil = event.start_datetime ? Math.ceil((new Date(event.start_datetime) - new Date()) / (1000*60*60*24)) : null;
+                                        const statusLabel = daysUntil === null ? '' : daysUntil < 0 ? '開催終了' : daysUntil === 0 ? '本日開催！' : daysUntil === 1 ? '明日開催！' : `あと${daysUntil}日`;
+                                        return `
+                                        <div class="relative rounded-2xl shadow-xl overflow-hidden hover:scale-105 transition cursor-pointer" onclick="showTicketDetail('${t.id}')">
+                                            <div class="absolute inset-0">
+                                                <img src="${coverImage}" class="w-full h-full object-cover">
+                                                <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
+                                            </div>
+                                            <div class="relative p-6 min-h-[200px] flex flex-col justify-end">
+                                                ${statusLabel ? `<span class="absolute top-4 right-4 px-3 py-1 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-full">${statusLabel}</span>` : ''}
+                                                <h3 class="text-white font-bold text-lg mb-1">${t.title}</h3>
+                                                <p class="text-slate-300 text-sm">${t.date || '日時未定'}</p>
+                                                <div class="flex items-center justify-between mt-3">
+                                                    <span class="text-white/80 text-sm">座席: ${t.seatId || '自由席'}</span>
+                                                    <button onclick="event.stopPropagation(); showQRModal('${t.id}')" class="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs rounded-lg backdrop-blur-sm transition font-bold">
+                                                        QRコード
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>`;
+                                    }).join('')}
+                                </div>
+                            `}
+                        </div>
+                    `;
+
+                case 'payments':
+                    const userPayments = paymentHistory;
+                    const totalSpent = userPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+                    const completedCount = userPayments.filter(p => p.status === 'completed').length;
+                    return `
+                        ${renderPageGuide(
+                            '決済履歴',
+                            'ここではすべての決済履歴を確認できます。',
+                            [
+                                '決済履歴をクリックすると詳細が表示されます',
+                                'ステータスで決済の状態を確認できます',
+                                '領収書の確認も可能です'
+                            ]
+                        )}
+                        
+                        <!-- 統計カード -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-white rounded-xl shadow-card p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-slate-500">総決済回数</p>
+                                        <p class="text-2xl font-bold text-slate-800 mt-1">${userPayments.length}回</p>
+                                    </div>
+                                    <span class="material-icons-outlined text-blue-500 text-3xl">receipt_long</span>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl shadow-card p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-slate-500">総決済額</p>
+                                        <p class="text-2xl font-bold text-slate-800 mt-1">¥${totalSpent.toLocaleString()}</p>
+                                    </div>
+                                    <span class="material-icons-outlined text-green-500 text-3xl">payments</span>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-xl shadow-card p-6">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-slate-500">完了済み</p>
+                                        <p class="text-2xl font-bold text-slate-800 mt-1">${completedCount}件</p>
+                                    </div>
+                                    <span class="material-icons-outlined text-purple-500 text-3xl">check_circle</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 決済履歴テーブル -->
+                        <div class="bg-white rounded-2xl shadow-card overflow-hidden">
+                            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                                <h4 class="font-bold text-slate-800">決済履歴 (${userPayments.length}件)</h4>
+                            </div>
+                            ${userPayments.length === 0 ? `
+                                <div class="text-center py-12">
+                                    <span class="material-icons-outlined text-slate-300 text-6xl mb-3 block">receipt_long</span>
+                                    <p class="text-slate-500 mb-4">決済履歴がありません</p>
+                                    <button onclick="router('home')" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition font-bold">
+                                        イベントを探す
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+                                            <tr>
+                                                <th class="p-4">決済ID</th>
+                                                <th class="p-4">イベント名</th>
+                                                <th class="p-4">決済日</th>
+                                                <th class="p-4">金額</th>
+                                                <th class="p-4">ステータス</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${userPayments.map((payment, index) => {
+                                                const formattedDate = payment.date ? new Date(payment.date).toLocaleDateString('ja-JP') : '不明';
+                                                const statusLabel = payment.status === 'completed' ? '支払済' : payment.status === 'pending' ? '保留中' : 'キャンセル';
+                                                const statusColor = payment.status === 'completed' ? 'text-green-600 bg-green-50' : payment.status === 'pending' ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50';
+                                                return `
+                                                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} border-b border-slate-100 hover:bg-blue-50">
+                                                    <td class="p-4 font-mono text-xs text-slate-500">${payment.paymentId || payment.id || '-'}</td>
+                                                    <td class="p-4 font-bold text-slate-800">${payment.eventName || '不明'}</td>
+                                                    <td class="p-4 text-slate-600">${formattedDate}</td>
+                                                    <td class="p-4 font-bold text-slate-800">¥${(payment.amount || 0).toLocaleString()}</td>
+                                                    <td class="p-4"><span class="px-3 py-1 rounded-full text-xs font-bold ${statusColor}">${statusLabel}</span></td>
+                                                </tr>`;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `}
+                        </div>
+                    `;
+                
                 default:
                     return '';
             }
@@ -4346,7 +4490,7 @@
         
         // Render Subpage Content (reuse existing tab content)
         async function renderDashboardSubpage(container, subpage) {
-            if (subpage === 'tickets' || subpage === 'events' || subpage === 'interests') {
+            if (subpage === 'tickets' || subpage === 'events' || subpage === 'interests' || subpage === 'payments') {
                 // 非同期でタブをレンダリング
                 container.innerHTML = '<div class="text-center py-12"><span class="loading-spinner"></span><p class="mt-4 text-slate-500">読み込み中...</p></div>';
                 let content;
@@ -4356,6 +4500,8 @@
                     content = await renderEventsTab();
                 } else if (subpage === 'interests') {
                     content = await renderInterestsTab();
+                } else if (subpage === 'payments') {
+                    content = renderUserDashboardTab('payments');
                 }
                 container.innerHTML = content;
             } else {
@@ -19247,6 +19393,23 @@ function showCheckinMenu(eventId) {
             }
         }
 
+        // ===== グローバルエラーハンドリング =====
+        window.addEventListener('error', function(e) {
+            console.error('⚠️ Global error:', e.message, e.filename, e.lineno);
+            // 重大なエラーのみトースト表示
+            if (e.error && typeof window.showToast === 'function') {
+                // スクリプトエラーはサイレントに処理
+                // showToast('エラーが発生しました。ページを再読み込みしてください。', 'error');
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('⚠️ Unhandled promise rejection:', e.reason);
+            // ネットワークエラーなどを静かに処理
+            e.preventDefault();
+        });
+
+        console.log('✅ LinkUp Legacy App initialized');
 
 
 // End of Legacy App IIFE

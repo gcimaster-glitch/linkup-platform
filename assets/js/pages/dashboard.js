@@ -49,6 +49,22 @@ async function renderDashboard(params = {}) {
           </div>
         </div>
       </div>
+
+      <!-- フッター -->
+      <footer class="bg-slate-800 text-slate-400 mt-12">
+        <div class="max-w-6xl mx-auto px-4 py-10">
+          <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <span class="text-xl font-bold text-white">LinkUp</span>
+              <p class="text-sm mt-1">人と体験をつなぐイベントプラットフォーム</p>
+            </div>
+            <button onclick="AppRouter.go('home')" class="text-sm hover:text-white transition">← イベント一覧に戻る</button>
+          </div>
+          <div class="border-t border-slate-700 mt-6 pt-6 text-center text-sm">
+            <p>&copy; 2026 LinkUp. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   `;
 

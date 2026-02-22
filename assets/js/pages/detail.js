@@ -42,9 +42,9 @@ async function renderDetail({ id }) {
           <!-- 左: 詳細情報 -->
           <div class="md:col-span-2 space-y-6">
             <div>
-              ${ev.category ? `<span class="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full mb-3">${ev.category}</span>` : ''}
-              <h1 class="text-3xl font-bold text-slate-800 mb-3">${ev.title}</h1>
-              <p class="text-slate-500 text-sm">主催: ${ev.organizer_name || '主催者'}</p>
+              ${ev.category ? `<span class="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full mb-3">${_escapeHtml(ev.category)}</span>` : ''}
+              <h1 class="text-3xl font-bold text-slate-800 mb-3">${_escapeHtml(ev.title)}</h1>
+              <p class="text-slate-500 text-sm">主催: ${_escapeHtml(ev.organizer_name || '主催者')}</p>
             </div>
 
             <div class="bg-slate-50 rounded-xl p-5 space-y-3 text-sm">
@@ -54,13 +54,13 @@ async function renderDetail({ id }) {
               </div>
               <div class="flex items-start gap-3">
                 <span class="material-icons-outlined text-blue-500">location_on</span>
-                <span class="text-slate-700">${ev.venue_name || 'オンライン'}${ev.venue_address ? '<br><span class="text-slate-400">' + ev.venue_address + '</span>' : ''}</span>
+                <span class="text-slate-700">${_escapeHtml(ev.venue_name || 'オンライン')}${ev.venue_address ? '<br><span class="text-slate-400">' + _escapeHtml(ev.venue_address) + '</span>' : ''}</span>
               </div>
             </div>
 
             <div>
               <h2 class="text-lg font-bold text-slate-700 mb-3">イベント詳細</h2>
-              <div class="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">${ev.description || '詳細情報は準備中です。'}</div>
+              <div class="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">${_escapeHtml(ev.description || '詳細情報は準備中です。')}</div>
             </div>
           </div>
 
@@ -72,27 +72,25 @@ async function renderDetail({ id }) {
               ${tickets.length === 0 ? `
                 <p class="text-slate-400 text-sm text-center py-4">チケット情報なし</p>
               ` : tickets.map(t => {
-                // APIレスポンスのフィールド名に対応（name または ticket_name）
                 const ticketName = t.name || t.ticket_name || 'チケット';
-                // 在庫はquantity_available または stock
                 const stock = t.quantity_available != null ? t.quantity_available : (t.stock || 0);
                 const soldOut = stock <= 0;
                 return `
                 <div class="border border-slate-200 rounded-xl p-4 mb-3">
                   <div class="flex justify-between items-start mb-2">
-                    <span class="font-bold text-slate-800 text-sm">${ticketName}</span>
+                    <span class="font-bold text-slate-800 text-sm">${_escapeHtml(ticketName)}</span>
                     <span class="font-bold text-blue-600">${t.price === 0 ? '無料' : '¥' + Number(t.price).toLocaleString()}</span>
                   </div>
-                  ${t.description ? `<p class="text-xs text-slate-400 mb-3">${t.description}</p>` : ''}
+                  ${t.description ? `<p class="text-xs text-slate-400 mb-3">${_escapeHtml(t.description)}</p>` : ''}
                   <div class="flex items-center gap-2 mb-3">
                     <span class="text-xs text-slate-500">残り ${stock} 枚</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <label class="text-xs text-slate-500">枚数</label>
-                    <select id="qty-${t.ticket_id}" class="border rounded-lg px-2 py-1 text-sm">
+                    <select id="qty-${_escapeHtml(t.ticket_id)}" class="border rounded-lg px-2 py-1 text-sm">
                       ${[1,2,3,4,5].map(n => `<option value="${n}">${n}</option>`).join('')}
                     </select>
-                    <button onclick="purchaseTicket('${t.ticket_id}', '${ev.event_id}')"
+                    <button onclick="purchaseTicket('${_escapeHtml(t.ticket_id)}', '${_escapeHtml(ev.event_id)}')"
                       class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 px-3 rounded-lg transition
                         ${soldOut ? 'opacity-50 cursor-not-allowed' : ''}"
                       ${soldOut ? 'disabled' : ''}>
@@ -106,6 +104,22 @@ async function renderDetail({ id }) {
           </div>
         </div>
       </div>
+
+      <!-- フッター -->
+      <footer class="bg-slate-800 text-slate-400 mt-16">
+        <div class="max-w-6xl mx-auto px-4 py-10">
+          <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+              <span class="text-xl font-bold text-white">LinkUp</span>
+              <p class="text-sm mt-1">人と体験をつなぐイベントプラットフォーム</p>
+            </div>
+            <button onclick="AppRouter.go('home')" class="text-sm hover:text-white transition">← イベント一覧に戻る</button>
+          </div>
+          <div class="border-t border-slate-700 mt-6 pt-6 text-center text-sm">
+            <p>&copy; 2026 LinkUp. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     `;
 
     // 購入処理

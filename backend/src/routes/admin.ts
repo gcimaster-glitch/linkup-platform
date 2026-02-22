@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
-import type { Bindings } from '../index';
+import type { Bindings, Variables } from '../index';
 import { verify } from 'hono/jwt';
 import * as bcrypt from 'bcryptjs';
 
-const adminRoutes = new Hono<{ Bindings: Bindings }>();
+const adminRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // Admin Auth Middleware
 adminRoutes.use('/*', async (c, next) => {
@@ -11,7 +11,7 @@ adminRoutes.use('/*', async (c, next) => {
   if (!authHeader) return c.json({ error: 'Unauthorized' }, 401);
   const token = authHeader.split(' ')[1];
   try {
-    const payload = await verify(token, c.env.JWT_SECRET);
+    const payload = await verify(token, c.env.JWT_SECRET, 'HS256');
     
     // DBからユーザー情報を取得
     const user: any = await c.env.DB

@@ -25,17 +25,109 @@ export type Bindings = {
   FRONTEND_URL: string;
 };
 
+// Context variables set by auth middleware
+export type Variables = {
+  userId: string;
+  user: any;
+  role: string;
+};
+
+// ─── レート制限ストア（メモリ内: Workersのリクエスト間で共有しないが十分な抑止力） ───
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+function rateLimit(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
+    return true; // allowed
+  }
+
+  if (entry.count >= maxRequests) {
+    return false; // blocked
+  }
+
+  entry.count++;
+  return true; // allowed
+}
+
+// ─── 許可オリジン ────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'https://link-up.live',
+  'https://www.link-up.live',
+  'https://linkup-platform.pages.dev',
+  // ローカル開発用
+  'http://localhost:3000',
+  'http://localhost:8080',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:8080',
+];
+
 const app = new Hono<{ Bindings: Bindings }>();
 
-// CORS middleware
-app.use('/*', cors({
-  origin: '*', // In production, replace with specific origins
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  exposeHeaders: ['Content-Length'],
-  maxAge: 600,
-  credentials: true,
-}));
+// ─── CORS middleware（特定オリジンのみ許可） ──────────
+app.use('/*', async (c, next) => {
+  const origin = c.req.header('Origin') || '';
+  const allowed = ALLOWED_ORIGINS.includes(origin);
+
+  // Preflight
+  if (c.req.method === 'OPTIONS') {
+    const headers: Record<string, string> = {
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+      'Access-Control-Max-Age': '600',
+    };
+    if (allowed) {
+      headers['Access-Control-Allow-Origin'] = origin;
+      headers['Access-Control-Allow-Credentials'] = 'true';
+    }
+    return new Response(null, { status: 204, headers });
+  }
+
+  await next();
+
+  if (allowed) {
+    c.res.headers.set('Access-Control-Allow-Origin', origin);
+    c.res.headers.set('Access-Control-Allow-Credentials', 'true');
+  }
+
+  // セキュリティヘッダー
+  c.res.headers.set('X-Content-Type-Options', 'nosniff');
+  c.res.headers.set('X-Frame-Options', 'DENY');
+  c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+});
+
+// ─── レート制限ミドルウェア（ログイン・登録エンドポイント） ─
+app.use('/api/auth/login', async (c, next) => {
+  if (c.req.method === 'POST') {
+    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
+    const key = `login:${ip}`;
+    // 10分間に20回まで
+    if (!rateLimit(key, 20, 10 * 60 * 1000)) {
+      return c.json({
+        error: 'Too Many Requests',
+        message: 'ログイン試行が多すぎます。しばらく経ってから再試行してください。',
+      }, 429);
+    }
+  }
+  await next();
+});
+
+app.use('/api/auth/register', async (c, next) => {
+  if (c.req.method === 'POST') {
+    const ip = c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || 'unknown';
+    const key = `register:${ip}`;
+    // 1時間に10回まで
+    if (!rateLimit(key, 10, 60 * 60 * 1000)) {
+      return c.json({
+        error: 'Too Many Requests',
+        message: '登録試行が多すぎます。しばらく経ってから再試行してください。',
+      }, 429);
+    }
+  }
+  await next();
+});
 
 // Logger middleware
 app.use('*', logger());

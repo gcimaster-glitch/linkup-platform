@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
-import type { Bindings } from '../index';
+import type { Bindings, Variables } from '../index';
 import { authMiddleware } from '../middleware/auth';
 import { ResendService } from '../services/resend';
 
-const orderRoutes = new Hono<{ Bindings: Bindings }>();
+const orderRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
 
 // 認証ミドルウェアを適用
 orderRoutes.use('/*', authMiddleware);

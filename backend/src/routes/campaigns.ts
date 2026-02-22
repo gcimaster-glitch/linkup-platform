@@ -2,9 +2,10 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { authMiddleware, organizerMiddleware } from '../middleware/auth';
-import type { Bindings } from '../index';
+import type { Bindings, Variables } from '../index';
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
 
 // Auth Middleware for all routes
 app.use('*', authMiddleware);

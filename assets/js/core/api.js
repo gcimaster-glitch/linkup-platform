@@ -138,6 +138,22 @@ const Users = {
 };
 
 // ─────────────────────────────────────────
+// XSS対策ヘルパー（全ページで使用）
+// ─────────────────────────────────────────
+
+function _escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+window._escapeHtml = _escapeHtml;
+
+// ─────────────────────────────────────────
 // グローバル公開
 // ─────────────────────────────────────────
 

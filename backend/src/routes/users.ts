@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
-import type { Bindings } from '../index';
+import type { Bindings, Variables } from '../index';
 import { authMiddleware } from '../middleware/auth';
 
-const userRoutes = new Hono<{ Bindings: Bindings, Variables: { userId: string } }>();
+const userRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
 
 // 認証が必要なルート
 userRoutes.use('/*', authMiddleware);
@@ -209,14 +210,22 @@ userRoutes.get('/favorites/:eventId/check', async (c) => {
   }
 });
 
-const groupRoutes = new Hono<{ Bindings: Bindings }>();
-const ticketRoutes = new Hono<{ Bindings: Bindings }>();
-const orderRoutes = new Hono<{ Bindings: Bindings }>();
-const checkinRoutes = new Hono<{ Bindings: Bindings }>();
-const notificationRoutes = new Hono<{ Bindings: Bindings }>();
-const campaignRoutes = new Hono<{ Bindings: Bindings }>();
-const aiRoutes = new Hono<{ Bindings: Bindings }>();
-const webhookRoutes = new Hono<{ Bindings: Bindings }>();
+const groupRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+const ticketRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+const orderRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+const checkinRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+const notificationRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+const campaignRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+const aiRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
+const webhookRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
 
 export {
   userRoutes,

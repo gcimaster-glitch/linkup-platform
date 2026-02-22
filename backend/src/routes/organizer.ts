@@ -3,9 +3,10 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { authMiddleware, organizerMiddleware } from '../middleware/auth';
-import type { Bindings } from '../index';
+import type { Bindings, Variables } from '../index';
 
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
+
 
 // Middleware
 app.use('*', authMiddleware);

@@ -1,722 +1,143 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Cache Control -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    
-    <!-- Version: 2026-02-10-v3.1-CACHE-FIX | Build: Service-Worker-Disabled | Commit: cb6890e -->
-    
-    <title>LinkUp - 日本最大級のイベント・コミュニティプラットフォーム</title>
-    
-    <!-- SEO & OGP -->
-    <meta name="description" content="LinkUpは日本最大級のイベント・コミュニティプラットフォームです。テック、ビジネス、音楽、アートなど多彩なイベントが見つかります。">
-    <meta property="og:title" content="LinkUp - 日本最大級のイベント・コミュニティプラットフォーム">
-    <meta property="og:description" content="人と体験をつなぐ、日本最大級のイベントプラットフォーム。新しい発見がここにあります。">
-    <meta property="og:url" content="https://link-up.live">
-    <meta property="og:image" content="https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="LinkUp">
-    <meta name="twitter:description" content="日本最大級のイベントプラットフォーム">
-    <link rel="canonical" href="https://link-up.live">
-    <link rel="icon" type="image/png" href="assets/logo.png">
-    
-    <!-- Performance: Inline critical CSS to prevent FOUC -->
-    <style>
-        /* Critical styles for initial render */
-        body { 
-            margin: 0; 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-            background: #f8fafc; 
-            color: #1e293b;
-            /* Hide page until fully rendered */
-            opacity: 0;
-            transition: opacity 0.4s ease-in;
-        }
-        body.page-loaded { 
-            opacity: 1; 
-        }
-        #app { min-height: 100vh; }
-        .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s ease-in-out infinite; }
-        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        /* Accessibility: Ensure readable text colors */
-        .bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50 { color: #1e293b !important; }
-        .bg-white *, .bg-slate-50 *, .bg-slate-100 *, .bg-gray-50 * { color: inherit; }
-        
-        /* 🎯 Radio Button Selection Indicator */
-        .radio-box {
-            transition: all 0.2s ease;
-        }
-        input[type="radio"]:checked + div .radio-box {
-            border-color: #2563EB !important;
-            background-color: #2563EB !important;
-        }
-        input[type="radio"]:checked + div .radio-box div {
-            background-color: white !important;
-        }
-        
-        /* ====== DASHBOARD PAGE LAYOUT (Phase 2) ====== */
-        
-        /* Touch Target Optimization */
-        .touch-target {
-            min-width: 44px;
-            min-height: 44px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        @media (hover: none) and (pointer: coarse) {
-            /* Touch device specific styles */
-            button, a, [onclick] {
-                -webkit-tap-highlight-color: rgba(37, 99, 235, 0.1);
-            }
-            
-            .touch-target {
-                min-width: 48px;
-                min-height: 48px;
-            }
-        }
-        
-        .dashboard-layout {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            background: #f8fafc;
-        }
-        
-        .dashboard-header-cover {
-            width: 100%;
-            height: 200px;
-            background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
-            position: relative;
-            margin-bottom: 80px;
-        }
-        
-        .dashboard-header-cover::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 40px;
-            background: linear-gradient(to bottom, transparent, #f8fafc);
-        }
-        
-        .dashboard-profile-card {
-            position: absolute;
-            bottom: -60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            z-index: 10;
-        }
-        
-        .dashboard-profile-card img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            border: 4px solid white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        .dashboard-body {
-            display: flex;
-            max-width: 1400px;
-            margin: 0 auto;
-            width: 100%;
-            flex: 1;
-        }
-        
-        .dashboard-sidenav {
-            width: 260px;
-            background: white;
-            border-right: 1px solid #e2e8f0;
-            position: sticky;
-            top: 64px;
-            height: calc(100vh - 64px);
-            overflow-y: auto;
-            padding: 1.5rem 0;
-        }
-        
-        .dashboard-sidenav .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 24px;
-            color: #64748b;
-            text-decoration: none;
-            transition: all 0.2s;
-            position: relative;
-            font-weight: 500;
-        }
-        
-        .dashboard-sidenav .nav-item:hover {
-            background: #f1f5f9;
-            color: #2563EB;
-        }
-        
-        .dashboard-sidenav .nav-item.active {
-            background: #EFF6FF;
-            color: #2563EB;
-            font-weight: 600;
-        }
-        
-        .dashboard-sidenav .nav-item.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: #2563EB;
-        }
-        
-        .dashboard-sidenav .nav-item .badge {
-            margin-left: auto;
-            background: #EF4444;
-            color: white;
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-        
-        .dashboard-content {
-            flex: 1;
-            padding: 2rem;
-            background: #f8fafc;
-        }
-        
-        .breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: #64748b;
-            margin-bottom: 1.5rem;
-            padding: 12px 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        
-        .breadcrumb span {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .breadcrumb .active {
-            color: #0f172a;
-            font-weight: 600;
-        }
-        
-        .breadcrumb .separator {
-            color: #cbd5e1;
-        }
-        
-        /* Mobile: Bottom Tab Bar */
-        @media (max-width: 768px) {
-            /* Header adjustments */
-            .dashboard-header-cover {
-                height: 150px;
-                margin-bottom: 60px;
-            }
-            
-            .dashboard-profile-card {
-                bottom: -40px;
-                padding: 12px;
-                gap: 12px;
-                max-width: 90%;
-            }
-            
-            .dashboard-profile-card img {
-                width: 60px;
-                height: 60px;
-            }
-            
-            /* Fixed bottom navigation */
-            .dashboard-sidenav {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                width: 100%;
-                height: auto;
-                max-height: 70px;
-                top: auto;
-                border-right: none;
-                border-top: 1px solid #e2e8f0;
-                display: flex;
-                justify-content: space-around;
-                align-items: center;
-                padding: 6px 0;
-                z-index: 1000;
-                background: white;
-                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-                overflow: visible;
-            }
-            
-            .dashboard-sidenav .nav-item {
-                flex-direction: column;
-                padding: 6px 8px;
-                font-size: 10px;
-                gap: 2px;
-                flex: 1;
-                text-align: center;
-                min-width: 60px;
-                max-width: 80px;
-                white-space: nowrap;
-                overflow: hidden;
-            }
-            
-            .dashboard-sidenav .nav-item .material-icons-outlined {
-                font-size: 22px;
-            }
-            
-            .dashboard-sidenav .nav-item .badge {
-                position: absolute;
-                top: 2px;
-                right: 50%;
-                transform: translateX(10px);
-                margin: 0;
-                font-size: 9px;
-                min-width: 16px;
-                height: 16px;
-                padding: 0 4px;
-            }
-            
-            /* Content spacing for bottom nav */
-            .dashboard-content {
-                padding: 1rem;
-                padding-bottom: 6rem;
-            }
-            
-            .breadcrumb {
-                font-size: 0.75rem;
-                padding: 8px 12px;
-            }
-            
-            /* Prevent body scroll when modal is open */
-            body.modal-open {
-                overflow: hidden;
-                position: fixed;
-                width: 100%;
-            }
-        }
-        
-        /* Tablet */
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .dashboard-sidenav {
-                width: 200px;
-            }
-            
-            .dashboard-sidenav .nav-item {
-                padding: 10px 16px;
-                font-size: 14px;
-            }
-        }
-    </style>
-    
-    <!-- Performance: Critical resource hints -->
-    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-    <link rel="dns-prefetch" href="https://unpkg.com">
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-    <link rel="dns-prefetch" href="https://fonts.gstatic.com">
-    <link rel="dns-prefetch" href="https://images.unsplash.com">
-    <link rel="dns-prefetch" href="https://linkup-backend.gcimaster.workers.dev">
-    
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#2563EB">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="LinkUp">
-    <link rel="apple-touch-icon" href="/assets/logo.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkUp - イベント・コミュニティプラットフォーム</title>
 
-    <!-- Performance: Async loading of non-critical resources -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Leaflet CSS & JS for Real Maps - Load only when needed -->
-    <link rel="preload" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"></noscript>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-    
-    <!-- Performance: Async font loading -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript>
-        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-    </noscript>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#2563EB',
-                        secondary: '#1E40AF',
-                        accent: '#F59E0B',
-                        dark: '#0F172A',
-                        light: '#F8FAFC',
-                        surface: '#FFFFFF'
-                    },
-                    fontFamily: {
-                        sans: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
-                    },
-                    boxShadow: {
-                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                        'float': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background-color: #F8FAFC; color: #1E293B; }
-        
-        /* 🎨 Brand Colors - Explicit Definition */
-        .bg-primary { background-color: #2563EB !important; color: white !important; }
-        .text-primary { color: #2563EB !important; }
-        .border-primary { border-color: #2563EB !important; }
-        .hover\:bg-blue-700:hover { background-color: #1D4ED8 !important; }
-        .hover\:bg-blue-600:hover { background-color: #2563EB !important; }
-        
-        /* 🎨 Modern Header Gradient */
-        /* 🎨 ヘッダーグラデーションバリエーション（3-4回アクセスで切り替わる） */
-        .header-gradient {
-            backdrop-filter: blur(20px);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            transition: background 0.8s ease-in-out;
-        }
-        
-        /* Variation 1: Blue → Purple (デフォルト) */
-        .header-gradient-1 {
-            background: linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(124, 58, 237, 0.95) 100%);
-        }
-        
-        /* Variation 2: Pink → Orange */
-        .header-gradient-2 {
-            background: linear-gradient(135deg, rgba(236, 72, 153, 0.95) 0%, rgba(251, 146, 60, 0.95) 100%);
-        }
-        
-        /* Variation 3: Teal → Blue */
-        .header-gradient-3 {
-            background: linear-gradient(135deg, rgba(20, 184, 166, 0.95) 0%, rgba(59, 130, 246, 0.95) 100%);
-        }
-        
-        /* Variation 4: Purple → Red */
-        .header-gradient-4 {
-            background: linear-gradient(135deg, rgba(147, 51, 234, 0.95) 0%, rgba(239, 68, 68, 0.95) 100%);
-        }
-        
-        .hero-gradient { background: linear-gradient(135deg, #0F172A 0%, #1E40AF 100%); }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        .modal-enter { opacity: 0; transform: scale(0.95); }
-        .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
-        .modal-exit { opacity: 1; transform: scale(1); }
-        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: all 0.2s ease-in; }
-        
-        /* Map Pin Animation */
-        .map-pin { position: absolute; width: 32px; height: 32px; background: #EF4444; border-radius: 50% 50% 0 50%; transform: rotate(45deg); cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 2px solid white; z-index: 10; }
-        .map-pin:hover { transform: rotate(45deg) scale(1.2); z-index: 20; }
-        .map-pin::after { content: ''; position: absolute; width: 10px; height: 10px; background: white; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        
-        /* Tooltip for map */
-        .pin-tooltip { position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background: white; padding: 8px 12px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 30; font-weight: bold; color: #1E293B; }
-        .pin-tooltip::after { content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); border-width: 6px 6px 0; border-style: solid; border-color: white transparent transparent transparent; }
-        .map-pin:hover .pin-tooltip { opacity: 1; }
+  <!-- SEO -->
+  <meta name="description" content="LinkUpは日本最大級のイベント・コミュニティプラットフォームです。テック、ビジネス、音楽、アートなど多彩なイベントが見つかります。">
+  <meta property="og:title" content="LinkUp - イベント・コミュニティプラットフォーム">
+  <meta property="og:description" content="人と体験をつなぐイベントプラットフォーム">
+  <meta property="og:url" content="https://link-up.live">
+  <meta property="og:type" content="website">
+  <link rel="canonical" href="https://link-up.live">
+  <link rel="icon" type="image/png" href="/assets/logo.png">
 
-        /* Floating Campaign Banner */
-        .campaign-banner { animation: float 6s ease-in-out infinite; }
-        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
-    </style>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { primary: '#2563EB' }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Inter', 'Noto Sans JP', sans-serif; background: #f8fafc; }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased">
+<body>
 
-    <!-- 🎨 Modern Header with Brand Gradient -->
-    <header class="fixed w-full z-50 header-gradient transition-all duration-300" id="main-header">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-14 sm:h-16">
-                <!-- 🔥 New Logo System - Mobile Optimized -->
-                <div class="flex items-center cursor-pointer group" onclick="router('home')">
-                    <!-- Modern Icon Badge -->
-                    <div class="relative">
-                        <div class="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform" style="box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                            <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="#2563EB"/>
-                                <path d="M2 17L12 22L22 17" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M2 12L12 17L22 12" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <!-- Wordmark -->
-                    <div class="ml-2 sm:ml-3">
-                        <span class="text-lg sm:text-2xl font-bold text-white" style="letter-spacing: -0.02em;">LinkUp</span>
-                        <div class="hidden sm:block text-[10px] text-white/80 font-medium tracking-wide -mt-1">人と体験をつなぐ</div>
-                    </div>
-                </div>
+  <!-- ───── ナビゲーション ───── -->
+  <nav class="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <!-- ロゴ -->
+      <button onclick="AppRouter.go('home')" class="text-2xl font-bold text-blue-600 tracking-tight">
+        LinkUp
+      </button>
 
-                <!-- Search (Desktop) -->
-                <div class="hidden md:flex flex-1 max-w-lg mx-8 relative">
-                    <input type="text" id="searchInput" placeholder="🔍 イベントを検索..." 
-                           oninput="renderEventListOnly(this.value)"
-                           class="w-full pl-10 pr-4 py-2 bg-white/20 border border-white/30 rounded-full focus:ring-2 focus:ring-white focus:bg-white/30 transition-all text-sm text-white placeholder-white/70"
-                           style="backdrop-filter: blur(10px);">
-                    <span class="material-icons-outlined absolute left-3 top-2 text-white/70">search</span>
-                </div>
+      <!-- 右側 -->
+      <div class="flex items-center gap-3">
 
-                <!-- Navigation - Mobile Optimized -->
-                <nav class="flex items-center space-x-1 sm:space-x-3">
-                    <button onclick="router('admin')" class="hidden md:flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-full hover:from-red-600 hover:to-red-700 transition shadow-lg text-xs sm:text-sm font-bold border-2 border-white/50 hover:scale-105" id="admin-btn" style="display: none;">
-                        <span class="material-icons-outlined text-xs sm:text-sm mr-1">admin_panel_settings</span> 管理者
-                    </button>
-                    <button onclick="router('organizer')" class="hidden md:flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-white/90 text-blue-600 rounded-full hover:bg-white transition backdrop-blur-sm text-xs sm:text-sm font-bold border-2 border-white shadow-md hover:shadow-lg" id="organizer-btn" style="display: none;">
-                         <span class="hidden sm:inline">📈 </span>主催者
-                    </button>
-                    <button onclick="openCreateModal()" class="hidden md:flex items-center px-3 sm:px-5 py-1.5 sm:py-2.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full hover:from-yellow-500 hover:to-orange-600 transition shadow-xl text-xs sm:text-sm font-bold border-2 border-white/50 hover:scale-105" id="create-event-btn" style="display: none;">
-                        <span class="material-icons-outlined text-xs sm:text-sm mr-1">add_circle</span> <span class="hidden sm:inline">イベント</span>作成
-                    </button>
-                    
-                    <div id="nav-auth-section" class="flex items-center">
-                        <!-- Injected by JS -->
-                    </div>
-                </nav>
-            </div>
+        <!-- 未ログイン -->
+        <div id="nav-auth" class="flex items-center gap-2">
+          <button onclick="AppUI.openLoginModal()"
+            class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition">
+            ログイン
+          </button>
+          <button onclick="AppUI.openRegisterModal()"
+            class="px-4 py-2 text-sm font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            新規登録
+          </button>
         </div>
-    </header>
 
-    <!-- Main Content Area -->
-    <main id="app" class="pt-16 min-h-screen pb-20">
-        <!-- Views will be rendered here -->
-    </main>
+        <!-- ログイン済み -->
+        <div id="nav-user" class="hidden flex items-center gap-3">
 
-    <!-- Rich Footer -->
-    <footer class="bg-slate-900 text-white pt-12 pb-8 border-t border-slate-800">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-                <div class="col-span-1 md:col-span-1">
-                    <div class="flex items-center mb-4 cursor-pointer group" onclick="router('home')">
-                        <div class="relative mr-3">
-                            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
-                                <span class="text-2xl">🎵</span>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent" style="font-size: 1.5rem;">LinkUp</div>
-                            <div class="text-xs text-slate-400 mt-0.5">イベントをもっと楽しく</div>
-                        </div>
-                    </div>
-                    <p class="text-slate-400 text-sm leading-relaxed">
-                        人と体験をつなぐ、<br>日本最大級のイベントプラットフォーム。<br>
-                        新しい発見がここにあります。
-                    </p>
-                    <div class="flex space-x-4 mt-6">
-                        <a href="#" class="text-slate-400 hover:text-white transition"><i class="fab fa-twitter"></i>(X)</a>
-                        <a href="#" class="text-slate-400 hover:text-white transition">Instagram</a>
-                        <a href="#" class="text-slate-400 hover:text-white transition">Note</a>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold mb-4 text-blue-400">サービス</h3>
-                    <ul class="space-y-2 text-slate-300 text-sm">
-                        <li><a href="#" onclick="event.preventDefault(); router('home')" class="hover:text-blue-300 transition">イベントを探す</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); openCreateModal()" class="hover:text-blue-300 transition">イベントを作成</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'community'})" class="hover:text-blue-300 transition">コミュニティ機能</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'guide'})" class="hover:text-blue-300 transition">LinkUp Premium</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold mb-4 text-blue-400">サポート・企業</h3>
-                    <ul class="space-y-2 text-slate-300 text-sm">
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'help'})" class="hover:text-blue-300 transition">ヘルプセンター</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'about'})" class="hover:text-blue-300 transition">運営会社</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'terms'})" class="hover:text-blue-300 transition">利用規約</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'privacy'})" class="hover:text-blue-300 transition">プライバシーポリシー</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold mb-4 text-blue-400">主催者向け</h3>
-                    <ul class="space-y-2 text-slate-300 text-sm">
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'guide'})" class="hover:text-blue-300 transition">主催者ガイド</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'guide'})" class="hover:text-blue-300 transition">料金プラン</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'about'})" class="hover:text-blue-300 transition">成功事例</a></li>
-                        <li><a href="#" onclick="event.preventDefault(); router('static', {page: 'about'})" class="hover:text-blue-300 transition text-accent">法人お問い合わせ</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-                <p class="text-slate-500 text-xs">© 2026 LinkUp Inc. All rights reserved.</p>
-                
-                <!-- Development Shortcuts -->
-                <div class="flex space-x-3 my-4 md:my-0 bg-slate-800/50 p-1.5 rounded-lg border border-slate-700/50">
-                    <span class="text-[10px] text-slate-500 font-bold px-2 py-1">DEV MODE:</span>
-                    <button onclick="debugLogin('admin')" class="text-[10px] bg-red-900/30 text-red-400 border border-red-900/50 px-3 py-1 rounded hover:bg-red-900/50 transition flex items-center">
-                        <span class="material-icons-outlined text-[10px] mr-1">admin_panel_settings</span>総管理者
-                    </button>
-                    <button onclick="debugLogin('organizer')" class="text-[10px] bg-blue-900/30 text-blue-400 border border-blue-900/50 px-3 py-1 rounded hover:bg-blue-900/50 transition flex items-center">
-                        <span class="material-icons-outlined text-[10px] mr-1">domain</span>主催者管理
-                    </button>
-                </div>
+          <!-- 主催者ダッシュボードボタン（organizer/admin のみ表示） -->
+          <button id="nav-organizer-btn"
+            onclick="AppRouter.go('organizer')"
+            class="hidden items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition">
+            <span class="material-icons-outlined text-sm">event</span>
+            <span class="hidden md:inline">主催者</span>
+          </button>
 
-                <div class="flex space-x-6 mt-4 md:mt-0 text-xs text-slate-500">
-                    <span class="cursor-pointer hover:text-white transition" onclick="router('static', {page: 'tokusho'})">特定商取引法に基づく表記</span>
-                    <span class="cursor-pointer hover:text-white transition" onclick="router('static', {page: 'tokusho'})">資金決済法に基づく表示</span>
-                </div>
-            </div>
+          <!-- 管理コンソールボタン（admin のみ表示） -->
+          <button id="nav-admin-btn"
+            onclick="AppRouter.go('admin')"
+            class="hidden items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition">
+            <span class="material-icons-outlined text-sm">admin_panel_settings</span>
+            <span class="hidden md:inline">管理</span>
+          </button>
+
+          <!-- アバター＋名前（ダッシュボードへ） -->
+          <button onclick="AppRouter.go('dashboard')"
+            class="flex items-center gap-2 hover:opacity-80 transition">
+            <img id="nav-avatar" src="" alt="avatar" class="w-8 h-8 rounded-full object-cover border border-slate-200">
+            <span id="nav-name" class="text-sm font-medium text-slate-700 hidden md:block"></span>
+          </button>
+
+          <!-- ログアウト -->
+          <button onclick="AppAuth.logout()"
+            class="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 border border-slate-200 rounded-lg hover:border-slate-300 transition">
+            ログアウト
+          </button>
         </div>
-    </footer>
 
-    <!-- Modals -->
-    <div id="modal-container" class="fixed inset-0 z-[100] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm" onclick="closeModal()"></div>
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div id="modal-content" class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-                <!-- Content injected via JS -->
-            </div>
-        </div>
+      </div>
     </div>
+  </nav>
 
-    <!-- Toast Notification (Center Top) -->
-    <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-[110] transition-all duration-300 opacity-0 pointer-events-none translate-y-[-20px] bg-slate-900 text-white shadow-2xl rounded-full px-6 py-3 flex items-center min-w-[300px] max-w-[90%] justify-center">
-        <span class="material-icons-outlined text-green-400 mr-2" id="toast-icon">check_circle</span>
-        <div class="flex-1 text-center">
-            <p class="text-sm font-bold" id="toast-message">メッセージ</p>
-        </div>
-    </div>
+  <!-- ───── メインコンテンツ ───── -->
+  <main id="app">
+    <!-- AppRouter.init() がここにページを描画する -->
+  </main>
 
-    <!-- Support Chat Widget -->
-    <div id="chat-widget" class="fixed bottom-6 right-6 z-[100] hidden">
-        <!-- Chat Button -->
-        <button id="chat-toggle-btn" onclick="toggleChatWindow()" class="w-14 h-14 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-105 transition transform">
-            <span class="material-icons-outlined text-2xl">smart_toy</span>
-        </button>
+  <!-- ───── モーダル ───── -->
+  <div id="modal-container" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+       onclick="if(event.target===this) AppUI.closeModal()">
+    <div id="modal-content"></div>
+  </div>
 
-        <!-- Chat Window -->
-        <div id="chat-window" class="absolute bottom-16 right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform scale-90 opacity-0 pointer-events-none transition-all duration-300 origin-bottom-right">
-            <div class="bg-slate-900 p-4 flex justify-between items-center text-white">
-                <div class="flex items-center">
-                    <span class="material-icons-outlined text-purple-400 mr-2">auto_awesome</span>
-                    <span class="font-bold">LinkUp AI Support</span>
-                </div>
-                <button onclick="toggleChatWindow()" class="text-slate-400 hover:text-white"><span class="material-icons-outlined">close</span></button>
-            </div>
-            
-            <div id="chat-messages" class="h-80 overflow-y-auto p-4 bg-slate-50 space-y-4">
-                <div class="flex items-start">
-                    <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-2 flex-shrink-0">
-                        <span class="material-icons-outlined text-sm">smart_toy</span>
-                    </div>
-                    <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 max-w-[80%]">
-                        こんにちは！LinkUp AIサポートです。<br>イベント作成やチケット購入について、何かお手伝いできることはありますか？
-                    </div>
-                </div>
-            </div>
-            
-            <div class="p-3 bg-white border-t border-slate-100">
-                <form onsubmit="sendChatMessage(event)" class="flex items-center">
-                    <input type="text" id="chat-input" placeholder="質問を入力..." class="flex-1 bg-slate-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-purple-500 outline-none">
-                    <button type="submit" class="ml-2 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center hover:bg-purple-700 transition">
-                        <span class="material-icons-outlined text-sm">send</span>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
+  <!-- ───── JavaScript（読み込み順序が重要）───── -->
 
-    <!-- Script -->
-    <script src="assets/js/app-legacy.js"></script>
-    
-    <!-- Service Worker - DISABLED for cache issues -->
-    <script>
-        // Unregister ALL existing service workers to clear cache
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister().then(function(success) {
-                        console.log('🗑️ Service Worker unregistered:', success);
-                    });
-                }
-            });
-        }
-        
-        // Clear all caches
-        if ('caches' in window) {
-            caches.keys().then(function(names) {
-                for (let name of names) {
-                    caches.delete(name).then(function(success) {
-                        console.log('🗑️ Cache deleted:', name);
-                    });
-                }
-            });
-        }
-        
-        console.log('🔄 All service workers and caches cleared. Please refresh the page.');
-    </script>
-    
-    <!-- Load QR libraries after main content -->
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    
-    <!-- 🚀 Phase 1 - Modular Architecture (Day 1-2) -->
-    <!-- Core Modules -->
-    <script src="assets/js/core/store.js"></script>
-    <script src="assets/js/core/api.js"></script>
-    <script src="assets/js/core/auth.js"></script>
-    <script src="assets/js/core/router.js"></script>
-    
-    <!-- Page Modules -->
-    <script src="assets/js/pages/home.js"></script>
-    <script src="assets/js/pages/events.js"></script>
-    <script src="assets/js/pages/dashboard.js"></script>
-    <script src="assets/js/pages/tickets.js"></script>
-    <script src="assets/js/pages/payments.js"></script>
-    
-    <!-- Module Initialization -->
-    <script>
-        console.log('%c🚀 Modular Architecture Loaded', 'color: #10B981; font-weight: bold; font-size: 14px;');
-        console.log('%c✅ Core Modules: router, auth, store, api', 'color: #3B82F6;');
-        console.log('%c✅ Page Modules: home, events, dashboard, tickets, payments', 'color: #3B82F6;');
-        console.log('%c📊 Total Modules: 9 files, 110.9 KB', 'color: #8B5CF6;');
-        console.log('%c🎯 Error Impact: -98% | Debug Time: -70% | Maintainability: +275%', 'color: #10B981; font-weight: bold;');
-    </script>
-    
-    <!-- Performance Monitoring -->
-    <script>
-        // Monitor page load performance
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                if (window.performance && performance.getEntriesByType) {
-                    const perfData = performance.getEntriesByType('navigation')[0];
-                    if (perfData) {
-                        const loadTime = perfData.loadEventEnd - perfData.fetchStart;
-                        const domReady = perfData.domContentLoadedEventEnd - perfData.fetchStart;
-                        console.log('%c⚡ Performance Metrics:', 'color: #8B5CF6; font-weight: bold;');
-                        console.log(`  DOM Ready: ${Math.round(domReady)}ms`);
-                        console.log(`  Page Load: ${Math.round(loadTime)}ms`);
-                        console.log(`  ${loadTime < 3000 ? '✅ Fast!' : loadTime < 5000 ? '⚠️ Could be faster' : '❌ Too slow'}`);
-                    }
-                }
-            }, 0);
-        });
-    </script>
+  <!-- 1. API クライアント（依存なし） -->
+  <script src="/assets/js/core/api.js"></script>
+
+  <!-- 2. UI ユーティリティ（依存なし） -->
+  <script src="/assets/js/core/ui.js"></script>
+
+  <!-- 3. 認証（API + UI に依存） -->
+  <script src="/assets/js/core/auth.js"></script>
+
+  <!-- 4. ルーター（Auth + UI に依存） -->
+  <script src="/assets/js/core/router.js"></script>
+
+  <!-- 5. ページ描画関数（Router + API に依存） -->
+  <script src="/assets/js/pages/home.js"></script>
+  <script src="/assets/js/pages/detail.js"></script>
+  <script src="/assets/js/pages/dashboard.js"></script>
+  <script src="/assets/js/pages/organizer.js"></script>
+
+  <!-- 6. アプリ起動 -->
+  <script>
+    (async () => {
+      // 認証状態を復元（tokenがあれば /api/auth/me を呼ぶ）
+      await AppAuth.init();
+
+      // URLに応じてページを表示
+      AppRouter.init();
+    })();
+  </script>
+
 </body>
 </html>

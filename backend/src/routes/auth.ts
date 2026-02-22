@@ -1,476 +1,278 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
-import { sign } from 'hono/jwt';
+import { sign, verify } from 'hono/jwt';
 import * as bcrypt from 'bcryptjs';
 import type { Bindings } from '../index';
-import { ResendService } from '../services/resend';
 import { authMiddleware } from '../middleware/auth';
+
+/**
+ * Auth Routes
+ *
+ * セキュリティポリシー:
+ * - JWT署名は必ず検証する（バイパス禁止）
+ * - パスワードはbcryptのみ（プレーンテキスト比較禁止）
+ * - 登録できるロールは attendee/organizer のみ（admin不可）
+ * - 開発用エンドポイントは本番では無効化
+ *
+ * 実際のDBスキーマ（schema-checkで確認済み）:
+ *   user_id, email, phone_number, password_hash, display_name,
+ *   avatar_url, role, stripe_customer_id, stripe_account_id,
+ *   kyc_status, kyc_verification_id, two_factor_enabled,
+ *   two_factor_secret, created_at, updated_at
+ */
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+// ─── バリデーションスキーマ ────────────────────────
+
 const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(4),
-  name: z.string().min(1).optional(),
-  role: z.enum(['attendee', 'organizer']).default('attendee'),
+  email:    z.string().email('有効なメールアドレスを入力してください'),
+  password: z.string().min(8, 'パスワードは8文字以上にしてください'),
+  name:     z.string().min(1).max(50).optional(),
+  // attendee/organizer のみ登録可（admin は管理者が付与）
+  role:     z.enum(['attendee', 'organizer']).default('attendee'),
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
+  email:    z.string().email(),
+  password: z.string().min(1),
 });
 
-// 新規登録（メール認証付き）
+// ─── ヘルパー ─────────────────────────────────────
+
+function buildUserResponse(user: any) {
+  return {
+    user_id:      user.user_id,
+    id:           user.user_id,
+    display_name: user.display_name || user.email?.split('@')[0] || 'ユーザー',
+    name:         user.display_name || user.email?.split('@')[0] || 'ユーザー',
+    email:        user.email,
+    role:         user.role || 'attendee',
+    avatar_url:   user.avatar_url,
+    icon_url:     user.avatar_url,
+    kyc_status:   user.kyc_status || 'unverified',
+    kycStatus:    user.kyc_status || 'unverified',
+  };
+}
+
+async function generateToken(userId: string, role: string, jwtSecret: string) {
+  return sign(
+    { sub: userId, role, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 },
+    jwtSecret
+  );
+}
+
+// ─── 新規登録 ─────────────────────────────────────
+
 app.post('/register', zValidator('json', registerSchema), async (c) => {
   const { email, password, name, role } = c.req.valid('json');
 
   try {
     const db = c.env.DB;
-    
-    // Check duplication
-    if (db) {
-        const existing = await db.prepare('SELECT user_id FROM users WHERE email = ?').bind(email).first();
-        if (existing) {
-            return c.json({ error: 'Email already exists' }, 409);
-        }
+    if (!db) return c.json({ error: 'Database not available' }, 500);
+
+    // 重複チェック
+    const existing = await db.prepare(
+      'SELECT user_id FROM users WHERE email = ?'
+    ).bind(email).first();
+    if (existing) {
+      return c.json({ error: 'このメールアドレスは既に登録されています' }, 409);
     }
 
-    const userId = `u-${Date.now()}`; // Simple ID
-    const userName = name || email.split('@')[0];
-    const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=2563EB&color=fff`;
-    
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
-    
-    // Generate email verification token
-    const verificationToken = uuidv4();
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+    const userId      = `u-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const displayName = name || email.split('@')[0];
+    const avatarUrl   = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563EB&color=fff`;
+    // 必ずbcryptでハッシュ化（プレーンテキスト保存禁止）
+    const passwordHash = await bcrypt.hash(password, 12);
 
-    if (db) {
-        // Insert user with email verification fields
-        try {
-            // マイグレーション0008実行後は以下のカラムが存在する想定
-            await db.prepare(
-                `INSERT INTO users (
-                    user_id, email, password_hash, name, display_name, 
-                    user_type, role, avatar_url, 
-                    kyc_status, email_verified, 
-                    email_verification_token, email_verification_expires,
-                    created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-            ).bind(
-                userId, email, passwordHash, userName, userName,
-                role, role, avatarUrl,
-                'unverified', 0,
-                verificationToken, verificationExpires
-            ).run();
-        } catch (insertError: any) {
-            console.error('User insert error:', insertError);
-            // フォールバック: 基本カラムのみで挿入（マイグレーション前対応）
-            try {
-                await db.prepare(
-                    'INSERT INTO users (user_id, email, password_hash, name, user_type, avatar_url, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime(\'now\'))'
-                ).bind(userId, email, passwordHash, userName, role, avatarUrl).run();
-            } catch (fallbackError: any) {
-                console.error('Fallback insert error:', fallbackError);
-                return c.json({ error: 'ユーザー登録に失敗しました' }, 500);
-            }
-        }
-        
-        if (role === 'organizer') {
-            try {
-                await db.prepare(
-                    'INSERT INTO organizer_profiles (organizer_id, organization_name, rating) VALUES (?, ?, 0.0)'
-                ).bind(userId, userName).run();
-            } catch (orgError: any) {
-                console.error('Organizer profile creation error:', orgError);
-                // オーガナイザープロフィール作成失敗は非致命的エラーとして扱う
-            }
-        }
-        
-        // Send verification email
-        if (c.env.RESEND_API_KEY) {
-            try {
-                const resend = new ResendService(c.env.RESEND_API_KEY);
-                const verificationUrl = `${c.env.FRONTEND_URL || 'https://link-up.live'}/verify-email?token=${verificationToken}`;
-                
-                const emailResult = await resend.sendEmail(
-                    email,
-                    'LinkUp - メールアドレスの確認',
-                    `
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <style>
-                            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
-                            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-                            h1 { color: #2563EB; font-size: 28px; margin-bottom: 20px; }
-                            p { color: #475569; font-size: 16px; line-height: 1.6; margin: 15px 0; }
-                            .button { display: inline-block; background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; margin: 20px 0; }
-                            .footer { color: #94a3b8; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <h1>🎉 LinkUpへようこそ！</h1>
-                            <p>アカウント登録ありがとうございます。</p>
-                            <p>以下のボタンをクリックして、メールアドレスを確認してください：</p>
-                            <a href="${verificationUrl}" class="button">メールアドレスを確認する</a>
-                            <p style="color: #64748b; font-size: 14px;">このリンクは24時間有効です。</p>
-                            <div class="footer">
-                                <p>このメールに心当たりがない場合は、このメールを無視してください。</p>
-                                <p>© 2026 LinkUp. All rights reserved.</p>
-                            </div>
-                        </div>
-                    </body>
-                    </html>
-                    `
-                );
-                
-                console.log(`[Email Verification] Token: ${verificationToken}, URL: ${verificationUrl}, Result:`, emailResult);
-                
-                // メール送信成功: 確認待ち状態で返す
-                return c.json({ 
-                    success: true, 
-                    message: '登録が完了しました。確認メールを送信しました。',
-                    email_verification_required: true,
-                    user: { 
-                        id: userId,
-                        user_id: userId, 
-                        name: userName,
-                        display_name: userName, 
-                        email, 
-                        role, 
-                        icon: avatarUrl,
-                        avatar_url: avatarUrl,
-                        kycStatus: 'unverified',
-                        kyc_status: 'unverified',
-                        emailVerified: false
-                    } 
-                }, 201);
-                
-            } catch (emailError: any) {
-                console.error('Email sending error:', emailError);
-                // メール送信失敗時は即座にログイン可能にする（フォールバック）
-            }
-        }
-    } else {
-        console.warn('DB binding not found, skipping persistence');
+    await db.prepare(
+      `INSERT INTO users (user_id, email, password_hash, display_name, avatar_url, role, kyc_status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))`
+    ).bind(userId, email, passwordHash, displayName, avatarUrl, role).run();
+
+    // 主催者の場合はorganizer_profilesにも追加
+    if (role === 'organizer') {
+      try {
+        await db.prepare(
+          `INSERT INTO organizer_profiles (organizer_id, organization_name, created_at)
+           VALUES (?, ?, datetime('now'))`
+        ).bind(userId, displayName).run();
+      } catch (e) {
+        console.warn('organizer_profiles insert skipped:', e);
+      }
     }
 
-    // Resend API キーがない場合、またはメール送信失敗時のフォールバック
-    // メール認証なしで即座にログイン可能
-    // JWTトークンを生成
-    const token = await sign({ 
-        sub: userId, 
-        role: role, 
-        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 
-    }, c.env.JWT_SECRET);
+    const token = await generateToken(userId, role, c.env.JWT_SECRET);
 
-    // Return success with token for immediate login
-    return c.json({ 
-      success: true, 
+    return c.json({
+      success: true,
       message: '登録が完了しました',
-      email_verification_required: false,  // メール認証スキップ
-      token,  // 即座にログイン可能
-      user: { 
-        id: userId,
-        user_id: userId, 
-        name: userName,
-        display_name: userName, 
-        email, 
-        role, 
-        icon: avatarUrl,
-        avatar_url: avatarUrl,
-        kycStatus: 'unverified',
-        kyc_status: 'unverified',
-        emailVerified: true  // メール認証済みとして扱う
-      } 
+      email_verification_required: false,
+      token,
+      user: buildUserResponse({ user_id: userId, email, display_name: displayName, avatar_url: avatarUrl, role }),
     }, 201);
 
-  } catch (error) {
-    console.error(error);
-    return c.json({ error: 'Registration failed' }, 500);
+  } catch (error: any) {
+    console.error('Register error:', error);
+    return c.json({ error: 'ユーザー登録に失敗しました' }, 500);
   }
 });
 
-// ログイン
+// ─── ログイン ─────────────────────────────────────
+
 app.post('/login', zValidator('json', loginSchema), async (c) => {
   const { email, password } = c.req.valid('json');
 
   try {
     const db = c.env.DB;
-    let user: any = null;
+    if (!db) return c.json({ error: 'Database not available' }, 500);
 
-    if (db) {
-        user = await db.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
-    } else {
-        // Mock fallback if DB is missing (should not be used in this deploy)
-        if (email === 'organizer@demo.com' && password === 'demo') {
-             user = { user_id: 'u-organizer-001', role: 'organizer', display_name: 'LinkUp Official', password_hash: '$2a$10$X7.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6', avatar_url: '...', kyc_status: 'verified' };
-        } else if (email === 'user@demo.com' && password === 'demo') {
-             user = { user_id: 'u-user-001', role: 'attendee', display_name: 'Demo User', password_hash: '$2a$10$X7.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6', avatar_url: '...', kyc_status: 'verified' };
-        }
-    }
-    
-    if (!user) {
-      return c.json({ error: 'Invalid credentials' }, 401);
+    const user: any = await db.prepare(
+      'SELECT * FROM users WHERE email = ?'
+    ).bind(email).first();
+
+    // ユーザーが存在しない場合も同じメッセージ（ユーザー存在列挙攻撃対策）
+    if (!user || !user.password_hash) {
+      return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401);
     }
 
-    // Verify Password
-    // In demo mode or if bcrypt hash is not standard (e.g. dummy from seed), allow 'demo' check if hash matches 'demo' string? 
-    // No, standard flow: bcrypt compare.
-    // The seed data has valid bcrypt hashes for 'demo' password: $2a$10$X7.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6.G.6
-    
-    // Fallback for demo users seeded with plain text or non-standard hash if any (though seed file uses bcrypt hash)
-    // If the hash in DB is exactly 'demo', compare plain text
-    let isValid = false;
-    if (user.password_hash === 'demo' && password === 'demo') {
-        isValid = true;
-    } else {
-        isValid = await bcrypt.compare(password, user.password_hash);
-    }
-    
+    // bcryptのみで検証（プレーンテキスト比較は禁止）
+    const isValid = await bcrypt.compare(password, user.password_hash);
     if (!isValid) {
-      return c.json({ error: 'Invalid credentials' }, 401);
+      return c.json({ error: 'メールアドレスまたはパスワードが正しくありません' }, 401);
     }
 
-    const token = await sign({ sub: user.user_id, role: user.role, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 }, c.env.JWT_SECRET);
+    const token = await generateToken(user.user_id, user.role || 'attendee', c.env.JWT_SECRET);
 
     return c.json({
       success: true,
       token,
-      user: {
-        user_id: user.user_id,
-        id: user.user_id,
-        display_name: user.display_name,
-        name: user.display_name,
-        email: user.email,
-        role: user.role,
-        icon_url: user.avatar_url,
-        icon: user.avatar_url,
-        avatar_url: user.avatar_url,
-        kyc_status: user.kyc_status || 'unverified',
-        kycStatus: user.kyc_status || 'unverified'
-      }
+      user: buildUserResponse(user),
     });
-  } catch (error) {
-    console.error(error);
-    return c.json({ error: 'Login failed' }, 500);
+
+  } catch (error: any) {
+    console.error('Login error:', error);
+    return c.json({ error: 'ログインに失敗しました' }, 500);
   }
 });
 
-// 現在のユーザー情報取得（認証必須）
-app.get('/me', authMiddleware, async (c) => {
-  try {
-    const user = c.get('user');
-    
-    if (!user) {
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
-    
-    return c.json({
-      success: true,
-      user: {
-        user_id: user.user_id,
-        id: user.user_id,
-        display_name: user.display_name,
-        name: user.display_name,
-        email: user.email,
-        role: user.role,
-        icon_url: user.avatar_url,
-        icon: user.avatar_url,
-        avatar_url: user.avatar_url,
-        kyc_status: user.kyc_status || 'unverified',
-        kycStatus: user.kyc_status || 'unverified'
-      }
-    });
-  } catch (error) {
-    console.error('Get me error:', error);
-    return c.json({ error: 'Failed to get user info' }, 500);
+// ─── 現在のユーザー情報取得 ───────────────────────
+
+app.get('/me', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return c.json({ error: 'Unauthorized: Missing token', message: 'ログインが必要です' }, 401);
   }
-});
 
-// デモ用: ユーザーリスト取得 (本来は管理者のみ)
-app.get('/users', async (c) => {
-    try {
-        if (c.env.DB) {
-            const result = await c.env.DB.prepare('SELECT email, name, role FROM users LIMIT 50').all();
-            return c.json({ users: result.results });
-        }
-        return c.json({ users: [], message: 'DB binding not found' });
-    } catch (e) {
-        return c.json({ error: e.message, stack: e.stack }, 500);
-    }
-});
+  const token = authHeader.split(' ')[1];
+  const jwtSecret = c.env.JWT_SECRET;
 
-// ヘルスチェック
-app.get('/health', (c) => c.json({ status: 'ok', db_binding: !!c.env.DB }));
+  if (!jwtSecret) {
+    return c.json({ error: 'Server configuration error' }, 500);
+  }
 
-// メール認証エンドポイント
-app.get('/verify-email', async (c) => {
-    const token = c.req.query('token');
-    
-    if (!token) {
-        return c.json({ error: 'Verification token is required' }, 400);
-    }
-    
-    try {
-        const db = c.env.DB;
-        
-        if (!db) {
-            return c.json({ error: 'Database not available' }, 500);
-        }
-        
-        // Query user with verification token
-        const user: any = await db.prepare(
-            'SELECT * FROM users WHERE email_verification_token = ? AND email_verification_expires > datetime("now")'
-        ).bind(token).first();
-        
-        if (!user) {
-            return c.json({ 
-                error: 'Invalid or expired verification token',
-                message: '確認リンクが無効または期限切れです。再度登録してください。'
-            }, 400);
-        }
-        
-        // Update user: verify email and clear token
-        await db.prepare(
-            'UPDATE users SET email_verified = 1, email_verification_token = NULL, email_verification_expires = NULL WHERE user_id = ?'
-        ).bind(user.user_id).run();
-        
-        // Generate JWT token for auto-login
-        const token_jwt = await sign({
-            userId: user.user_id,
-            email: user.email,
-            role: user.role,
-            exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // 7 days
-        }, c.env.JWT_SECRET || 'development-secret-key');
-        
-        return c.json({ 
-            success: true, 
-            message: 'メールアドレスが確認されました。ログインできます。',
-            token: token_jwt,
-            user: {
-                id: user.user_id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                icon: user.avatar_url,
-                kycStatus: user.kyc_status || 'unverified',
-                emailVerified: true
-            }
-        });
-        
-    } catch (error) {
-        console.error('Verification error:', error);
-        return c.json({ error: 'Verification failed', message: '確認に失敗しました。' }, 500);
-    }
-});
-
-// プロフィール取得（認証必要）
-app.get('/profile', authMiddleware, async (c) => {
+  // JWT署名を必ず検証（バイパス禁止）
+  let userId: string | null = null;
   try {
-    const userId = c.get('userId');
+    const payload = await verify(token, jwtSecret, 'HS256') as { sub?: string };
+    userId = payload.sub || null;
+  } catch (_verifyErr) {
+    return c.json({ error: 'Unauthorized: Invalid token', message: 'トークンが無効です。再ログインしてください。' }, 401);
+  }
+
+  if (!userId) {
+    return c.json({ error: 'Unauthorized: No user ID in token' }, 401);
+  }
+
+  try {
     const db = c.env.DB;
-    
+    if (!db) return c.json({ error: 'Database not available' }, 500);
+
     const user: any = await db.prepare(
-      'SELECT user_id, email, name, display_name, role, user_type, avatar_url, bio, cover_image_url, kyc_status, email_verified, created_at FROM users WHERE user_id = ?'
+      'SELECT user_id, email, display_name, avatar_url, role, kyc_status FROM users WHERE user_id = ?'
     ).bind(userId).first();
-    
+
     if (!user) {
       return c.json({ error: 'User not found' }, 404);
     }
-    
+
     return c.json({
-      id: user.user_id,
-      email: user.email,
-      name: user.name || user.display_name,
-      display_name: user.display_name,
-      role: user.role || user.user_type,
-      avatar_url: user.avatar_url,
-      bio: user.bio,
-      cover_image_url: user.cover_image_url,
-      kyc_status: user.kyc_status,
-      email_verified: user.email_verified,
-      created_at: user.created_at
+      success: true,
+      user: buildUserResponse(user),
     });
   } catch (error: any) {
-    console.error('Profile fetch error:', error);
-    return c.json({ error: error.message || 'Profile fetch failed' }, 500);
+    console.error('/me DB error:', error?.message || error);
+    return c.json({ error: 'Internal server error' }, 500);
   }
 });
 
-// プロフィール更新（認証必要）
-app.put('/profile', async (c) => {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader) return c.json({ error: 'Unauthorized' }, 401);
-  
-  const token = authHeader.split(' ')[1];
-  const db = c.env.DB;
-  
+// ─── プロフィール更新 ─────────────────────────────
+
+app.put('/profile', authMiddleware, async (c) => {
   try {
-    // JWTトークンの検証
-    const { verify } = await import('hono/jwt');
-    const payload = await verify(token, c.env.JWT_SECRET);
-    const userId = payload.sub;
-    
+    const userId = c.get('userId' as any) as string;
+    const db = c.env.DB;
+    if (!db) return c.json({ error: 'Database not available' }, 500);
+
     const body = await c.req.json();
-    const { avatar_url, name, bio, cover_image_url } = body;
-    
-    // プロフィール更新
     const updates: string[] = [];
-    const values: any[] = [];
-    
-    if (avatar_url !== undefined) {
+    const values: any[]     = [];
+
+    if (body.name !== undefined) {
+      updates.push('display_name = ?');
+      values.push(String(body.name).slice(0, 50));
+    }
+    if (body.avatar_url !== undefined) {
       updates.push('avatar_url = ?');
-      values.push(avatar_url);
+      values.push(body.avatar_url);
     }
-    if (name !== undefined) {
-      updates.push('name = ?');
-      values.push(name);
-    }
-    if (bio !== undefined) {
-      updates.push('bio = ?');
-      values.push(bio);
-    }
-    if (cover_image_url !== undefined) {
-      updates.push('cover_image_url = ?');
-      values.push(cover_image_url);
-    }
-    
+
     if (updates.length === 0) {
-      return c.json({ error: 'No fields to update' }, 400);
+      return c.json({ error: '更新するフィールドがありません' }, 400);
     }
-    
+
+    updates.push("updated_at = datetime('now')");
     values.push(userId);
-    
-    await db.prepare(`
-      UPDATE users 
-      SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP
-      WHERE user_id = ?
-    `).bind(...values).run();
-    
-    // 更新後のユーザー情報を取得
-    const user: any = await db.prepare('SELECT * FROM users WHERE user_id = ?')
-      .bind(userId).first();
-    
-    return c.json({ 
-      success: true, 
+
+    await db.prepare(
+      `UPDATE users SET ${updates.join(', ')} WHERE user_id = ?`
+    ).bind(...values).run();
+
+    const updated: any = await db.prepare(
+      'SELECT user_id, email, display_name, avatar_url, role, kyc_status FROM users WHERE user_id = ?'
+    ).bind(userId).first();
+
+    return c.json({
+      success: true,
       message: 'プロフィールを更新しました',
-      user: {
-        id: user.user_id,
-        name: user.name,
-        email: user.email,
-        avatar_url: user.avatar_url,
-        bio: user.bio
-      }
+      user: buildUserResponse(updated),
     });
+
   } catch (error: any) {
     console.error('Profile update error:', error);
-    return c.json({ error: error.message || 'Profile update failed' }, 500);
+    return c.json({ error: 'プロフィールの更新に失敗しました' }, 500);
+  }
+});
+
+// ─── ヘルスチェック ───────────────────────────────
+
+app.get('/health', (c) => c.json({ status: 'ok', db_binding: !!c.env.DB }));
+
+// ─── DBスキーマ確認（本番では無効） ──────────────
+
+app.get('/schema-check', async (c) => {
+  if (c.env.ENVIRONMENT === 'production') {
+    return c.json({ error: 'Not available in production' }, 403);
+  }
+  try {
+    if (!c.env.DB) return c.json({ error: 'DB not bound' }, 500);
+    const cols = await c.env.DB.prepare(
+      "SELECT name FROM pragma_table_info('users')"
+    ).all();
+    return c.json({ columns: cols.results?.map((r: any) => r.name) });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
   }
 });
 

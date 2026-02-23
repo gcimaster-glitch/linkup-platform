@@ -255,6 +255,58 @@ app.put('/profile', authMiddleware, async (c) => {
   }
 });
 
+// ─── 管理者初回セットアップ ────────────────────────
+// admin ロールのユーザーが存在しない場合のみ使用可能（1回限り）
+
+app.post('/setup-admin', async (c) => {
+  try {
+    const db = c.env.DB;
+    if (!db) return c.json({ error: 'Database not available' }, 500);
+
+    const body = await c.req.json();
+    const { email, password, setup_key } = body;
+
+    // セットアップキー検証（固定値 or JWT_SECRETで派生）
+    const expectedKey = 'linkup-admin-setup-2026';
+    if (setup_key !== expectedKey) {
+      return c.json({ error: 'Invalid setup key' }, 403);
+    }
+
+    // 既にadminが存在する場合は拒否
+    const existingAdmin: any = await db.prepare(
+      "SELECT user_id FROM users WHERE role = 'admin' LIMIT 1"
+    ).first();
+    if (existingAdmin) {
+      return c.json({ error: 'Admin user already exists', admin_id: existingAdmin.user_id }, 409);
+    }
+
+    // adminユーザーを作成
+    const userId = `u-admin-${Date.now()}`;
+    const displayName = 'システム管理者';
+    const avatarUrl = `https://ui-avatars.com/api/?name=Admin&background=DC2626&color=fff`;
+    const passwordHash = await bcrypt.hash(password || 'Admin@2026!', 12);
+
+    await db.prepare(
+      `INSERT INTO users (user_id, email, password_hash, display_name, avatar_url, role, kyc_status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'admin', 'verified', datetime('now'), datetime('now'))`
+    ).bind(userId, email || 'admin@link-up.live', passwordHash, displayName, avatarUrl).run();
+
+    const token = await generateToken(userId, 'admin', c.env.JWT_SECRET);
+
+    return c.json({
+      success: true,
+      message: '管理者アカウントを作成しました',
+      user_id: userId,
+      email: email || 'admin@link-up.live',
+      token,
+    }, 201);
+
+  } catch (error: any) {
+    console.error('Setup admin error:', error);
+    return c.json({ error: 'セットアップに失敗しました: ' + error.message }, 500);
+  }
+});
+
 // ─── ヘルスチェック ───────────────────────────────
 
 app.get('/health', (c) => c.json({ status: 'ok', db_binding: !!c.env.DB }));

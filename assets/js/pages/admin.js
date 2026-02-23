@@ -345,14 +345,14 @@ function _adminEventRow(e, i) {
   const date = e.start_datetime ? new Date(e.start_datetime).toLocaleDateString('ja-JP') : '—';
 
   return `
-    <tr class="${i % 2 === 0 ? '' : 'bg-slate-50/50'}">
-      <td class="px-4 py-3">
+    <tr class="${i % 2 === 0 ? '' : 'bg-slate-50/50'} hover:bg-blue-50/30 transition-colors">
+      <td class="px-4 py-3 cursor-pointer" onclick="AppRouter.go('detail', { id: '${_escapeHtml(e.event_id)}' })">
         <div class="flex items-center gap-3">
           <img src="${_escapeHtml(e.cover_image_url || '')}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0"
             onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100&q=60'">
           <div class="min-w-0">
-            <p class="font-medium text-slate-800 truncate max-w-xs">${_escapeHtml(e.title || '')}</p>
-            <p class="text-xs text-slate-400">${_escapeHtml(e.category || '')} · ${e.type === 'online' ? 'オンライン' : 'オフライン'}</p>
+            <p class="font-medium text-slate-800 truncate max-w-xs hover:text-blue-600 transition-colors">${_escapeHtml(e.title || '')}</p>
+            <p class="text-xs text-slate-400">${_escapeHtml(e.category || '')} · ${e.event_type === 'online' ? 'オンライン' : 'オフライン'}</p>
           </div>
         </div>
       </td>
@@ -362,7 +362,11 @@ function _adminEventRow(e, i) {
         <span class="px-2 py-1 rounded-full text-xs font-bold ${statusCls}">${statusLabel}</span>
       </td>
       <td class="px-4 py-3">
-        <div class="flex gap-1.5">
+        <div class="flex gap-1.5 flex-wrap">
+          <button onclick="AppRouter.go('detail', { id: '${_escapeHtml(e.event_id)}' })"
+            class="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg hover:bg-blue-100 flex items-center gap-1">
+            <span class="material-icons-outlined text-xs">open_in_new</span>詳細
+          </button>
           ${e.status === 'pending' ? `
             <button onclick="_adminApproveEvent('${_escapeHtml(e.event_id)}')"
               class="px-2.5 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700">承認</button>

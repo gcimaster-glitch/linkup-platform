@@ -124,7 +124,14 @@ async function renderDetail({ id }) {
 
     // 購入処理
     window.purchaseTicket = async (ticketId, eventId) => {
-      if (!AppAuth.requireLogin()) return;
+      // 未ログイン時: イベントIDとチケットIDを保存してログインモーダルを開く
+      if (!AppAuth.isLoggedIn()) {
+        // 購入意図をセッションストレージに保存
+        sessionStorage.setItem('pending_purchase', JSON.stringify({ ticketId, eventId }));
+        AppUI.toast('チケットを購入するにはログインが必要です', 'warning');
+        AppUI.openLoginModal();
+        return;
+      }
 
       const qty = parseInt(document.getElementById(`qty-${ticketId}`)?.value || '1');
       const btn = document.querySelector(`button[onclick="purchaseTicket('${ticketId}', '${eventId}')"]`);
@@ -134,13 +141,33 @@ async function renderDetail({ id }) {
       try {
         const result = await window.LinkUpAPI.Orders.create(ticketId, qty, eventId);
         AppUI.toast(`購入完了！注文番号: ${result.order.order_number}`, 'success');
+        // 購入意図クリア
+        sessionStorage.removeItem('pending_purchase');
         // 在庫表示を更新するためページ再読み込み
-        setTimeout(() => renderDetail({ id }), 1500);
+        setTimeout(() => renderDetail({ id: eventId }), 1500);
       } catch (err) {
         AppUI.toast(err.message || '購入に失敗しました', 'error');
         if (btn) { btn.disabled = false; btn.textContent = '購入する'; }
       }
     };
+
+    // ログイン後に購入を継続（pending_purchaseチェック）
+    const pending = sessionStorage.getItem('pending_purchase');
+    if (pending && AppAuth.isLoggedIn()) {
+      try {
+        const { ticketId, eventId: pendingEventId } = JSON.parse(pending);
+        // 同じイベントの場合のみ自動実行
+        if (pendingEventId === id) {
+          sessionStorage.removeItem('pending_purchase');
+          setTimeout(() => {
+            AppUI.toast('ログインしました。チケット購入を続けます...', 'info');
+            setTimeout(() => window.purchaseTicket(ticketId, pendingEventId), 800);
+          }, 300);
+        }
+      } catch(e) {
+        sessionStorage.removeItem('pending_purchase');
+      }
+    }
 
   } catch (err) {
     AppUI.showError(err.message || 'イベント情報の取得に失敗しました', `renderDetail({id:'${id}'})`);

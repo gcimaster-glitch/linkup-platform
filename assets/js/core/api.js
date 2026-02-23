@@ -5,9 +5,14 @@
  * 1. フォールバック・ダミーデータ・localStorageキャッシュ 禁止
  * 2. APIが失敗したら例外を投げる（呼び出し側でエラー表示）
  * 3. 認証トークンは localStorage の 'linkup_token' のみ
+ *
+ * ★ API_BASE = '' (空文字 = 同一ドメイン)
+ *    Cloudflare Pages の _redirects で
+ *    /api/* → https://linkup-backend.gcimaster.workers.dev/api/:splat
+ *    にプロキシされるため、CORS 問題が完全に解消される
  */
 
-const API_BASE = 'https://linkup-backend.gcimaster.workers.dev';
+const API_BASE = '';
 
 // ─────────────────────────────────────────
 // 内部ヘルパー

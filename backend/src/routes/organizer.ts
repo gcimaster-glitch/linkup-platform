@@ -221,45 +221,48 @@ app.get('/events/:event_id/attendees/csv', async (c) => {
         }
 
         // Fetch attendees data
+        // orders テーブルは ticket_id と quantity を直接持つ
+        // order_tickets テーブルは存在しないため orders + tickets を JOIN
+        // users テーブルのカラム: user_id, email, display_name, phone_number, role 等
         const attendees = await db.prepare(`
             SELECT 
                 u.user_id,
                 u.display_name,
-                u.name,
                 u.email,
-                u.phone,
+                u.phone_number,
+                o.order_id,
                 o.order_number,
                 o.total_amount,
                 o.created_at as purchase_date,
-                ot.ticket_name,
-                ot.quantity,
-                ot.check_in_status,
-                ot.checked_in_at
+                o.quantity,
+                o.payment_status,
+                t.name as ticket_name,
+                t.ticket_name as ticket_name_alt
             FROM orders o
             LEFT JOIN users u ON o.user_id = u.user_id
-            LEFT JOIN order_tickets ot ON o.order_id = ot.order_id
+            LEFT JOIN tickets t ON o.ticket_id = t.ticket_id
             WHERE o.event_id = ? AND o.payment_status = 'completed'
             ORDER BY o.created_at ASC
         `).bind(eventId).all();
 
         // Generate CSV
-        const csvHeader = 'ユーザーID,氏名,表示名,メールアドレス,電話番号,注文番号,購入金額,購入日時,チケット名,数量,チェックイン状態,チェックイン日時\n';
+        const csvHeader = 'ユーザーID,氏名,メールアドレス,電話番号,注文番号,購入金額,購入日時,チケット名,数量\n';
         
         const csvRows = (attendees.results || []).map((a: any) => {
-            const displayName = a.display_name || a.name || '';
-            const phone = a.phone || '';
-            const checkedInAt = a.checked_in_at || '';
-            const checkInStatus = a.check_in_status === 'checked_in' ? 'チェック済み' : '未チェック';
+            const displayName = a.display_name || '';
+            const phone = a.phone_number || '';
+            const ticketName = a.ticket_name || a.ticket_name_alt || '一般参加';
             
             // Escape commas and quotes in CSV
             const escape = (str: string) => {
+                str = String(str || '');
                 if (str.includes(',') || str.includes('"') || str.includes('\n')) {
                     return `"${str.replace(/"/g, '""')}"`;
                 }
                 return str;
             };
 
-            return `${escape(a.user_id)},${escape(a.name || '')},${escape(displayName)},${escape(a.email)},${escape(phone)},${escape(a.order_number)},${a.total_amount},${a.purchase_date},${escape(a.ticket_name)},${a.quantity},${escape(checkInStatus)},${checkedInAt}`;
+            return `${escape(a.user_id)},${escape(displayName)},${escape(a.email)},${escape(phone)},${escape(a.order_number)},${a.total_amount},${a.purchase_date},${escape(ticketName)},${a.quantity || 1}`;
         }).join('\n');
 
         const csv = csvHeader + csvRows;

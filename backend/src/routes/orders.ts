@@ -190,6 +190,50 @@ orderRoutes.post('/', async (c) => {
   }
 });
 
+// 注文詳細取得
+orderRoutes.get('/:id', async (c) => {
+  const db = c.env.DB;
+  const user = c.get('user');
+  const userId = user.user_id;
+  const orderId = c.req.param('id');
+
+  try {
+    const order: any = await db.prepare(`
+      SELECT 
+        o.order_id,
+        o.order_number,
+        o.total_amount,
+        o.platform_fee,
+        o.payment_status,
+        o.payment_method,
+        o.created_at,
+        o.ticket_id,
+        o.quantity,
+        e.event_id,
+        e.title as event_title,
+        e.cover_image_url,
+        e.start_datetime,
+        e.end_datetime,
+        e.venue_name,
+        t.name as ticket_name,
+        t.price as ticket_price
+      FROM orders o
+      LEFT JOIN events e ON o.event_id = e.event_id
+      LEFT JOIN tickets t ON o.ticket_id = t.ticket_id
+      WHERE o.order_id = ? AND o.user_id = ?
+    `).bind(orderId, userId).first();
+
+    if (!order) {
+      return c.json({ error: '注文が見つかりません' }, 404);
+    }
+
+    return c.json({ success: true, order });
+  } catch (e: any) {
+    console.error('Get Order Detail Error:', e);
+    return c.json({ error: e.message || 'Failed to get order' }, 500);
+  }
+});
+
 // ユーザーの注文履歴取得
 orderRoutes.get('/', async (c) => {
   const db = c.env.DB;

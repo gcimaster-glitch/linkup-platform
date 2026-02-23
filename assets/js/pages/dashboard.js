@@ -413,6 +413,33 @@ function _renderOrderRow(o, detailed = false) {
   const img  = o.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100&q=60';
   const statusMap = { completed: ['完了', 'text-green-600 bg-green-50'], pending: ['保留', 'text-yellow-600 bg-yellow-50'], cancelled: ['キャンセル', 'text-red-600 bg-red-50'] };
   const [label, cls] = statusMap[o.payment_status] || ['不明', 'text-slate-600 bg-slate-100'];
+  const orderId = o.order_number || o.order_id || '';
+
+  if (detailed) {
+    return `
+      <div class="p-4 hover:bg-slate-50 transition">
+        <div class="flex items-center gap-4">
+          <img src="${img}" class="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+            onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100&q=60'">
+          <div class="flex-1 min-w-0">
+            <p class="font-bold text-slate-800 text-sm truncate">${o.event_title || 'イベント'}</p>
+            <p class="text-xs text-slate-500 mt-0.5">${date} · ¥${Number(o.total_amount || 0).toLocaleString()}</p>
+            <p class="text-xs text-slate-400 font-mono mt-0.5">${orderId}</p>
+          </div>
+          <div class="flex flex-col items-end gap-2 flex-shrink-0">
+            <span class="px-2 py-1 rounded-full text-xs font-bold ${cls}">${label}</span>
+            ${o.payment_status === 'completed' ? `
+              <button onclick="_showTicketQR('${orderId}', '${o.event_title ? o.event_title.replace(/'/g, "\\'") : ''}', '${date}')"
+                class="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 text-white text-xs rounded-lg hover:bg-slate-700 transition">
+                <span class="material-icons-outlined text-xs">qr_code</span>
+                QRコード
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
 
   return `
     <div class="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-xl cursor-pointer"
@@ -427,3 +454,43 @@ function _renderOrderRow(o, detailed = false) {
     </div>
   `;
 }
+
+// ─── QRコード表示 ──────────────────────────────
+
+window._showTicketQR = function(orderId, eventTitle, date) {
+  // Google Charts QR API を使用（外部依存なし）
+  const qrData = encodeURIComponent(`LINKUP-TICKET:${orderId}`);
+  const qrUrl  = `https://chart.googleapis.com/chart?chs=220x220&cht=qr&chl=${qrData}&choe=UTF-8`;
+
+  AppUI.openModal(`
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 text-center">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-800">チケットQRコード</h3>
+        <button onclick="AppUI.closeModal()" class="text-slate-400 hover:text-slate-600">
+          <span class="material-icons-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="bg-slate-50 rounded-xl p-4 mb-4 inline-block">
+        <img src="${qrUrl}" alt="QR Code" class="w-56 h-56 mx-auto"
+          onerror="this.parentElement.innerHTML='<div class=\\'text-slate-400 text-sm py-8\\'>QRコード生成中...</div>'">
+      </div>
+
+      <div class="text-left bg-blue-50 rounded-xl p-4 mb-4">
+        <p class="text-sm font-bold text-blue-900 mb-1">${_escapeHtml(eventTitle || 'イベント')}</p>
+        <p class="text-xs text-blue-700">${_escapeHtml(date)}</p>
+        <p class="text-xs text-blue-600 font-mono mt-1">${_escapeHtml(orderId)}</p>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-4">
+        このQRコードを入場時にスタッフに提示してください
+      </p>
+
+      <button onclick="window.print()"
+        class="w-full py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-700 transition flex items-center justify-center gap-2">
+        <span class="material-icons-outlined text-sm">print</span>
+        印刷する
+      </button>
+    </div>
+  `);
+};

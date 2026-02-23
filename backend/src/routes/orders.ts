@@ -198,6 +198,8 @@ orderRoutes.get('/:id', async (c) => {
   const orderId = c.req.param('id');
 
   try {
+    // ordersテーブルは ticket_id カラムを持たない構造のため
+    // orders + events のJOINで基本情報を取得
     const order: any = await db.prepare(`
       SELECT 
         o.order_id,
@@ -207,19 +209,14 @@ orderRoutes.get('/:id', async (c) => {
         o.payment_status,
         o.payment_method,
         o.created_at,
-        o.ticket_id,
-        o.quantity,
         e.event_id,
         e.title as event_title,
         e.cover_image_url,
         e.start_datetime,
         e.end_datetime,
-        e.venue_name,
-        t.name as ticket_name,
-        t.price as ticket_price
+        e.venue_name
       FROM orders o
       LEFT JOIN events e ON o.event_id = e.event_id
-      LEFT JOIN tickets t ON o.ticket_id = t.ticket_id
       WHERE o.order_id = ? AND o.user_id = ?
     `).bind(orderId, userId).first();
 
@@ -227,7 +224,26 @@ orderRoutes.get('/:id', async (c) => {
       return c.json({ error: '注文が見つかりません' }, 404);
     }
 
-    return c.json({ success: true, order });
+    // イベントのチケット情報を別途取得（最初のアクティブなチケット）
+    let ticketInfo: any = null;
+    if (order.event_id) {
+      ticketInfo = await db.prepare(`
+        SELECT name as ticket_name, ticket_name as ticket_name_alt, price
+        FROM tickets
+        WHERE event_id = ?
+        ORDER BY created_at ASC
+        LIMIT 1
+      `).bind(order.event_id).first();
+    }
+
+    return c.json({ 
+      success: true, 
+      order: {
+        ...order,
+        ticket_name: ticketInfo?.ticket_name || ticketInfo?.ticket_name_alt || '一般参加',
+        ticket_price: ticketInfo?.price ?? null
+      }
+    });
   } catch (e: any) {
     console.error('Get Order Detail Error:', e);
     return c.json({ error: e.message || 'Failed to get order' }, 500);

@@ -228,7 +228,7 @@ orderRoutes.get('/:id', async (c) => {
     let ticketInfo: any = null;
     if (order.event_id) {
       ticketInfo = await db.prepare(`
-        SELECT name as ticket_name, ticket_name as ticket_name_alt, price
+        SELECT name, price
         FROM tickets
         WHERE event_id = ?
         ORDER BY created_at ASC
@@ -240,7 +240,7 @@ orderRoutes.get('/:id', async (c) => {
       success: true, 
       order: {
         ...order,
-        ticket_name: ticketInfo?.ticket_name || ticketInfo?.ticket_name_alt || '一般参加',
+        ticket_name: ticketInfo?.name || '一般参加',
         ticket_price: ticketInfo?.price ?? null
       }
     });

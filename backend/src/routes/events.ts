@@ -20,8 +20,8 @@ eventRoutes.get('/', async (c) => {
     const params: any[] = [];
 
     if (search) {
-      query += ' AND (e.title LIKE ? OR e.venue_name LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
+      query += ' AND (e.title LIKE ? OR e.category LIKE ? OR e.venue_name LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     query += ' ORDER BY e.created_at DESC LIMIT ?';
@@ -32,7 +32,7 @@ eventRoutes.get('/', async (c) => {
     // 価格情報の付加
     const events = await Promise.all(results.map(async (e: any) => {
       const ticket = await db.prepare('SELECT MIN(price) as price FROM tickets WHERE event_id = ?').bind(e.event_id).first();
-      return { ...e, price: ticket?.price || 0 };
+      return { ...e, price: ticket?.price ?? 0 };
     }));
 
     return c.json({ success: true, events });
@@ -64,164 +64,171 @@ eventRoutes.get('/:id', async (c) => {
   }
 });
 
-// 認証が必要なルート
+// POST /api/events (作成)
 eventRoutes.post('/', authMiddleware, async (c) => {
   const db = c.env.DB;
   const userId = c.get('userId');
   const body = await c.req.json();
-  const eventId = `evt-${Date.now()}`;
+  const eventId = `evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   
   try {
-    // イベント保存
+    // イベント保存（venue_address カラムは存在しないため除外）
     await db.prepare(`
-      INSERT INTO events (event_id, group_id, organizer_id, title, slug, description, event_type, category, venue_name, venue_address, start_datetime, end_datetime, status, cover_image_url, created_at)
+      INSERT INTO events (event_id, group_id, organizer_id, title, slug, description, event_type, category, venue_name, start_datetime, end_datetime, status, cover_image_url, max_attendees, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).bind(
       eventId, 
       'group-1', 
-      userId, // Use authenticated User ID
+      userId,
       body.title,
       `slug-${eventId}`,
       body.description || '',
       body.event_type || 'offline',
       body.category || 'tech',
-      body.venue_name,
-      body.venue_address || '住所未設定',
+      body.venue_name || '',
       body.start_datetime,
-      body.end_datetime,
-      'published',
-      body.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200'
+      body.end_datetime || null,
+      body.status || 'published',
+      body.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200',
+      body.max_attendees || null
     ).run();
 
-    // チケット保存 (Multiple tickets support)
-    const tickets = body.tickets || [{ name: '一般参加', price: body.price || 0, desc: '標準チケット' }];
+    // チケット保存
+    // フロントは ticket_name または name を送る可能性があるため両方対応
+    const tickets = body.tickets && body.tickets.length > 0
+      ? body.tickets
+      : [{ name: '一般参加', price: body.price || 0 }];
     
     const ticketStmts = tickets.map((t: any) => {
-        const ticketId = t.id && t.id.startsWith('tkt-') ? t.id : `tkt-${uuidv4()}`;
-        const maxPurchase = t.purchaseLimit || t.max_purchase || 5; // デフォルト5枚
-        const minPurchase = t.min_purchase || 1;
-        const stock = t.capacity || t.stock || 100;
-        
-        return db.prepare(`
-            INSERT INTO tickets (ticket_id, event_id, ticket_name, description, price, stock, min_purchase, max_purchase, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).bind(ticketId, eventId, t.name || '一般', t.desc || '', t.price || 0, stock, minPurchase, maxPurchase);
+      const ticketId = `tkt-${uuidv4()}`;
+      const ticketName = t.ticket_name || t.name || '一般';
+      const price = Number(t.price) || 0;
+      // quantity_available カラムを使用（stock は存在しない）
+      const qty = Number(t.quantity_total || t.quantity_available || t.capacity || t.stock || body.max_attendees || 100);
+      
+      return db.prepare(`
+        INSERT INTO tickets (ticket_id, event_id, name, description, price, quantity_total, quantity_available, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `).bind(ticketId, eventId, ticketName, t.desc || t.description || '', price, qty, qty);
     });
     
     await db.batch(ticketStmts);
 
     return c.json({ success: true, event_id: eventId });
   } catch (e: any) {
-    console.error(e);
+    console.error('Event creation error:', e);
     return c.json({ error: 'Creation failed: ' + e.message }, 500);
   }
 });
 
+// PUT /api/events/:id (更新)
 eventRoutes.put('/:id', authMiddleware, async (c) => {
-    const db = c.env.DB;
-    const userId = c.get('userId');
-    const eventId = c.req.param('id');
-    const body = await c.req.json();
+  const db = c.env.DB;
+  const userId = c.get('userId');
+  const eventId = c.req.param('id');
+  const body = await c.req.json();
 
-    try {
-        // Check ownership
-        const existing: any = await db.prepare('SELECT organizer_id FROM events WHERE event_id = ?').bind(eventId).first();
-        if (!existing) return c.json({ error: 'Not found' }, 404);
-        // Note: In a real app, strict ownership check is needed. 
-        // For now, we allow admin or owner. But here we assume owner.
-        // if (existing.organizer_id !== userId) return c.json({ error: 'Forbidden' }, 403);
+  try {
+    const existing: any = await db.prepare('SELECT organizer_id FROM events WHERE event_id = ?').bind(eventId).first();
+    if (!existing) return c.json({ error: 'Not found' }, 404);
 
-        await db.prepare(`
-            UPDATE events SET 
-                title = ?, 
-                description = ?, 
-                category = ?, 
-                venue_name = ?, 
-                venue_address = ?,
-                start_datetime = ?, 
-                end_datetime = ?, 
-                cover_image_url = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE event_id = ?
-        `).bind(
-            body.title, 
-            body.description, 
-            body.category, 
-            body.venue_name, 
-            body.venue_address,
-            body.start_datetime, 
-            body.end_datetime, 
-            body.cover_image_url,
-            eventId
-        ).run();
+    await db.prepare(`
+      UPDATE events SET 
+        title = ?, 
+        description = ?, 
+        category = ?, 
+        event_type = ?,
+        venue_name = ?, 
+        start_datetime = ?, 
+        end_datetime = ?, 
+        cover_image_url = ?,
+        status = ?,
+        max_attendees = ?
+      WHERE event_id = ?
+    `).bind(
+      body.title, 
+      body.description || '',
+      body.category || 'tech',
+      body.event_type || 'offline',
+      body.venue_name || '',
+      body.start_datetime, 
+      body.end_datetime || null, 
+      body.cover_image_url || null,
+      body.status || 'published',
+      body.max_attendees || null,
+      eventId
+    ).run();
 
-        // チケット更新処理
-        if (body.tickets && body.tickets.length > 0) {
-            // 既存チケットを削除（注文が既にある場合は保持すべきだが、簡易的に削除）
-            const { results: existingOrders } = await db.prepare('SELECT COUNT(*) as count FROM orders WHERE event_id = ?').bind(eventId).all();
-            const hasOrders = existingOrders && existingOrders[0] && (existingOrders[0] as any).count > 0;
-            
-            if (!hasOrders) {
-                // 注文がない場合のみチケットを削除して再作成
-                await db.prepare('DELETE FROM tickets WHERE event_id = ?').bind(eventId).run();
-                
-                const ticketStmts = body.tickets.map((t: any) => {
-                    const ticketId = t.id && t.id.startsWith('tkt-') ? t.id : `tkt-${uuidv4()}`;
-                    const maxPurchase = t.purchaseLimit || t.max_purchase || 5;
-                    const minPurchase = t.min_purchase || 1;
-                    const stock = t.capacity || t.stock || 100;
-                    
-                    return db.prepare(`
-                        INSERT INTO tickets (ticket_id, event_id, ticket_name, description, price, stock, min_purchase, max_purchase, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                    `).bind(ticketId, eventId, t.name || '一般', t.desc || '', t.price || 0, stock, minPurchase, maxPurchase);
-                });
-                
-                await db.batch(ticketStmts);
-            } else {
-                // 注文がある場合は既存チケットを更新のみ
-                for (const t of body.tickets) {
-                    if (t.id && t.id.startsWith('tkt-')) {
-                        const maxPurchase = t.purchaseLimit || t.max_purchase || 5;
-                        const minPurchase = t.min_purchase || 1;
-                        const stock = t.capacity || t.stock || 100;
-                        
-                        await db.prepare(`
-                            UPDATE tickets SET 
-                                ticket_name = ?,
-                                description = ?,
-                                price = ?,
-                                stock = ?,
-                                min_purchase = ?,
-                                max_purchase = ?
-                            WHERE ticket_id = ? AND event_id = ?
-                        `).bind(t.name, t.desc || '', t.price, stock, minPurchase, maxPurchase, t.id, eventId).run();
-                    }
-                }
-            }
+    // チケット更新処理
+    if (body.tickets && body.tickets.length > 0) {
+      const { results: existingOrders } = await db.prepare(
+        'SELECT COUNT(*) as count FROM orders WHERE event_id = ?'
+      ).bind(eventId).all();
+      const hasOrders = existingOrders?.[0] && (existingOrders[0] as any).count > 0;
+      
+      if (!hasOrders) {
+        // 注文がない場合のみ削除して再作成
+        await db.prepare('DELETE FROM tickets WHERE event_id = ?').bind(eventId).run();
+        
+        const ticketStmts = body.tickets.map((t: any) => {
+          const ticketId = `tkt-${uuidv4()}`;
+          const ticketName = t.ticket_name || t.name || '一般';
+          const price = Number(t.price) || 0;
+          const qty = Number(t.quantity_total || t.quantity_available || t.capacity || t.stock || 100);
+          
+          return db.prepare(`
+            INSERT INTO tickets (ticket_id, event_id, name, description, price, quantity_total, quantity_available, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `).bind(ticketId, eventId, ticketName, t.desc || t.description || '', price, qty, qty);
+        });
+        
+        await db.batch(ticketStmts);
+      } else {
+        // 注文あり → 既存チケットを quantity_available で更新
+        for (const t of body.tickets) {
+          if (t.id && t.id.startsWith('tkt-')) {
+            const price = Number(t.price) || 0;
+            const qty = Number(t.quantity_total || t.quantity_available || t.capacity || t.stock || 100);
+            await db.prepare(`
+              UPDATE tickets SET 
+                name = ?,
+                description = ?,
+                price = ?,
+                quantity_total = ?,
+                quantity_available = ?
+              WHERE ticket_id = ? AND event_id = ?
+            `).bind(
+              t.ticket_name || t.name || '一般',
+              t.desc || t.description || '',
+              price, qty, qty,
+              t.id, eventId
+            ).run();
+          }
         }
-
-        return c.json({ success: true });
-    } catch (e: any) {
-        return c.json({ error: e.message }, 500);
+      }
     }
+
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error('Event update error:', e);
+    return c.json({ error: e.message }, 500);
+  }
 });
 
+// DELETE /api/events/:id
 eventRoutes.delete('/:id', authMiddleware, async (c) => {
-    const db = c.env.DB;
-    const userId = c.get('userId');
-    const eventId = c.req.param('id');
+  const db = c.env.DB;
+  const eventId = c.req.param('id');
 
-    try {
-        // Delete related data (Cascade usually handles this, but let's be explicit)
-        await db.batch([
-            db.prepare('DELETE FROM tickets WHERE event_id = ?').bind(eventId),
-            db.prepare('DELETE FROM events WHERE event_id = ?').bind(eventId)
-        ]);
-        return c.json({ success: true });
-    } catch (e: any) {
-        return c.json({ error: e.message }, 500);
-    }
+  try {
+    await db.batch([
+      db.prepare('DELETE FROM tickets WHERE event_id = ?').bind(eventId),
+      db.prepare('DELETE FROM events WHERE event_id = ?').bind(eventId)
+    ]);
+    return c.json({ success: true });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
 });
 
 export { eventRoutes };

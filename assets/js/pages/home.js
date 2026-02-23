@@ -13,58 +13,73 @@ async function renderHome(params) {
     <div class="min-h-screen flex flex-col">
 
       <!-- ═══ ヒーロー ═══ -->
-      <section class="bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 text-white py-20 px-4">
+      <section class="bg-gradient-to-br from-blue-600 via-blue-700 to-purple-700 text-white py-14 px-4">
         <div class="max-w-6xl mx-auto">
-          <div class="flex flex-col lg:flex-row items-center gap-12">
+          <div class="flex flex-col lg:flex-row items-center gap-8">
 
             <!-- テキスト -->
             <div class="flex-1 text-center lg:text-left">
-              <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
-                日本最大級の<br>
-                <span class="text-yellow-300">イベントプラットフォーム</span>
+              <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm mb-5 border border-white/20">
+                <span class="material-icons-outlined text-yellow-300 text-sm">auto_awesome</span>
+                <span class="text-white/90">日本最大級のイベントプラットフォーム</span>
+              </div>
+              <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
+                あらゆる体験と<br>
+                <span class="text-yellow-300">人をつなぐ場所</span>
               </h1>
-              <p class="text-xl text-blue-100 mb-8">
-                音楽、テック、ビジネス、アートなど、あらゆるイベントを簡単に見つけて参加しよう
+              <p class="text-base md:text-lg text-blue-100 mb-6 max-w-xl mx-auto lg:mx-0">
+                テック、ビジネス、音楽、アート、スポーツ…<br class="hidden md:block">
+                気になるイベントを見つけて、チケットをその場で購入できます。
               </p>
 
               <!-- 検索バー -->
-              <div class="flex bg-white rounded-xl shadow-2xl overflow-hidden max-w-xl mx-auto lg:mx-0">
+              <div class="flex bg-white rounded-xl shadow-2xl overflow-hidden max-w-lg mx-auto lg:mx-0">
                 <input
                   type="text"
                   id="search-input"
                   placeholder="イベントを検索..."
                   value="${_escapeHtml(searchQuery)}"
-                  class="flex-1 px-6 py-4 text-slate-800 focus:outline-none text-base"
+                  class="flex-1 px-5 py-3.5 text-slate-800 focus:outline-none text-sm"
                   onkeypress="if(event.key==='Enter') homeSearch()">
                 <button onclick="homeSearch()"
-                  class="px-7 bg-blue-600 hover:bg-blue-700 transition flex items-center">
+                  class="px-6 bg-blue-600 hover:bg-blue-700 transition flex items-center">
                   <span class="material-icons-outlined text-white">search</span>
                 </button>
               </div>
 
               <!-- 統計 -->
-              <div class="flex items-center justify-center lg:justify-start gap-10 mt-10 text-sm">
+              <div class="flex items-center justify-center lg:justify-start gap-8 mt-7 text-sm">
                 <div class="text-center">
-                  <div class="text-3xl font-bold">10,000+</div>
-                  <div class="text-blue-200 mt-1">イベント</div>
+                  <div class="text-2xl font-bold">10,000+</div>
+                  <div class="text-blue-200 text-xs mt-0.5">イベント</div>
                 </div>
+                <div class="w-px h-8 bg-white/20"></div>
                 <div class="text-center">
-                  <div class="text-3xl font-bold">500,000+</div>
-                  <div class="text-blue-200 mt-1">ユーザー</div>
+                  <div class="text-2xl font-bold">500,000+</div>
+                  <div class="text-blue-200 text-xs mt-0.5">ユーザー</div>
                 </div>
+                <div class="w-px h-8 bg-white/20"></div>
                 <div class="text-center">
-                  <div class="text-3xl font-bold">1,000+</div>
-                  <div class="text-blue-200 mt-1">主催者</div>
+                  <div class="text-2xl font-bold">1,000+</div>
+                  <div class="text-blue-200 text-xs mt-0.5">主催者</div>
                 </div>
               </div>
             </div>
 
-            <!-- イラスト（大画面のみ） -->
-            <div class="flex-1 hidden lg:flex items-center justify-center">
-              <div class="relative">
-                <span class="material-icons-outlined text-white/10" style="font-size:280px;">event</span>
-                <div class="absolute inset-0 flex items-center justify-center">
-                  <span class="material-icons-outlined text-white/30" style="font-size:180px;">celebration</span>
+            <!-- ビジュアル（PC） -->
+            <div class="flex-shrink-0 hidden lg:flex items-center justify-center">
+              <div class="relative w-72 h-72">
+                <div class="absolute inset-0 bg-white/10 rounded-3xl rotate-6"></div>
+                <div class="absolute inset-0 bg-white/5 rounded-3xl -rotate-3"></div>
+                <div class="relative bg-white/10 backdrop-blur-sm rounded-3xl p-8 flex flex-col items-center justify-center gap-4 border border-white/20">
+                  <span class="material-icons-outlined text-white" style="font-size:80px;">event</span>
+                  <div class="grid grid-cols-3 gap-2 w-full">
+                    ${['music_note','computer','business_center','palette','restaurant','sports_soccer'].map(icon =>
+                      `<div class="bg-white/10 rounded-lg p-2 flex items-center justify-center">
+                        <span class="material-icons-outlined text-white text-lg">${icon}</span>
+                      </div>`
+                    ).join('')}
+                  </div>
                 </div>
               </div>
             </div>

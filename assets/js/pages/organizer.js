@@ -385,14 +385,16 @@ window._orgOpenCreateModal = function() {
     const fd = new FormData(e.target);
     const payload = _buildEventPayload(fd);
 
+    const submitBtn = e.target.querySelector('[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '作成中...'; }
     try {
-      AppUI.showLoading('作成中...');
       await OrganizerAPI.createEvent(payload);
       AppUI.closeModal();
       AppUI.toast('イベントを作成しました！', 'success');
       AppRouter.go('organizer', { tab: 'events' });
     } catch (err) {
       AppUI.toast(err.message || 'イベント作成に失敗しました', 'error');
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '作成する'; }
     }
   });
 };
@@ -401,7 +403,6 @@ window._orgOpenCreateModal = function() {
 
 window._orgOpenEditModal = async function(eventId) {
   try {
-    AppUI.showLoading('読み込み中...');
     const data = await window.LinkUpAPI.Events.get(eventId);
     const ev = data.event;
 
@@ -430,14 +431,16 @@ window._orgOpenEditModal = async function(eventId) {
       const fd = new FormData(e.target);
       const payload = _buildEventPayload(fd);
 
+      const submitBtn = e.target.querySelector('[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '更新中...'; }
       try {
-        AppUI.showLoading('更新中...');
         await OrganizerAPI.updateEvent(eventId, payload);
         AppUI.closeModal();
         AppUI.toast('イベントを更新しました！', 'success');
         AppRouter.go('organizer', { tab: 'events' });
       } catch (err) {
         AppUI.toast(err.message || 'イベント更新に失敗しました', 'error');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '保存する'; }
       }
     });
 

@@ -28,8 +28,9 @@ orderRoutes.post('/', async (c) => {
     const ticket: any = await db.prepare('SELECT * FROM tickets WHERE ticket_id = ?').bind(ticket_id).first();
     if (!ticket) return c.json({ error: 'Ticket not found' }, 404);
 
-    // 在庫チェック
-    if (ticket.stock < quantity) {
+    // 在庫チェック (カラム名: quantity_available)
+    const availableStock = ticket.quantity_available ?? ticket.stock ?? 0;
+    if (availableStock < quantity) {
       return c.json({ error: 'Not enough stock' }, 400);
     }
 
@@ -91,8 +92,8 @@ orderRoutes.post('/', async (c) => {
 
     // 5. トランザクション実行 (D1 Batch)
     const batch = [
-      // 在庫減少
-      db.prepare('UPDATE tickets SET stock = stock - ?, sold_count = sold_count + ? WHERE ticket_id = ?').bind(quantity, quantity, ticket_id),
+      // 在庫減少 (quantity_available カラムを使用)
+      db.prepare('UPDATE tickets SET quantity_available = quantity_available - ? WHERE ticket_id = ?').bind(quantity, ticket_id),
       
       // 注文作成
       db.prepare(`

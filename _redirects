@@ -1,8 +1,5 @@
-# ─── APIプロキシ（CORSなし・同一ドメインで動作）─────────────
-# link-up.live/api/* → Cloudflare Workers に転送
-/api/* https://linkup-backend.gcimaster.workers.dev/api/:splat 200
-
 # ─── SPA ルーティング ───────────────────────────────────────
+# /api/* は functions/api/[[path]].js が処理するので不要
 /events/* /index.html 200
 /organizers/* /index.html 200
 /category/* /index.html 200

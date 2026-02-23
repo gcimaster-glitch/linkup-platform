@@ -241,10 +241,11 @@ app.get('/events/:event_id/attendees/csv', async (c) => {
         `).bind(eventId).all();
 
         // イベントの代表チケット名を取得
+        // ticketsテーブルの実際のカラム: ticket_id, event_id, name, description, price, quantity_total, quantity_available, sale_start, sale_end, is_active, created_at
         const firstTicket: any = await db.prepare(
-            `SELECT name, ticket_name FROM tickets WHERE event_id = ? ORDER BY created_at ASC LIMIT 1`
+            `SELECT name FROM tickets WHERE event_id = ? ORDER BY created_at ASC LIMIT 1`
         ).bind(eventId).first();
-        const defaultTicketName = firstTicket?.name || firstTicket?.ticket_name || '一般参加';
+        const defaultTicketName = firstTicket?.name || '一般参加';
 
         // Generate CSV
         const csvHeader = 'ユーザーID,氏名,メールアドレス,電話番号,注文番号,購入金額,購入日時,チケット名\n';

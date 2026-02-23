@@ -73,6 +73,20 @@ const AppAuth = {
       AppUI.updateNav();
       AppUI.toast(`ようこそ、${data.user.display_name || data.user.name}さん！`, 'success');
 
+      // チケット購入中断からの復帰チェック
+      const pendingPurchase = sessionStorage.getItem('pending_purchase');
+      if (pendingPurchase) {
+        try {
+          const { eventId } = JSON.parse(pendingPurchase);
+          if (eventId) {
+            AppRouter.go('detail', { id: eventId });
+            return;
+          }
+        } catch(e) {
+          sessionStorage.removeItem('pending_purchase');
+        }
+      }
+
       // ロール別リダイレクト
       if (data.user.role === 'organizer') {
         AppRouter.go('organizer');
@@ -144,6 +158,20 @@ const AppAuth = {
       AppUI.closeModal();
       AppUI.updateNav();
       AppUI.toast('登録完了しました！', 'success');
+
+      // チケット購入中断からの復帰チェック
+      const pendingPurchase = sessionStorage.getItem('pending_purchase');
+      if (pendingPurchase) {
+        try {
+          const { eventId } = JSON.parse(pendingPurchase);
+          if (eventId && data.user.role !== 'organizer') {
+            AppRouter.go('detail', { id: eventId });
+            return;
+          }
+        } catch(e) {
+          sessionStorage.removeItem('pending_purchase');
+        }
+      }
 
       // 主催者は主催者ダッシュボードへ
       if (data.user.role === 'organizer') {

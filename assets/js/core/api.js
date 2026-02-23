@@ -98,6 +98,10 @@ const Orders = {
   list: () =>
     _request('GET', '/api/orders', null, true),
 
+  // 注文詳細取得（要認証）→ { success, order: {...} }
+  get: (orderId) =>
+    _request('GET', `/api/orders/${orderId}`, null, true),
+
   // チケット購入（要認証）→ { success, order: {...} }
   create: (ticketId, quantity, eventId, promoCode = null) =>
     _request('POST', '/api/orders', {

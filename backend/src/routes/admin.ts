@@ -236,7 +236,7 @@ adminRoutes.get('/users', async (c) => {
     const role = c.req.query('role'); // 'attendee', 'organizer', 'admin', 'all'
     const kycStatus = c.req.query('kyc'); // 'none', 'pending', 'verified', 'rejected', 'all'
     
-    let query = 'SELECT user_id, email, display_name, role, avatar_url, kyc_status, email_verified, created_at, last_login FROM users WHERE 1=1';
+    let query = 'SELECT user_id, email, display_name, role, avatar_url, kyc_status, phone_number, created_at, updated_at FROM users WHERE 1=1';
     const params: any[] = [];
     
     if (role && role !== 'all') {

@@ -255,8 +255,8 @@ app.put('/profile', authMiddleware, async (c) => {
   }
 });
 
-// ─── 管理者初回セットアップ ────────────────────────
-// admin ロールのユーザーが存在しない場合のみ使用可能（1回限り）
+// ─── 管理者初回セットアップ / パスワードリセット ──────────────────────────
+// setup_key 検証済みの場合のみ使用可能
 
 app.post('/setup-admin', async (c) => {
   try {
@@ -264,32 +264,57 @@ app.post('/setup-admin', async (c) => {
     if (!db) return c.json({ error: 'Database not available' }, 500);
 
     const body = await c.req.json();
-    const { email, password, setup_key } = body;
+    const { email, password, setup_key, reset } = body;
 
-    // セットアップキー検証（固定値 or JWT_SECRETで派生）
+    // セットアップキー検証
     const expectedKey = 'linkup-admin-setup-2026';
     if (setup_key !== expectedKey) {
       return c.json({ error: 'Invalid setup key' }, 403);
     }
 
-    // 既にadminが存在する場合は拒否
+    const targetEmail = email || 'admin@link-up.live';
+    const targetPassword = password || 'Admin@2026!';
+    const passwordHash = await bcrypt.hash(targetPassword, 12);
+
+    // 既存adminを確認
     const existingAdmin: any = await db.prepare(
-      "SELECT user_id FROM users WHERE role = 'admin' LIMIT 1"
+      "SELECT user_id, email FROM users WHERE role = 'admin' LIMIT 1"
     ).first();
-    if (existingAdmin) {
-      return c.json({ error: 'Admin user already exists', admin_id: existingAdmin.user_id }, 409);
+
+    if (existingAdmin && !reset) {
+      // reset=true の場合はパスワードをリセット、そうでなければ409
+      return c.json({ 
+        error: 'Admin user already exists. Use reset=true to reset password.',
+        admin_id: existingAdmin.user_id,
+        admin_email: existingAdmin.email
+      }, 409);
     }
 
-    // adminユーザーを作成
+    if (existingAdmin && reset) {
+      // 既存管理者のパスワードとメールをリセット
+      await db.prepare(
+        `UPDATE users SET password_hash = ?, email = ?, updated_at = datetime('now') WHERE user_id = ?`
+      ).bind(passwordHash, targetEmail, existingAdmin.user_id).run();
+
+      const token = await generateToken(existingAdmin.user_id, 'admin', c.env.JWT_SECRET);
+      return c.json({
+        success: true,
+        message: '管理者パスワードをリセットしました',
+        user_id: existingAdmin.user_id,
+        email: targetEmail,
+        token,
+      });
+    }
+
+    // 新規admin作成
     const userId = `u-admin-${Date.now()}`;
     const displayName = 'システム管理者';
     const avatarUrl = `https://ui-avatars.com/api/?name=Admin&background=DC2626&color=fff`;
-    const passwordHash = await bcrypt.hash(password || 'Admin@2026!', 12);
 
     await db.prepare(
       `INSERT INTO users (user_id, email, password_hash, display_name, avatar_url, role, kyc_status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, 'admin', 'verified', datetime('now'), datetime('now'))`
-    ).bind(userId, email || 'admin@link-up.live', passwordHash, displayName, avatarUrl).run();
+    ).bind(userId, targetEmail, passwordHash, displayName, avatarUrl).run();
 
     const token = await generateToken(userId, 'admin', c.env.JWT_SECRET);
 
@@ -297,7 +322,7 @@ app.post('/setup-admin', async (c) => {
       success: true,
       message: '管理者アカウントを作成しました',
       user_id: userId,
-      email: email || 'admin@link-up.live',
+      email: targetEmail,
       token,
     }, 201);
 

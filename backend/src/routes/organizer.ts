@@ -221,9 +221,8 @@ app.get('/events/:event_id/attendees/csv', async (c) => {
         }
 
         // Fetch attendees data
-        // orders テーブルは ticket_id と quantity を直接持つ
-        // order_tickets テーブルは存在しないため orders + tickets を JOIN
-        // users テーブルのカラム: user_id, email, display_name, phone_number, role 等
+        // ordersテーブルの実際のカラム: order_id, user_id, event_id, order_number, total_amount, platform_fee, payment_status, payment_method, created_at
+        // ticket_id カラムは存在しないため、イベントの最初のチケットを参照
         const attendees = await db.prepare(`
             SELECT 
                 u.user_id,
@@ -234,24 +233,25 @@ app.get('/events/:event_id/attendees/csv', async (c) => {
                 o.order_number,
                 o.total_amount,
                 o.created_at as purchase_date,
-                o.quantity,
-                o.payment_status,
-                t.name as ticket_name,
-                t.ticket_name as ticket_name_alt
+                o.payment_status
             FROM orders o
             LEFT JOIN users u ON o.user_id = u.user_id
-            LEFT JOIN tickets t ON o.ticket_id = t.ticket_id
             WHERE o.event_id = ? AND o.payment_status = 'completed'
             ORDER BY o.created_at ASC
         `).bind(eventId).all();
 
+        // イベントの代表チケット名を取得
+        const firstTicket: any = await db.prepare(
+            `SELECT name, ticket_name FROM tickets WHERE event_id = ? ORDER BY created_at ASC LIMIT 1`
+        ).bind(eventId).first();
+        const defaultTicketName = firstTicket?.name || firstTicket?.ticket_name || '一般参加';
+
         // Generate CSV
-        const csvHeader = 'ユーザーID,氏名,メールアドレス,電話番号,注文番号,購入金額,購入日時,チケット名,数量\n';
+        const csvHeader = 'ユーザーID,氏名,メールアドレス,電話番号,注文番号,購入金額,購入日時,チケット名\n';
         
         const csvRows = (attendees.results || []).map((a: any) => {
             const displayName = a.display_name || '';
             const phone = a.phone_number || '';
-            const ticketName = a.ticket_name || a.ticket_name_alt || '一般参加';
             
             // Escape commas and quotes in CSV
             const escape = (str: string) => {
@@ -262,7 +262,7 @@ app.get('/events/:event_id/attendees/csv', async (c) => {
                 return str;
             };
 
-            return `${escape(a.user_id)},${escape(displayName)},${escape(a.email)},${escape(phone)},${escape(a.order_number)},${a.total_amount},${a.purchase_date},${escape(ticketName)},${a.quantity || 1}`;
+            return `${escape(a.user_id)},${escape(displayName)},${escape(a.email)},${escape(phone)},${escape(a.order_number)},${a.total_amount},${a.purchase_date},${escape(defaultTicketName)}`;
         }).join('\n');
 
         const csv = csvHeader + csvRows;

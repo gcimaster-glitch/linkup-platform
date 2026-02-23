@@ -34,15 +34,19 @@ const AppUI = {
       if (navOrgBtn) {
         if (user.role === 'organizer' || user.role === 'admin') {
           navOrgBtn.classList.remove('hidden');
+          navOrgBtn.style.display = 'flex';
         } else {
           navOrgBtn.classList.add('hidden');
+          navOrgBtn.style.display = '';
         }
       }
       if (navAdmBtn) {
         if (user.role === 'admin') {
           navAdmBtn.classList.remove('hidden');
+          navAdmBtn.style.display = 'flex';
         } else {
           navAdmBtn.classList.add('hidden');
+          navAdmBtn.style.display = '';
         }
       }
 

@@ -12,6 +12,8 @@ import { adminRoutes } from './routes/admin';
 import { uploadRoutes } from './routes/upload';
 import { userRoutes } from './routes/users';
 import { transferRoutes } from './routes/transfers';
+import { checkinRoutes } from './routes/checkin';
+import { paymentRoutes } from './routes/payment';
 
 export type Bindings = {
   DB: D1Database;
@@ -21,6 +23,8 @@ export type Bindings = {
   IMGBB_API_KEY?: string;
   JWT_SECRET: string;
   RESEND_API_KEY: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_PUBLISHABLE_KEY?: string;
   ENVIRONMENT: string;
   FRONTEND_URL: string;
 };
@@ -143,6 +147,8 @@ app.route('/api/admin', adminRoutes);
 app.route('/api/upload', uploadRoutes);
 app.route('/api/users', userRoutes);
 app.route('/api/transfers', transferRoutes);
+app.route('/api/checkin', checkinRoutes);
+app.route('/api/payment', paymentRoutes);
 
 // SEO Routes (sitemap.xml, og-image)
 // Mounted at root so /sitemap.xml works directly

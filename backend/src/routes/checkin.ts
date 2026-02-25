@@ -1,557 +1,247 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
-import QRCode from 'qrcode';
-import { createHmac } from 'node:crypto';
-import type { Bindings } from '../index';
+import type { Bindings, Variables } from '../index';
 import { authMiddleware } from '../middleware/auth';
+import { verifyQRHmac, buildQRData } from '../utils/qr';
 
-const checkinRoutes = new Hono<{ Bindings: Bindings }>();
+const checkinRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// バリデーションスキーマ
-const qrScanSchema = z.object({
-  qr_code_data: z.string(),
-  event_id: z.string().uuid(),
-  device_id: z.string().optional(),
-  location: z.object({
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
-  }).optional(),
-});
-
-const tapCheckinSchema = z.object({
-  order_ticket_id: z.string().uuid(),
-  event_id: z.string().uuid(),
-  location: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-  }),
-});
-
-// ============================================
-// QRコード生成ユーティリティ
-// ============================================
-async function generateQRCode(orderTicketId: string, secretKey: string): Promise<{
-  qrCodeData: string;
-  qrCodeUrl: string;
-}> {
-  // QRコードデータ: orderTicketId + タイムスタンプ + HMAC署名
-  const timestamp = Date.now();
-  const payload = `${orderTicketId}:${timestamp}`;
-  
-  // HMAC-SHA256署名
-  const hmac = createHmac('sha256', secretKey);
-  hmac.update(payload);
-  const signature = hmac.digest('hex');
-  
-  const qrCodeData = `LINKUP:${payload}:${signature}`;
-  
-  // QRコード画像生成
-  const qrCodeImage = await QRCode.toDataURL(qrCodeData, {
-    errorCorrectionLevel: 'H',
-    type: 'image/png',
-    width: 512,
-    margin: 2,
-  });
-  
-  return {
-    qrCodeData,
-    qrCodeUrl: qrCodeImage, // Data URL
-  };
-}
-
-// QRコード検証
-function verifyQRCode(qrCodeData: string, secretKey: string): {
-  valid: boolean;
-  orderTicketId?: string;
-  error?: string;
-} {
-  try {
-    // フォーマット確認: LINKUP:orderTicketId:timestamp:signature
-    if (!qrCodeData.startsWith('LINKUP:')) {
-      return { valid: false, error: 'Invalid QR format' };
-    }
-    
-    const parts = qrCodeData.substring(7).split(':');
-    if (parts.length !== 3) {
-      return { valid: false, error: 'Invalid QR structure' };
-    }
-    
-    const [orderTicketId, timestamp, signature] = parts;
-    
-    // タイムスタンプ検証(発行から24時間以内)
-    const now = Date.now();
-    const qrTimestamp = parseInt(timestamp);
-    if (now - qrTimestamp > 24 * 60 * 60 * 1000) {
-      return { valid: false, error: 'QR code expired' };
-    }
-    
-    // 署名検証
-    const payload = `${orderTicketId}:${timestamp}`;
-    const hmac = createHmac('sha256', secretKey);
-    hmac.update(payload);
-    const expectedSignature = hmac.digest('hex');
-    
-    if (signature !== expectedSignature) {
-      return { valid: false, error: 'Invalid signature' };
-    }
-    
-    return { valid: true, orderTicketId };
-  } catch (error) {
-    return { valid: false, error: 'Verification failed' };
-  }
-}
-
-// ============================================
-// POST /api/checkin/generate - QRコード生成
-// ============================================
-checkinRoutes.post('/generate', authMiddleware, async (c) => {
-  const { order_ticket_id } = await c.req.json();
+// ============================================================
+// POST /api/checkin/generate-qr
+// QRコードデータを生成して返す（認証必須・本人のみ）
+// リクエスト: { order_id }
+// レスポンス: { success, qr_data, order_number, event_title }
+// ============================================================
+checkinRoutes.post('/generate-qr', authMiddleware, async (c) => {
+  const user = c.get('user');
   const db = c.env.DB;
-  const secretKey = c.env.JWT_SECRET;
+  const { order_id } = await c.req.json();
+
+  if (!order_id) {
+    return c.json({ success: false, error: '注文IDが必要です' }, 400);
+  }
 
   try {
-    // チケット確認
-    const ticket = await db
-      .prepare(`
-        SELECT ot.*, o.user_id, o.event_id, e.title as event_title
-        FROM order_tickets ot
-        JOIN orders o ON ot.order_id = o.order_id
-        JOIN events e ON o.event_id = e.event_id
-        WHERE ot.order_ticket_id = ?
-      `)
-      .bind(order_ticket_id)
-      .first();
+    // 注文情報取得（本人確認）
+    const order: any = await db.prepare(`
+      SELECT
+        o.order_id, o.order_number, o.user_id, o.event_id,
+        o.payment_status, o.checkin_status, o.total_amount,
+        e.title as event_title, e.start_datetime,
+        e.venue_name
+      FROM orders o
+      JOIN events e ON o.event_id = e.event_id
+      WHERE o.order_id = ?
+    `).bind(order_id).first();
 
-    if (!ticket) {
-      return c.json({ error: 'Ticket not found' }, 404);
+    if (!order) {
+      return c.json({ success: false, error: '注文が見つかりません' }, 404);
     }
 
-    // QRコード生成
-    const { qrCodeData, qrCodeUrl } = await generateQRCode(order_ticket_id, secretKey);
+    // 本人確認（admin は全チケットアクセス可）
+    if (order.user_id !== user.user_id && user.role !== 'admin') {
+      return c.json({ success: false, error: 'このチケットにアクセスする権限がありません' }, 403);
+    }
 
-    // R2にアップロード(Data URLをBlobに変換)
-    const base64Data = qrCodeUrl.split(',')[1];
-    const buffer = Buffer.from(base64Data, 'base64');
-    
-    const qrFileName = `qr/${order_ticket_id}.png`;
-    await c.env.R2.put(qrFileName, buffer, {
-      httpMetadata: {
-        contentType: 'image/png',
-      },
-    });
+    // 支払い済み確認
+    if (order.payment_status !== 'completed') {
+      return c.json({
+        success: false,
+        error: '支払いが完了していない注文のQRコードは生成できません',
+        payment_status: order.payment_status,
+      }, 400);
+    }
 
-    const r2Url = `https://pub-YOUR_R2_ID.r2.dev/${qrFileName}`;
-
-    // DBに保存
-    await db
-      .prepare(`
-        UPDATE order_tickets 
-        SET qr_code_data = ?, qr_code_url = ?
-        WHERE order_ticket_id = ?
-      `)
-      .bind(qrCodeData, r2Url, order_ticket_id)
-      .run();
+    // QRデータ生成（HMAC署名付き）
+    const qrData = await buildQRData(order_id, c.env.JWT_SECRET);
 
     return c.json({
       success: true,
-      qr_code_url: r2Url,
-      qr_code_data: qrCodeData,
-      ticket: {
-        order_ticket_id: ticket.order_ticket_id,
-        event_title: ticket.event_title,
-        attendee_name: ticket.attendee_name,
-      },
+      qr_data: qrData,
+      order_number: order.order_number,
+      event_title: order.event_title,
+      start_datetime: order.start_datetime,
+      venue_name: order.venue_name,
     });
-  } catch (error) {
-    console.error('Generate QR error:', error);
-    return c.json({ error: 'Failed to generate QR code' }, 500);
+  } catch (e: any) {
+    console.error('Generate QR error:', e);
+    return c.json({ success: false, error: e.message || 'QRコード生成に失敗しました' }, 500);
   }
 });
 
-// ============================================
-// POST /api/checkin/scan - QRスキャン受付
-// ============================================
-checkinRoutes.post('/scan', authMiddleware, zValidator('json', qrScanSchema), async (c) => {
-  const userId = c.get('userId');
-  const { qr_code_data, event_id, device_id, location } = c.req.valid('json');
+// ============================================================
+// POST /api/checkin/verify
+// QRコードをスキャンしてチェックインを実行（主催者・admin専用）
+// リクエスト: { qr_data, event_id }
+// レスポンス: { success, message, attendee_name, order_number, checked_in_at }
+// ============================================================
+checkinRoutes.post('/verify', authMiddleware, async (c) => {
+  const user = c.get('user');
   const db = c.env.DB;
-  const secretKey = c.env.JWT_SECRET;
+  const { qr_data, event_id } = await c.req.json();
+
+  if (user.role !== 'organizer' && user.role !== 'admin') {
+    return c.json({ success: false, error: '主催者権限が必要です' }, 403);
+  }
+
+  if (!qr_data || !event_id) {
+    return c.json({ success: false, error: 'QRデータとイベントIDが必要です' }, 400);
+  }
 
   try {
-    // QRコード検証
-    const verification = verifyQRCode(qr_code_data, secretKey);
-    if (!verification.valid) {
-      return c.json({ 
-        error: verification.error,
-        success: false 
-      }, 400);
+    // QRデータのパース: LINKUP:{orderId}:{timestamp}:{sig}
+    if (!qr_data.startsWith('LINKUP:')) {
+      return c.json({ success: false, error: '無効なQRコード形式です' }, 400);
     }
 
-    const orderTicketId = verification.orderTicketId!;
-
-    // チケット情報取得
-    const ticket = await db
-      .prepare(`
-        SELECT 
-          ot.*,
-          o.event_id,
-          o.user_id,
-          e.title as event_title,
-          e.organizer_id,
-          u.display_name as attendee_display_name
-        FROM order_tickets ot
-        JOIN orders o ON ot.order_id = o.order_id
-        JOIN events e ON o.event_id = e.event_id
-        LEFT JOIN users u ON o.user_id = u.user_id
-        WHERE ot.order_ticket_id = ?
-      `)
-      .bind(orderTicketId)
-      .first();
-
-    if (!ticket) {
-      return c.json({ error: 'Ticket not found', success: false }, 404);
+    const parts = qr_data.substring(7).split(':');
+    if (parts.length < 3) {
+      return c.json({ success: false, error: 'QRコードの形式が正しくありません' }, 400);
     }
 
-    // イベント確認
-    if (ticket.event_id !== event_id) {
-      return c.json({ 
-        error: 'Ticket is for a different event',
-        success: false 
-      }, 400);
+    const [orderId, timestampStr] = parts;
+    const timestamp = parseInt(timestampStr, 10);
+
+    // タイムスタンプ検証（発行から48時間以内）
+    const now = Date.now();
+    if (isNaN(timestamp) || now - timestamp > 48 * 60 * 60 * 1000) {
+      return c.json({ success: false, error: 'QRコードの有効期限が切れています（48時間）' }, 400);
     }
 
-    // 主催者権限確認
-    if (ticket.organizer_id !== userId) {
-      return c.json({ error: 'Unauthorized', success: false }, 403);
+    // HMAC署名検証
+    const isValidSig = await verifyQRHmac(orderId, timestampStr, parts[2], c.env.JWT_SECRET);
+    if (!isValidSig) {
+      return c.json({ success: false, error: 'QRコードの署名が無効です（偽造防止）' }, 400);
     }
 
-    // キャンセル済みチェック
-    if (ticket.check_in_status === 'cancelled') {
-      return c.json({ 
-        error: 'Ticket has been cancelled',
-        success: false 
-      }, 400);
+    // 注文情報取得
+    const order: any = await db.prepare(`
+      SELECT
+        o.order_id, o.order_number, o.user_id, o.event_id,
+        o.payment_status, o.checkin_status, o.checked_in_at,
+        o.total_amount,
+        e.title as event_title, e.organizer_id,
+        u.display_name as attendee_name, u.email as attendee_email
+      FROM orders o
+      JOIN events e ON o.event_id = e.event_id
+      JOIN users u ON o.user_id = u.user_id
+      WHERE o.order_id = ?
+    `).bind(orderId).first();
+
+    if (!order) {
+      return c.json({ success: false, error: '注文が見つかりません' }, 404);
     }
 
-    // 二重チェックイン防止
-    if (ticket.check_in_status === 'checked_in') {
+    // 支払い状態確認
+    if (order.payment_status !== 'completed') {
       return c.json({
-        error: 'Already checked in',
         success: false,
-        checked_in_at: ticket.checked_in_at,
-        ticket_info: {
-          attendee_name: ticket.attendee_name || ticket.attendee_display_name,
-          event_title: ticket.event_title,
-        },
+        error: '支払いが完了していないチケットです',
+        payment_status: order.payment_status,
       }, 400);
+    }
+
+    // イベント一致確認
+    if (order.event_id !== event_id) {
+      return c.json({
+        success: false,
+        error: 'このQRコードは別のイベント用です',
+        ticket_event: order.event_title,
+      }, 400);
+    }
+
+    // 主催者権限確認（管理者は全イベントにアクセス可）
+    if (user.role === 'organizer' && order.organizer_id !== user.user_id) {
+      return c.json({ success: false, error: '主催者権限がありません（別の主催者のイベントです）' }, 403);
+    }
+
+    // 重複チェックイン確認
+    if (order.checkin_status === 'checked_in') {
+      return c.json({
+        success: false,
+        error: 'このチケットはすでにチェックイン済みです',
+        already_checked_in: true,
+        checked_in_at: order.checked_in_at,
+        attendee_name: order.attendee_name,
+        order_number: order.order_number,
+      }, 409);
     }
 
     // チェックイン実行
-    await db
-      .prepare(`
-        UPDATE order_tickets
-        SET 
-          check_in_status = 'checked_in',
-          checked_in_at = CURRENT_TIMESTAMP,
-          checked_in_by = ?
-        WHERE order_ticket_id = ?
-      `)
-      .bind(userId, orderTicketId)
-      .run();
+    const checkinAt = new Date().toISOString();
+    await db.batch([
+      // 注文にチェックイン情報を記録
+      db.prepare(`
+        UPDATE orders
+        SET checkin_status = 'checked_in', checked_in_at = ?
+        WHERE order_id = ?
+      `).bind(checkinAt, orderId),
 
-    // イベントの参加者数を更新
-    await db
-      .prepare('UPDATE events SET current_attendees = current_attendees + 1 WHERE event_id = ?')
-      .bind(event_id)
-      .run();
-
-    // メール通知を送信（非同期、エラーは無視）
-    const checkedInAt = new Date().toISOString();
-    try {
-      // 参加者へのメール通知
-      if (ticket.attendee_email) {
-        await fetch(`${c.env.API_BASE_URL || 'https://api.link-up.live'}/api/email/send-checkin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: ticket.attendee_email,
-            userName: ticket.attendee_name || ticket.attendee_display_name,
-            eventName: ticket.event_title,
-            ticketName: 'チケット',
-            checkedInAt,
-            isOrganizer: false,
-          }),
-        }).catch(e => console.error('Failed to send attendee email:', e));
-      }
-
-      // 主催者へのメール通知
-      const organizer: any = await db
-        .prepare('SELECT email FROM users WHERE user_id = ?')
-        .bind(ticket.organizer_id)
-        .first();
-      
-      if (organizer?.email) {
-        await fetch(`${c.env.API_BASE_URL || 'https://api.link-up.live'}/api/email/send-checkin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: organizer.email,
-            userName: ticket.attendee_name || ticket.attendee_display_name,
-            eventName: ticket.event_title,
-            ticketName: 'チケット',
-            checkedInAt,
-            isOrganizer: true,
-          }),
-        }).catch(e => console.error('Failed to send organizer email:', e));
-      }
-    } catch (emailError) {
-      console.error('Email notification error:', emailError);
-      // メール送信失敗してもチェックインは成功とする
-    }
+      // イベントの参加者数を+1
+      db.prepare(`
+        UPDATE events
+        SET current_attendees = COALESCE(current_attendees, 0) + 1
+        WHERE event_id = ?
+      `).bind(event_id),
+    ]);
 
     return c.json({
       success: true,
-      message: 'Check-in successful!',
-      ticket_info: {
-        order_ticket_id: orderTicketId,
-        attendee_name: ticket.attendee_name || ticket.attendee_display_name,
-        attendee_email: ticket.attendee_email,
-        event_title: ticket.event_title,
-        checked_in_at: checkedInAt,
-      },
+      message: 'チェックイン完了！',
+      order_number: order.order_number,
+      attendee_name: order.attendee_name,
+      attendee_email: order.attendee_email,
+      event_title: order.event_title,
+      checked_in_at: checkinAt,
     });
-  } catch (error) {
-    console.error('QR scan error:', error);
-    return c.json({ error: 'Failed to process check-in', success: false }, 500);
+
+  } catch (e: any) {
+    console.error('Checkin verify error:', e);
+    return c.json({ success: false, error: e.message || 'チェックイン処理に失敗しました' }, 500);
   }
 });
 
-// ============================================
-// POST /api/checkin/tap - タップ受付
-// ============================================
-checkinRoutes.post('/tap', authMiddleware, zValidator('json', tapCheckinSchema), async (c) => {
-  const userId = c.get('userId');
-  const { order_ticket_id, event_id, location } = c.req.valid('json');
+// ============================================================
+// GET /api/checkin/status/:orderId
+// チェックイン状態を確認（主催者・admin専用）
+// ============================================================
+checkinRoutes.get('/status/:orderId', authMiddleware, async (c) => {
+  const user = c.get('user');
   const db = c.env.DB;
+  const orderId = c.req.param('orderId');
+
+  if (user.role !== 'organizer' && user.role !== 'admin') {
+    return c.json({ success: false, error: '主催者権限が必要です' }, 403);
+  }
 
   try {
-    // チケット情報取得
-    const ticket = await db
-      .prepare(`
-        SELECT 
-          ot.*,
-          o.event_id,
-          o.user_id,
-          e.title as event_title,
-          e.venue_lat,
-          e.venue_lng,
-          u.display_name
-        FROM order_tickets ot
-        JOIN orders o ON ot.order_id = o.order_id
-        JOIN events e ON o.event_id = e.event_id
-        LEFT JOIN users u ON o.user_id = u.user_id
-        WHERE ot.order_ticket_id = ? AND o.user_id = ?
-      `)
-      .bind(order_ticket_id, userId)
-      .first();
+    const order: any = await db.prepare(`
+      SELECT
+        o.order_id, o.order_number, o.checkin_status, o.checked_in_at,
+        o.payment_status, o.total_amount,
+        e.title as event_title,
+        u.display_name as attendee_name, u.email as attendee_email
+      FROM orders o
+      JOIN events e ON o.event_id = e.event_id
+      JOIN users u ON o.user_id = u.user_id
+      WHERE o.order_id = ?
+    `).bind(orderId).first();
 
-    if (!ticket) {
-      return c.json({ error: 'Ticket not found or unauthorized', success: false }, 404);
+    if (!order) {
+      return c.json({ success: false, error: '注文が見つかりません' }, 404);
     }
-
-    if (ticket.event_id !== event_id) {
-      return c.json({ error: 'Ticket is for a different event', success: false }, 400);
-    }
-
-    // 位置情報確認(会場から500m以内)
-    if (ticket.venue_lat && ticket.venue_lng) {
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        ticket.venue_lat,
-        ticket.venue_lng
-      );
-
-      if (distance > 500) {
-        return c.json({
-          error: 'You are too far from the event venue',
-          success: false,
-          distance_meters: Math.round(distance),
-        }, 400);
-      }
-    }
-
-    // 二重チェックイン防止
-    if (ticket.check_in_status === 'checked_in') {
-      return c.json({
-        error: 'Already checked in',
-        success: false,
-        checked_in_at: ticket.checked_in_at,
-      }, 400);
-    }
-
-    // タップ受付実行
-    await db
-      .prepare(`
-        UPDATE order_tickets
-        SET 
-          check_in_status = 'checked_in',
-          checked_in_at = CURRENT_TIMESTAMP,
-          checked_in_by = ?
-        WHERE order_ticket_id = ?
-      `)
-      .bind(userId, order_ticket_id)
-      .run();
 
     return c.json({
       success: true,
-      message: 'タップ受付が完了しました!',
-      ticket_info: {
-        attendee_name: ticket.attendee_name || ticket.display_name,
-        event_title: ticket.event_title,
-        checked_in_at: new Date().toISOString(),
-      },
+      order_id: order.order_id,
+      order_number: order.order_number,
+      checkin_status: order.checkin_status,
+      checked_in_at: order.checked_in_at,
+      attendee_name: order.attendee_name,
+      event_title: order.event_title,
     });
-  } catch (error) {
-    console.error('Tap check-in error:', error);
-    return c.json({ error: 'Failed to process tap check-in', success: false }, 500);
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500);
   }
 });
-
-// ============================================
-// GET /api/checkin/stats/:eventId - 受付統計
-// ============================================
-checkinRoutes.get('/stats/:eventId', authMiddleware, async (c) => {
-  const userId = c.get('userId');
-  const eventId = c.req.param('eventId');
-  const db = c.env.DB;
-
-  try {
-    // 主催者権限確認
-    const event = await db
-      .prepare('SELECT organizer_id FROM events WHERE event_id = ?')
-      .bind(eventId)
-      .first();
-
-    if (!event || event.organizer_id !== userId) {
-      return c.json({ error: 'Unauthorized' }, 403);
-    }
-
-    // 統計取得
-    const stats = await db
-      .prepare(`
-        SELECT 
-          COUNT(*) as total_tickets,
-          SUM(CASE WHEN check_in_status = 'checked_in' THEN 1 ELSE 0 END) as checked_in,
-          SUM(CASE WHEN check_in_status = 'pending' THEN 1 ELSE 0 END) as pending,
-          SUM(CASE WHEN check_in_status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
-        FROM order_tickets ot
-        JOIN orders o ON ot.order_id = o.order_id
-        WHERE o.event_id = ? AND o.payment_status = 'completed'
-      `)
-      .bind(eventId)
-      .first();
-
-    // 時間帯別チェックイン
-    const { results: timeStats } = await db
-      .prepare(`
-        SELECT 
-          strftime('%H:00', checked_in_at) as hour,
-          COUNT(*) as count
-        FROM order_tickets ot
-        JOIN orders o ON ot.order_id = o.order_id
-        WHERE o.event_id = ? AND check_in_status = 'checked_in'
-        GROUP BY hour
-        ORDER BY hour
-      `)
-      .bind(eventId)
-      .all();
-
-    return c.json({
-      success: true,
-      stats: {
-        total_tickets: stats?.total_tickets || 0,
-        checked_in: stats?.checked_in || 0,
-        pending: stats?.pending || 0,
-        cancelled: stats?.cancelled || 0,
-        check_in_rate: stats?.total_tickets 
-          ? ((stats.checked_in / stats.total_tickets) * 100).toFixed(1)
-          : '0.0',
-      },
-      time_distribution: timeStats,
-    });
-  } catch (error) {
-    console.error('Get stats error:', error);
-    return c.json({ error: 'Failed to fetch statistics' }, 500);
-  }
-});
-
-// ============================================
-// GET /api/checkin/list/:eventId - 参加者リスト
-// ============================================
-checkinRoutes.get('/list/:eventId', authMiddleware, async (c) => {
-  const userId = c.get('userId');
-  const eventId = c.req.param('eventId');
-  const db = c.env.DB;
-
-  try {
-    // 主催者権限確認
-    const event = await db
-      .prepare('SELECT organizer_id FROM events WHERE event_id = ?')
-      .bind(eventId)
-      .first();
-
-    if (!event || event.organizer_id !== userId) {
-      return c.json({ error: 'Unauthorized' }, 403);
-    }
-
-    // 参加者リスト取得
-    const { results: attendees } = await db
-      .prepare(`
-        SELECT 
-          ot.order_ticket_id,
-          ot.attendee_name,
-          ot.attendee_email,
-          ot.check_in_status,
-          ot.checked_in_at,
-          t.ticket_name,
-          o.order_number
-        FROM order_tickets ot
-        JOIN orders o ON ot.order_id = o.order_id
-        JOIN tickets t ON ot.ticket_id = t.ticket_id
-        WHERE o.event_id = ? AND o.payment_status = 'completed'
-        ORDER BY ot.checked_in_at DESC, ot.attendee_name ASC
-      `)
-      .bind(eventId)
-      .all();
-
-    return c.json({
-      success: true,
-      attendees,
-    });
-  } catch (error) {
-    console.error('Get attendee list error:', error);
-    return c.json({ error: 'Failed to fetch attendee list' }, 500);
-  }
-});
-
-// ============================================
-// ユーティリティ: 距離計算(Haversine formula)
-// ============================================
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371e3; // 地球の半径(メートル)
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c; // メートル単位
-}
 
 export { checkinRoutes };

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Bindings, Variables } from '../index';
 import { authMiddleware } from '../middleware/auth';
 import { ResendService } from '../services/resend';
+import { buildQRData } from '../utils/qr';
 
 const orderRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -288,4 +289,34 @@ orderRoutes.get('/', async (c) => {
   }
 });
 
+// ============================================================
+// GET /api/orders/:id/qr
+// QRコードデータを取得（本人のみ）
+// ============================================================
+orderRoutes.get('/:id/qr', async (c) => {
+  const db = c.env.DB;
+  const user = c.get('user');
+  const orderId = c.req.param('id');
+
+  try {
+    const order: any = await db.prepare(
+      'SELECT order_id, payment_status, user_id FROM orders WHERE order_id = ? AND user_id = ?'
+    ).bind(orderId, user.user_id).first();
+
+    if (!order) return c.json({ error: '注文が見つかりません' }, 404);
+    if (order.payment_status !== 'completed') {
+      return c.json({ error: '未決済の注文です' }, 400);
+    }
+
+    // HMAC署名付きQRデータを生成
+    const qrData = await buildQRData(orderId, c.env.JWT_SECRET);
+
+    return c.json({ success: true, qr_data: qrData, order_id: orderId });
+  } catch (e: any) {
+    console.error('QR generate error:', e);
+    return c.json({ error: e.message || 'QR生成に失敗しました' }, 500);
+  }
+});
+
 export { orderRoutes };
+

@@ -1,161 +1,165 @@
 /**
- * 主催者ダッシュボード
- *
- * API:
- *   GET  /api/organizer/stats     – 売上・参加者統計
- *   GET  /api/organizer/events    – 主催イベント一覧
- *   POST /api/events              – イベント作成
- *   PUT  /api/events/:id          – イベント編集
- *   DELETE /api/events/:id        – イベント削除
+ * 主催者ダッシュボード — Frontend Design Skill準拠
+ * Design: "Code Editor Dark" — ネオンシアン + IDE暗黒テーマ
  */
 
-// ─── APIクライアント（主催者専用） ────────────────
+// ─── APIクライアント ─────────────────────────────────
 
 const OrganizerAPI = {
-  stats: () =>
-    window.LinkUpAPI._request('GET', '/api/organizer/stats', null, true),
-
-  events: () =>
-    window.LinkUpAPI._request('GET', '/api/organizer/events', null, true),
-
-  createEvent: (data) =>
-    window.LinkUpAPI._request('POST', '/api/events', data, true),
-
-  updateEvent: (id, data) =>
-    window.LinkUpAPI._request('PUT', `/api/events/${id}`, data, true),
-
-  deleteEvent: (id) =>
-    window.LinkUpAPI._request('DELETE', `/api/events/${id}`, null, true),
+  stats:       () => window.LinkUpAPI._request('GET', '/api/organizer/stats', null, true),
+  events:      () => window.LinkUpAPI._request('GET', '/api/organizer/events', null, true),
+  createEvent: (data) => window.LinkUpAPI._request('POST', '/api/events', data, true),
+  updateEvent: (id, data) => window.LinkUpAPI._request('PUT', `/api/events/${id}`, data, true),
+  deleteEvent: (id) => window.LinkUpAPI._request('DELETE', `/api/events/${id}`, null, true),
 };
 
-// ─── メインレンダリング ─────────────────────────
+// ─── スタイルヘルパー ─────────────────────────────────
+const _orgCardStyle = `background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; padding:20px;`;
+const _orgInputStyle = `width:100%; background:var(--c-raised); border:1.5px solid var(--c-border); color:var(--c-text); border-radius:10px; padding:10px 14px; font-size:13px; outline:none; transition:border-color 0.15s; box-sizing:border-box;`;
+const _orgSpinner = `<div style="display:flex;justify-content:center;padding:48px 0;"><div style="width:32px;height:32px;border:2.5px solid var(--c-border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.9s linear infinite;"></div></div>`;
+
+// ─── メインレンダリング ─────────────────────────────
 
 async function renderOrganizer(params = {}) {
-  // ロールガード: organizer または admin のみ許可
   if (!AppAuth.requireRole(['organizer', 'admin'])) return;
 
   const user = window.currentUser;
+  const app  = document.getElementById('app');
+  const tab  = params.tab || 'overview';
 
-  const app = document.getElementById('app');
-  const tab = params.tab || 'overview';
+  const tabs = [
+    { key: 'overview', label: '概要',            icon: 'dashboard' },
+    { key: 'events',   label: 'イベント管理',     icon: 'event' },
+    { key: 'checkin',  label: 'QRチェックイン',   icon: 'qr_code_scanner' },
+    { key: 'settings', label: 'プロフィール設定', icon: 'settings' },
+  ];
 
   app.innerHTML = `
-    <div class="min-h-screen bg-slate-50">
-      <div class="max-w-6xl mx-auto px-4 py-8">
-
-        <!-- ヘッダー -->
-        <div class="flex items-center justify-between mb-8">
+    <div style="min-height:100vh; background:var(--c-bg);">
+      <!-- ─── ヘッダー ─── -->
+      <div style="background:var(--c-canvas); border-bottom:1px solid var(--c-border);">
+        <div style="max-width:1200px; margin:0 auto; padding:20px 24px; display:flex; align-items:center; justify-content:space-between;">
           <div>
-            <h1 class="text-2xl font-bold text-slate-800">主催者ダッシュボード</h1>
-            <p class="text-slate-500 text-sm mt-1">${user?.display_name || user?.name || ''}さん、お疲れ様です</p>
+            <h1 style="font-family:'Outfit',sans-serif; font-size:22px; font-weight:900; color:var(--c-text);">主催者ダッシュボード</h1>
+            <p style="font-size:13px; color:var(--c-dim); margin-top:2px;">${_escapeHtml(user?.display_name || user?.name || '')}さん、お疲れ様です</p>
           </div>
           <button onclick="_orgOpenCreateModal()"
-            class="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-sm">
-            <span class="material-icons-outlined text-base">add</span>
+            class="btn-primary"
+            style="display:flex; align-items:center; gap:8px; padding:10px 20px; border:none; cursor:pointer; border-radius:12px; font-size:13px; font-weight:700; color:var(--c-bg);">
+            <span class="material-icons-outlined" style="font-size:18px;">add</span>
             新規イベント作成
           </button>
         </div>
+      </div>
 
-        <!-- タブ -->
-        <div class="flex gap-1 bg-white rounded-xl p-1 shadow-sm mb-6 overflow-x-auto">
-          ${[
-            { key: 'overview', label: '概要',          icon: 'dashboard' },
-            { key: 'events',   label: 'イベント管理',   icon: 'event' },
-            { key: 'settings', label: 'プロフィール設定', icon: 'settings' },
-          ].map(t => `
+      <div style="max-width:1200px; margin:0 auto; padding:24px;">
+
+        <!-- ─── タブ ─── -->
+        <div style="display:flex; gap:4px; background:var(--c-surface); border:1px solid var(--c-border); border-radius:14px; padding:4px; margin-bottom:24px; overflow-x:auto;">
+          ${tabs.map(t => `
             <button onclick="AppRouter.go('organizer', { tab: '${t.key}' })"
-              class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap
-                ${tab === t.key ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-slate-100'}">
-              <span class="material-icons-outlined text-base">${t.icon}</span>${t.label}
+              style="
+                display:flex; align-items:center; gap:6px; padding:8px 16px; border-radius:10px; border:none; cursor:pointer;
+                font-size:13px; font-weight:600; white-space:nowrap; transition:all 0.15s;
+                ${tab === t.key
+                  ? 'background:var(--accent-dim); color:var(--accent); border:1px solid rgba(0,217,255,0.25);'
+                  : 'background:none; color:var(--c-dim); border:1px solid transparent;'}
+              "
+              onmouseenter="${tab !== t.key ? "this.style.color='var(--c-text-1)'" : ''}"
+              onmouseleave="${tab !== t.key ? "this.style.color='var(--c-dim)'" : ''}">
+              <span class="material-icons-outlined" style="font-size:16px;">${t.icon}</span>${t.label}
             </button>
           `).join('')}
         </div>
 
-        <!-- コンテンツ -->
+        <!-- ─── コンテンツ ─── -->
         <div id="org-content">
-          <div class="flex justify-center py-12">
-            <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          </div>
+          ${_orgSpinner}
         </div>
       </div>
     </div>
   `;
 
-  // タブに応じてレンダリング
   switch (tab) {
     case 'overview':  await _orgOverview();  break;
     case 'events':    await _orgEvents();    break;
+    case 'checkin':   await _orgCheckin();   break;
     case 'settings':  await _orgSettings();  break;
     default:          await _orgOverview();
   }
 }
 
-// ─── 概要タブ ────────────────────────────────────
+// ─── 概要タブ ────────────────────────────────────────
 
 async function _orgOverview() {
   const el = document.getElementById('org-content');
 
   try {
-    const data = await OrganizerAPI.stats();
+    const data  = await OrganizerAPI.stats();
     const stats = data.stats || {};
 
+    const statCards = [
+      { label: '総売上',     value: '¥' + Number(stats.revenue || 0).toLocaleString(), icon: 'payments',     color: 'var(--accent)' },
+      { label: '注文数',     value: (stats.orders || 0) + '件',                        icon: 'receipt_long', color: 'var(--lime)'   },
+      { label: 'イベント数', value: (stats.events || 0) + '件',                        icon: 'event',        color: 'var(--violet)' },
+      { label: 'フォロワー', value: (stats.followers || 0) + '人',                     icon: 'people',       color: 'var(--amber)'  },
+    ];
+
     el.innerHTML = `
-      <!-- 統計カード -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        ${[
-          { label: '総売上',       value: '¥' + Number(stats.revenue || 0).toLocaleString(),       icon: 'payments',     color: 'text-blue-600' },
-          { label: '注文数',       value: (stats.orders || 0) + '件',                              icon: 'receipt_long', color: 'text-green-600' },
-          { label: 'イベント数',   value: (stats.events || 0) + '件',                              icon: 'event',        color: 'text-purple-600' },
-          { label: 'フォロワー',   value: (stats.followers || 0) + '人',                           icon: 'people',       color: 'text-orange-600' },
-        ].map(s => `
-          <div class="bg-white rounded-2xl p-5 shadow-sm">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="material-icons-outlined text-slate-400 text-base">${s.icon}</span>
-              <p class="text-xs text-slate-500">${s.label}</p>
+      <!-- 統計グリッド -->
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
+        ${statCards.map(s => `
+          <div style="${_orgCardStyle}">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span class="material-icons-outlined" style="font-size:16px; color:var(--c-dim);">${s.icon}</span>
+              <p style="font-size:11px; color:var(--c-dim);">${s.label}</p>
             </div>
-            <p class="text-2xl font-bold ${s.color}">${s.value}</p>
+            <p style="font-family:'Outfit',sans-serif; font-size:24px; font-weight:800; color:${s.color};">${s.value}</p>
           </div>
         `).join('')}
       </div>
 
-      <!-- プラットフォーム手数料 -->
-      <div class="bg-white rounded-2xl p-5 shadow-sm mb-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-slate-600">プラットフォーム手数料</p>
-            <p class="text-2xl font-bold text-slate-800 mt-1">${stats.fee_rate ?? 5}%</p>
-            <p class="text-xs text-slate-400 mt-1">${
-              stats.organizer_type === 'npo' ? 'NPO法人のため0%優遇' :
-              stats.organizer_type === 'individual' ? '個人のため0%優遇' :
-              '法人・企業の標準料率'
-            }</p>
-          </div>
-          <span class="material-icons-outlined text-slate-200 text-6xl">percent</span>
+      <!-- 手数料カード -->
+      <div style="${_orgCardStyle} display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; overflow:hidden; position:relative;">
+        <div style="position:absolute; right:-10px; top:50%; transform:translateY(-50%); opacity:0.04;">
+          <span class="material-icons-outlined" style="font-size:120px; color:var(--accent);">percent</span>
+        </div>
+        <div>
+          <p style="font-size:13px; color:var(--c-dim); margin-bottom:4px;">プラットフォーム手数料</p>
+          <p style="font-family:'Outfit',sans-serif; font-size:32px; font-weight:900; color:var(--c-text);">${stats.fee_rate ?? 5}%</p>
+          <p style="font-size:12px; color:var(--c-dim); margin-top:2px;">${
+            stats.organizer_type === 'npo' ? 'NPO法人のため0%優遇' :
+            stats.organizer_type === 'individual' ? '個人のため0%優遇' :
+            '法人・企業の標準料率'
+          }</p>
         </div>
       </div>
 
-      <!-- 近日のイベント（プレビュー） -->
-      <div class="bg-white rounded-2xl shadow-sm" id="org-events-preview">
-        <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-          <h3 class="font-bold text-slate-800">主催イベント</h3>
-          <button onclick="AppRouter.go('organizer', {tab:'events'})" class="text-sm text-blue-600 hover:underline">すべて見る</button>
+      <!-- イベントプレビュー -->
+      <div style="background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; overflow:hidden;" id="org-events-preview">
+        <div style="padding:16px 20px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between;">
+          <h3 style="font-size:14px; font-weight:700; color:var(--c-text);">主催イベント</h3>
+          <button onclick="AppRouter.go('organizer',{tab:'events'})"
+            style="font-size:12px; color:var(--accent); background:none; border:none; cursor:pointer; font-weight:600;">
+            すべて見る
+          </button>
         </div>
-        <div class="flex justify-center py-8">
-          <div class="w-6 h-6 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-        </div>
+        ${_orgSpinner}
       </div>
     `;
 
-    // イベントプレビューを非同期で読み込む
     _orgLoadEventsPreview();
 
   } catch (err) {
     el.innerHTML = `
-      <div class="bg-white rounded-2xl p-8 shadow-sm text-center">
-        <span class="material-icons-outlined text-red-300 text-5xl mb-3 block">error_outline</span>
-        <p class="text-red-500 font-medium mb-2">統計の読み込みに失敗しました</p>
-        <p class="text-slate-400 text-sm">${err.message}</p>
-        <button onclick="_orgOverview()" class="mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">再読み込み</button>
+      <div style="${_orgCardStyle} text-align:center; padding:48px 24px;">
+        <span class="material-icons-outlined" style="font-size:48px; color:var(--hot); display:block; margin-bottom:12px;">error_outline</span>
+        <p style="font-size:14px; font-weight:600; color:var(--hot); margin-bottom:8px;">統計の読み込みに失敗しました</p>
+        <p style="font-size:13px; color:var(--c-dim); margin-bottom:20px;">${_escapeHtml(err.message)}</p>
+        <button onclick="_orgOverview()"
+          style="padding:10px 20px; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; cursor:pointer; border-radius:10px; font-weight:700; font-size:13px;">
+          再読み込み
+        </button>
       </div>
     `;
   }
@@ -166,19 +170,25 @@ async function _orgLoadEventsPreview() {
   if (!el) return;
 
   try {
-    const data = await OrganizerAPI.events();
+    const data   = await OrganizerAPI.events();
     const events = data.events || [];
 
     if (events.length === 0) {
       el.innerHTML = `
-        <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-          <h3 class="font-bold text-slate-800">主催イベント</h3>
-          <button onclick="AppRouter.go('organizer', {tab:'events'})" class="text-sm text-blue-600 hover:underline">すべて見る</button>
+        <div style="padding:16px 20px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between;">
+          <h3 style="font-size:14px; font-weight:700; color:var(--c-text);">主催イベント</h3>
+          <button onclick="AppRouter.go('organizer',{tab:'events'})"
+            style="font-size:12px; color:var(--accent); background:none; border:none; cursor:pointer; font-weight:600;">
+            すべて見る
+          </button>
         </div>
-        <div class="text-center py-10 text-slate-400">
-          <span class="material-icons-outlined text-4xl mb-2 block">event_busy</span>
-          <p class="text-sm">まだイベントがありません</p>
-          <button onclick="_orgOpenCreateModal()" class="mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">最初のイベントを作成</button>
+        <div style="text-align:center; padding:48px 24px; color:var(--c-dim);">
+          <span class="material-icons-outlined" style="font-size:40px; display:block; margin-bottom:8px; color:var(--c-muted);">event_busy</span>
+          <p style="font-size:13px; margin-bottom:16px;">まだイベントがありません</p>
+          <button onclick="_orgOpenCreateModal()"
+            style="padding:10px 20px; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; cursor:pointer; border-radius:10px; font-weight:700; font-size:13px;">
+            最初のイベントを作成
+          </button>
         </div>
       `;
       return;
@@ -186,40 +196,38 @@ async function _orgLoadEventsPreview() {
 
     const preview = events.slice(0, 3);
     el.innerHTML = `
-      <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-        <h3 class="font-bold text-slate-800">主催イベント（直近3件）</h3>
-        <button onclick="AppRouter.go('organizer', {tab:'events'})" class="text-sm text-blue-600 hover:underline">すべて見る（${events.length}件）</button>
+      <div style="padding:16px 20px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between;">
+        <h3 style="font-size:14px; font-weight:700; color:var(--c-text);">主催イベント（直近3件）</h3>
+        <button onclick="AppRouter.go('organizer',{tab:'events'})"
+          style="font-size:12px; color:var(--accent); background:none; border:none; cursor:pointer; font-weight:600;">
+          すべて見る（${events.length}件）
+        </button>
       </div>
-      <div class="divide-y divide-slate-50">
-        ${preview.map(ev => _renderOrgEventRow(ev)).join('')}
-      </div>
+      ${preview.map(ev => _renderOrgEventRow(ev)).join('')}
     `;
-
   } catch (err) {
-    if (el) {
-      el.innerHTML = `<div class="p-5"><p class="text-red-400 text-sm">${err.message}</p></div>`;
-    }
+    if (el) el.innerHTML = `<div style="padding:16px;"><p style="color:var(--hot); font-size:13px;">${err.message}</p></div>`;
   }
 }
 
-// ─── イベント管理タブ ──────────────────────────────
+// ─── イベント管理タブ ─────────────────────────────────
 
 async function _orgEvents() {
   const el = document.getElementById('org-content');
-  el.innerHTML = `<div class="flex justify-center py-12"><div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div></div>`;
+  el.innerHTML = _orgSpinner;
 
   try {
-    const data = await OrganizerAPI.events();
+    const data   = await OrganizerAPI.events();
     const events = data.events || [];
 
     if (events.length === 0) {
       el.innerHTML = `
-        <div class="bg-white rounded-2xl p-12 shadow-sm text-center">
-          <span class="material-icons-outlined text-slate-300 text-6xl mb-4 block">event_busy</span>
-          <p class="text-slate-500 font-medium mb-2">まだイベントがありません</p>
-          <p class="text-slate-400 text-sm mb-6">最初のイベントを作成して参加者を集めましょう！</p>
+        <div style="${_orgCardStyle} text-align:center; padding:64px 24px;">
+          <span class="material-icons-outlined" style="font-size:56px; color:var(--c-muted); display:block; margin-bottom:12px;">event_busy</span>
+          <p style="font-size:14px; font-weight:600; color:var(--c-text-1); margin-bottom:8px;">まだイベントがありません</p>
+          <p style="font-size:13px; color:var(--c-dim); margin-bottom:20px;">最初のイベントを作成して参加者を集めましょう！</p>
           <button onclick="_orgOpenCreateModal()"
-            class="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition">
+            style="padding:12px 28px; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; cursor:pointer; border-radius:12px; font-weight:700; font-size:14px;">
             イベントを作成する
           </button>
         </div>
@@ -228,66 +236,68 @@ async function _orgEvents() {
     }
 
     el.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-          <h3 class="font-bold text-slate-800">主催イベント一覧 (${events.length}件)</h3>
+      <div style="background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; overflow:hidden;">
+        <div style="padding:16px 20px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between;">
+          <h3 style="font-size:14px; font-weight:700; color:var(--c-text);">主催イベント一覧 (${events.length}件)</h3>
           <button onclick="_orgOpenCreateModal()"
-            class="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">
-            <span class="material-icons-outlined text-base">add</span>新規作成
+            style="display:flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; cursor:pointer; border-radius:10px; font-size:12px; font-weight:700;">
+            <span class="material-icons-outlined" style="font-size:16px;">add</span>新規作成
           </button>
         </div>
-        <div class="divide-y divide-slate-100">
-          ${events.map(ev => _renderOrgEventRow(ev, true)).join('')}
-        </div>
+        ${events.map(ev => _renderOrgEventRow(ev, true)).join('')}
       </div>
     `;
-
   } catch (err) {
-    el.innerHTML = `<div class="bg-white rounded-2xl p-6 shadow-sm"><p class="text-red-500">${err.message}</p></div>`;
+    el.innerHTML = `<div style="${_orgCardStyle}"><p style="color:var(--hot); font-size:13px;">${err.message}</p></div>`;
   }
 }
 
-// ─── 設定タブ ─────────────────────────────────────
+// ─── 設定タブ ─────────────────────────────────────────
 
 async function _orgSettings() {
-  const el = document.getElementById('org-content');
+  const el   = document.getElementById('org-content');
   const user = window.currentUser;
 
   el.innerHTML = `
-    <div class="max-w-xl space-y-6">
+    <div style="max-width:480px; display:flex; flex-direction:column; gap:20px;">
       <!-- プロフィール編集 -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 class="font-bold text-slate-800 mb-5">プロフィール設定</h3>
-        <form id="org-profile-form" class="space-y-4">
+      <div style="${_orgCardStyle}">
+        <h3 style="font-size:14px; font-weight:700; color:var(--c-text); margin-bottom:20px;">プロフィール設定</h3>
+        <form id="org-profile-form" style="display:flex; flex-direction:column; gap:14px;">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">表示名</label>
-            <input type="text" name="name" value="${user?.display_name || user?.name || ''}"
-              class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label style="display:block; font-size:11px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">表示名</label>
+            <input type="text" name="name" value="${_escapeHtml(user?.display_name || user?.name || '')}"
+              style="${_orgInputStyle}"
+              onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-dim)'"
+              onblur="this.style.borderColor='var(--c-border)';this.style.boxShadow='none'">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">アバターURL</label>
-            <input type="url" name="avatar_url" value="${user?.avatar_url || ''}"
-              class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="https://...">
+            <label style="display:block; font-size:11px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">アバターURL</label>
+            <input type="url" name="avatar_url" value="${_escapeHtml(user?.avatar_url || '')}"
+              placeholder="https://..."
+              style="${_orgInputStyle}"
+              onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-dim)'"
+              onblur="this.style.borderColor='var(--c-border)';this.style.boxShadow='none'">
           </div>
-          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition text-sm">
+          <button type="submit"
+            style="width:100%; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; cursor:pointer; border-radius:10px; padding:12px; font-size:14px; font-weight:800; transition:all 0.15s;">
             保存する
           </button>
         </form>
       </div>
 
       <!-- アカウント情報 -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 class="font-bold text-slate-800 mb-4">アカウント情報</h3>
-        <div class="space-y-3 text-sm">
-          <div class="flex justify-between">
-            <span class="text-slate-500">メールアドレス</span>
-            <span class="font-medium text-slate-700">${user?.email || ''}</span>
+      <div style="${_orgCardStyle}">
+        <h3 style="font-size:14px; font-weight:700; color:var(--c-text); margin-bottom:16px;">アカウント情報</h3>
+        <div style="display:flex; flex-direction:column; gap:12px; font-size:13px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:var(--c-dim);">メールアドレス</span>
+            <span style="font-weight:600; color:var(--c-text-1);">${_escapeHtml(user?.email || '')}</span>
           </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">アカウント種別</span>
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">
-              <span class="material-icons-outlined text-xs">verified</span>主催者
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:var(--c-dim);">アカウント種別</span>
+            <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; background:rgba(155,89,255,0.1); border:1px solid rgba(155,89,255,0.3); border-radius:99px; font-size:11px; font-weight:700; color:var(--violet);">
+              <span class="material-icons-outlined" style="font-size:12px;">verified</span>主催者
             </span>
           </div>
         </div>
@@ -297,7 +307,7 @@ async function _orgSettings() {
 
   document.getElementById('org-profile-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const fd = new FormData(e.target);
+    const fd     = new FormData(e.target);
     const fields = { name: fd.get('name'), avatar_url: fd.get('avatar_url') };
     try {
       const result = await window.LinkUpAPI.Auth.updateProfile(fields);
@@ -310,46 +320,57 @@ async function _orgSettings() {
   });
 }
 
-// ─── 共通: イベント行 ─────────────────────────────
+// ─── 共通: イベント行 ─────────────────────────────────
 
 function _renderOrgEventRow(ev, showActions = false) {
   const date = ev.start_datetime
     ? new Date(ev.start_datetime).toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric' })
     : '日時未定';
-  const statusMap = {
-    published: ['公開中', 'bg-green-100 text-green-700'],
-    draft:     ['下書き', 'bg-slate-100 text-slate-600'],
-    cancelled: ['キャンセル', 'bg-red-100 text-red-700'],
-    ended:     ['終了', 'bg-orange-100 text-orange-700'],
+
+  const statusStyles = {
+    published: { label: '公開中',    color: 'var(--lime)',    bg: 'rgba(57,255,20,0.1)',   border: 'rgba(57,255,20,0.3)' },
+    draft:     { label: '下書き',    color: 'var(--c-dim)',   bg: 'var(--c-raised)',        border: 'var(--c-border)' },
+    cancelled: { label: 'キャンセル', color: 'var(--hot)',    bg: 'var(--hot-dim)',         border: 'rgba(255,51,102,0.3)' },
+    ended:     { label: '終了',      color: 'var(--amber)',   bg: 'rgba(255,170,0,0.1)',   border: 'rgba(255,170,0,0.3)' },
   };
-  const [statusLabel, statusCls] = statusMap[ev.status] || ['不明', 'bg-slate-100 text-slate-600'];
+  const s   = statusStyles[ev.status] || { label: '不明', color: 'var(--c-dim)', bg: 'var(--c-raised)', border: 'var(--c-border)' };
   const img = ev.cover_image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=200&q=60';
 
   return `
-    <div class="flex items-center gap-4 p-4 hover:bg-slate-50">
-      <img src="${img}" class="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+    <div style="display:flex; align-items:center; gap:16px; padding:14px 20px; border-bottom:1px solid var(--c-border); transition:background 0.15s; cursor:pointer;"
+      onmouseenter="this.style.background='var(--c-raised)'" onmouseleave="this.style.background='none'">
+      <img src="${_escapeHtml(img)}" style="width:52px; height:52px; border-radius:12px; object-fit:cover; flex-shrink:0;"
         onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=200&q=60'">
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-1">
-          <p class="font-medium text-slate-800 text-sm truncate">${ev.title}</p>
-          <span class="px-2 py-0.5 rounded-full text-xs font-bold flex-shrink-0 ${statusCls}">${statusLabel}</span>
+      <div style="flex:1; min-width:0;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <p style="font-size:13px; font-weight:600; color:var(--c-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escapeHtml(ev.title)}</p>
+          <span style="padding:2px 8px; border-radius:99px; font-size:10px; font-weight:700; color:${s.color}; background:${s.bg}; border:1px solid ${s.border}; flex-shrink:0;">${s.label}</span>
         </div>
-        <p class="text-xs text-slate-400">${date} · ${ev.venue_name || 'オンライン'}</p>
-        <p class="text-xs text-slate-400">参加: ${ev.current_attendees || 0} / ${ev.max_attendees || '∞'}人</p>
+        <p style="font-size:11px; color:var(--c-dim);">${date} · ${_escapeHtml(ev.venue_name || 'オンライン')}</p>
+        <p style="font-size:11px; color:var(--c-dim);">参加: ${ev.current_attendees || 0} / ${ev.max_attendees || '∞'}人</p>
       </div>
       ${showActions ? `
-        <div class="flex gap-2 flex-shrink-0">
-          <button onclick="AppRouter.go('detail', {id:'${ev.event_id}'})"
-            class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="詳細を見る">
-            <span class="material-icons-outlined text-base">visibility</span>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button onclick="AppRouter.go('detail', {id:'${_escapeHtml(ev.event_id)}'})"
+            style="width:32px; height:32px; background:var(--c-raised); border:1px solid var(--c-border); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--c-dim); transition:all 0.15s;"
+            onmouseenter="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+            onmouseleave="this.style.borderColor='var(--c-border)';this.style.color='var(--c-dim)'"
+            title="詳細を見る">
+            <span class="material-icons-outlined" style="font-size:16px;">visibility</span>
           </button>
-          <button onclick="_orgOpenEditModal('${ev.event_id}')"
-            class="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="編集">
-            <span class="material-icons-outlined text-base">edit</span>
+          <button onclick="_orgOpenEditModal('${_escapeHtml(ev.event_id)}')"
+            style="width:32px; height:32px; background:var(--c-raised); border:1px solid var(--c-border); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--c-dim); transition:all 0.15s;"
+            onmouseenter="this.style.borderColor='var(--lime)';this.style.color='var(--lime)'"
+            onmouseleave="this.style.borderColor='var(--c-border)';this.style.color='var(--c-dim)'"
+            title="編集">
+            <span class="material-icons-outlined" style="font-size:16px;">edit</span>
           </button>
-          <button onclick="_orgDeleteEvent('${ev.event_id}', '${ev.title.replace(/'/g, "\\'")}')"
-            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="削除">
-            <span class="material-icons-outlined text-base">delete</span>
+          <button onclick="_orgDeleteEvent('${_escapeHtml(ev.event_id)}', '${_escapeHtml(ev.title.replace(/'/g, "\\'"))}')"
+            style="width:32px; height:32px; background:var(--c-raised); border:1px solid var(--c-border); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--c-dim); transition:all 0.15s;"
+            onmouseenter="this.style.borderColor='var(--hot)';this.style.color='var(--hot)'"
+            onmouseleave="this.style.borderColor='var(--c-border)';this.style.color='var(--c-dim)'"
+            title="削除">
+            <span class="material-icons-outlined" style="font-size:16px;">delete</span>
           </button>
         </div>
       ` : ''}
@@ -357,24 +378,29 @@ function _renderOrgEventRow(ev, showActions = false) {
   `;
 }
 
-// ─── イベント作成モーダル ─────────────────────────
+// ─── イベント作成モーダル ─────────────────────────────
 
 window._orgOpenCreateModal = function() {
   AppUI.openModal(`
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-8 max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold text-slate-800">新規イベント作成</h2>
-        <button onclick="AppUI.closeModal()" class="text-slate-400 hover:text-slate-600">
-          <span class="material-icons-outlined">close</span>
+    <div style="background:var(--c-surface); border:1px solid rgba(0,217,255,0.2); border-radius:20px; width:100%; max-width:640px; margin:0 16px; padding:28px; max-height:90vh; overflow-y:auto; box-shadow:0 32px 80px rgba(0,0,0,0.7);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <h2 style="font-family:'Outfit',sans-serif; font-size:20px; font-weight:800; color:var(--c-text);">新規イベント作成</h2>
+        <button onclick="AppUI.closeModal()"
+          style="width:32px; height:32px; background:var(--c-raised); border:1px solid var(--c-border); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--c-dim);">
+          <span class="material-icons-outlined" style="font-size:16px;">close</span>
         </button>
       </div>
-      <form id="create-event-form" class="space-y-4">
+      <form id="create-event-form">
         ${_eventFormFields({})}
-        <div class="flex gap-3 pt-2">
+        <div style="display:flex; gap:12px; margin-top:20px;">
           <button type="button" onclick="AppUI.closeModal()"
-            class="flex-1 py-2.5 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 font-medium text-sm">キャンセル</button>
+            style="flex:1; padding:12px; background:var(--c-raised); border:1px solid var(--c-border); color:var(--c-dim); border-radius:10px; font-weight:600; font-size:13px; cursor:pointer; transition:all 0.15s;">
+            キャンセル
+          </button>
           <button type="submit"
-            class="flex-1 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm">作成する</button>
+            style="flex:1; padding:12px; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer; transition:all 0.15s;">
+            作成する
+          </button>
         </div>
       </form>
     </div>
@@ -382,9 +408,8 @@ window._orgOpenCreateModal = function() {
 
   document.getElementById('create-event-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const payload = _buildEventPayload(fd);
-
+    const fd        = new FormData(e.target);
+    const payload   = _buildEventPayload(fd);
     const submitBtn = e.target.querySelector('[type="submit"]');
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '作成中...'; }
     try {
@@ -399,28 +424,33 @@ window._orgOpenCreateModal = function() {
   });
 };
 
-// ─── イベント編集モーダル ─────────────────────────
+// ─── イベント編集モーダル ─────────────────────────────
 
 window._orgOpenEditModal = async function(eventId) {
   try {
     const data = await window.LinkUpAPI.Events.get(eventId);
-    const ev = data.event;
+    const ev   = data.event;
 
     AppUI.openModal(`
-      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-8 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-bold text-slate-800">イベント編集</h2>
-          <button onclick="AppUI.closeModal()" class="text-slate-400 hover:text-slate-600">
-            <span class="material-icons-outlined">close</span>
+      <div style="background:var(--c-surface); border:1px solid rgba(0,217,255,0.2); border-radius:20px; width:100%; max-width:640px; margin:0 16px; padding:28px; max-height:90vh; overflow-y:auto; box-shadow:0 32px 80px rgba(0,0,0,0.7);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+          <h2 style="font-family:'Outfit',sans-serif; font-size:20px; font-weight:800; color:var(--c-text);">イベント編集</h2>
+          <button onclick="AppUI.closeModal()"
+            style="width:32px; height:32px; background:var(--c-raised); border:1px solid var(--c-border); border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--c-dim);">
+            <span class="material-icons-outlined" style="font-size:16px;">close</span>
           </button>
         </div>
-        <form id="edit-event-form" class="space-y-4">
+        <form id="edit-event-form">
           ${_eventFormFields(ev)}
-          <div class="flex gap-3 pt-2">
+          <div style="display:flex; gap:12px; margin-top:20px;">
             <button type="button" onclick="AppUI.closeModal()"
-              class="flex-1 py-2.5 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 font-medium text-sm">キャンセル</button>
+              style="flex:1; padding:12px; background:var(--c-raised); border:1px solid var(--c-border); color:var(--c-dim); border-radius:10px; font-weight:600; font-size:13px; cursor:pointer;">
+              キャンセル
+            </button>
             <button type="submit"
-              class="flex-1 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm">保存する</button>
+              style="flex:1; padding:12px; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; border-radius:10px; font-weight:800; font-size:13px; cursor:pointer;">
+              保存する
+            </button>
           </div>
         </form>
       </div>
@@ -428,9 +458,8 @@ window._orgOpenEditModal = async function(eventId) {
 
     document.getElementById('edit-event-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
-      const payload = _buildEventPayload(fd);
-
+      const fd        = new FormData(e.target);
+      const payload   = _buildEventPayload(fd);
       const submitBtn = e.target.querySelector('[type="submit"]');
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '更新中...'; }
       try {
@@ -449,11 +478,10 @@ window._orgOpenEditModal = async function(eventId) {
   }
 };
 
-// ─── イベント削除 ─────────────────────────────────
+// ─── イベント削除 ─────────────────────────────────────
 
 window._orgDeleteEvent = async function(eventId, title) {
   if (!confirm(`「${title}」を削除しますか？この操作は元に戻せません。`)) return;
-
   try {
     await OrganizerAPI.deleteEvent(eventId);
     AppUI.toast('イベントを削除しました', 'info');
@@ -463,7 +491,7 @@ window._orgDeleteEvent = async function(eventId, title) {
   }
 };
 
-// ─── フォームフィールド ────────────────────────────
+// ─── フォームフィールド（ダークテーマ版） ──────────────
 
 function _eventFormFields(ev) {
   const formatDate = (dt) => {
@@ -471,96 +499,92 @@ function _eventFormFields(ev) {
     try { return new Date(dt).toISOString().slice(0, 16); } catch { return ''; }
   };
 
+  const lStyle = `display:block; font-size:11px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;`;
+  const iStyle = `${_orgInputStyle}`;
+  const focusHandlers = `onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-dim)'" onblur="this.style.borderColor='var(--c-border)';this.style.boxShadow='none'"`;
+  const selectStyle = `${_orgInputStyle} appearance:none;`;
+
   return `
-    <div class="grid md:grid-cols-2 gap-4">
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium text-slate-700 mb-1">タイトル <span class="text-red-500">*</span></label>
-        <input type="text" name="title" required value="${ev.title || ''}"
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="イベントタイトル">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+      <div style="grid-column:1/-1;">
+        <label style="${lStyle}">タイトル <span style="color:var(--hot);">*</span></label>
+        <input type="text" name="title" required value="${_escapeHtml(ev.title || '')}"
+          style="${iStyle}" placeholder="イベントタイトル" ${focusHandlers}>
       </div>
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium text-slate-700 mb-1">説明</label>
+      <div style="grid-column:1/-1;">
+        <label style="${lStyle}">説明</label>
         <textarea name="description" rows="3"
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="イベントの詳細説明">${ev.description || ''}</textarea>
+          style="${iStyle} resize:vertical;" placeholder="イベントの詳細説明" ${focusHandlers}>${_escapeHtml(ev.description || '')}</textarea>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">カテゴリ <span class="text-red-500">*</span></label>
-        <select name="category" required
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <label style="${lStyle}">カテゴリ <span style="color:var(--hot);">*</span></label>
+        <select name="category" required style="${selectStyle}" ${focusHandlers}>
           ${['tech','business','music','art','food','social','sports','festival'].map(c => `
-            <option value="${c}" ${ev.category === c ? 'selected' : ''}>${c}</option>
+            <option value="${c}" ${ev.category === c ? 'selected' : ''} style="background:var(--c-raised);">${c}</option>
           `).join('')}
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">開催形式 <span class="text-red-500">*</span></label>
-        <select name="event_type" required
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="offline" ${ev.event_type === 'offline' ? 'selected' : ''}>オフライン</option>
-          <option value="online"  ${ev.event_type === 'online'  ? 'selected' : ''}>オンライン</option>
-          <option value="hybrid"  ${ev.event_type === 'hybrid'  ? 'selected' : ''}>ハイブリッド</option>
+        <label style="${lStyle}">開催形式 <span style="color:var(--hot);">*</span></label>
+        <select name="event_type" required style="${selectStyle}" ${focusHandlers}>
+          <option value="offline" ${ev.event_type === 'offline' ? 'selected' : ''} style="background:var(--c-raised);">オフライン</option>
+          <option value="online"  ${ev.event_type === 'online'  ? 'selected' : ''} style="background:var(--c-raised);">オンライン</option>
+          <option value="hybrid"  ${ev.event_type === 'hybrid'  ? 'selected' : ''} style="background:var(--c-raised);">ハイブリッド</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">開始日時 <span class="text-red-500">*</span></label>
+        <label style="${lStyle}">開始日時 <span style="color:var(--hot);">*</span></label>
         <input type="datetime-local" name="start_datetime" required value="${formatDate(ev.start_datetime)}"
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          style="${iStyle}" ${focusHandlers}>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">終了日時</label>
+        <label style="${lStyle}">終了日時</label>
         <input type="datetime-local" name="end_datetime" value="${formatDate(ev.end_datetime)}"
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          style="${iStyle}" ${focusHandlers}>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">会場名</label>
-        <input type="text" name="venue_name" value="${ev.venue_name || ''}"
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="例: 渋谷ストリームホール">
+        <label style="${lStyle}">会場名</label>
+        <input type="text" name="venue_name" value="${_escapeHtml(ev.venue_name || '')}"
+          style="${iStyle}" placeholder="例: 渋谷ストリームホール" ${focusHandlers}>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1">最大参加人数</label>
+        <label style="${lStyle}">最大参加人数</label>
         <input type="number" name="max_attendees" min="1" value="${ev.max_attendees || ''}"
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="100">
+          style="${iStyle}" placeholder="100" ${focusHandlers}>
       </div>
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium text-slate-700 mb-1">カバー画像URL</label>
-        <input type="url" name="cover_image_url" value="${ev.cover_image_url || ''}"
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="https://images.unsplash.com/...">
+      <div style="grid-column:1/-1;">
+        <label style="${lStyle}">カバー画像URL</label>
+        <input type="url" name="cover_image_url" value="${_escapeHtml(ev.cover_image_url || '')}"
+          style="${iStyle}" placeholder="https://images.unsplash.com/..." ${focusHandlers}>
       </div>
 
       <!-- チケット設定 -->
-      <div class="md:col-span-2 pt-2 border-t border-slate-100">
-        <h4 class="font-bold text-slate-700 mb-3 text-sm">チケット設定</h4>
-        <div class="grid md:grid-cols-3 gap-3">
+      <div style="grid-column:1/-1; padding-top:14px; border-top:1px solid var(--c-border);">
+        <h4 style="font-size:12px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px;">チケット設定</h4>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
           <div>
-            <label class="block text-xs text-slate-600 mb-1">チケット名 <span class="text-red-500">*</span></label>
-            <input type="text" name="ticket_name" value="${(ev.tickets?.[0]?.name || ev.tickets?.[0]?.ticket_name) || '一般'}"
-              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label style="${lStyle}">チケット名 <span style="color:var(--hot);">*</span></label>
+            <input type="text" name="ticket_name" value="${_escapeHtml((ev.tickets?.[0]?.name || ev.tickets?.[0]?.ticket_name) || '一般')}"
+              style="${iStyle}" ${focusHandlers}>
           </div>
           <div>
-            <label class="block text-xs text-slate-600 mb-1">価格（円）</label>
+            <label style="${lStyle}">価格（円）</label>
             <input type="number" name="ticket_price" min="0" value="${ev.tickets?.[0]?.price ?? 0}"
-              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="0（無料）">
+              style="${iStyle}" placeholder="0（無料）" ${focusHandlers}>
           </div>
           <div>
-            <label class="block text-xs text-slate-600 mb-1">枚数</label>
+            <label style="${lStyle}">枚数</label>
             <input type="number" name="ticket_quantity" min="1" value="${ev.tickets?.[0]?.quantity_total || ev.max_attendees || 100}"
-              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              style="${iStyle}" ${focusHandlers}>
           </div>
         </div>
       </div>
 
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium text-slate-700 mb-1">ステータス</label>
-        <select name="status"
-          class="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="published" ${(ev.status || 'published') === 'published' ? 'selected' : ''}>公開</option>
-          <option value="draft"     ${ev.status === 'draft' ? 'selected' : ''}>下書き</option>
+      <div style="grid-column:1/-1;">
+        <label style="${lStyle}">ステータス</label>
+        <select name="status" style="${selectStyle}" ${focusHandlers}>
+          <option value="published" ${(ev.status || 'published') === 'published' ? 'selected' : ''} style="background:var(--c-raised);">公開</option>
+          <option value="draft"     ${ev.status === 'draft' ? 'selected' : ''} style="background:var(--c-raised);">下書き</option>
         </select>
       </div>
     </div>
@@ -580,15 +604,258 @@ function _buildEventPayload(fd) {
     cover_image_url: fd.get('cover_image_url') || null,
     status:          fd.get('status') || 'published',
     tickets: [{
-      ticket_name:     fd.get('ticket_name') || '一般',
-      price:           parseFloat(fd.get('ticket_price')) || 0,
-      quantity_total:  parseInt(fd.get('ticket_quantity')) || 100,
+      ticket_name:    fd.get('ticket_name') || '一般',
+      price:          parseFloat(fd.get('ticket_price')) || 0,
+      quantity_total: parseInt(fd.get('ticket_quantity')) || 100,
     }],
   };
 }
 
+// ─── QRチェックインタブ ───────────────────────────────
+
+async function _orgCheckin() {
+  const el = document.getElementById('org-content');
+
+  let events = [];
+  try {
+    const data = await window.LinkUpAPI._requestFlexible('/api/organizer/events', { method: 'GET', auth: true });
+    events = data.events || [];
+  } catch(e) {}
+
+  el.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:20px;">
+
+      <!-- ヘッダーカード -->
+      <div style="${_orgCardStyle}">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+          <div style="width:44px; height:44px; background:var(--accent-dim); border:1px solid rgba(0,217,255,0.3); border-radius:14px; display:flex; align-items:center; justify-content:center;">
+            <span class="material-icons-outlined" style="font-size:22px; color:var(--accent);">qr_code_scanner</span>
+          </div>
+          <div>
+            <h2 style="font-size:16px; font-weight:800; color:var(--c-text);">QRコード チェックイン</h2>
+            <p style="font-size:12px; color:var(--c-dim);">参加者のQRコードを読み取って入場確認</p>
+          </div>
+        </div>
+
+        <!-- イベント選択 -->
+        <div>
+          <label style="display:block; font-size:11px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">対象イベントを選択</label>
+          <select id="checkin-event-select"
+            style="${_orgInputStyle} appearance:none;"
+            onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--c-border)'"
+            onchange="_onCheckinEventChange()">
+            <option value="" style="background:var(--c-raised);">イベントを選択してください...</option>
+            ${events.filter(e => e.status === 'published' || e.status === 'ongoing').map(e => `
+              <option value="${_escapeHtml(e.event_id)}" style="background:var(--c-raised);">${_escapeHtml(e.title)}</option>
+            `).join('')}
+          </select>
+        </div>
+      </div>
+
+      <!-- スキャンエリア（イベント選択後に表示） -->
+      <div id="checkin-scan-area" style="display:none; flex-direction:column; gap:16px;">
+
+        <!-- 統計グリッド -->
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;" id="checkin-stats">
+          <div style="${_orgCardStyle} text-align:center; padding:16px;">
+            <p style="font-family:'Outfit',sans-serif; font-size:28px; font-weight:800; color:var(--accent);" id="stat-total">-</p>
+            <p style="font-size:11px; color:var(--c-dim); margin-top:4px;">総チケット数</p>
+          </div>
+          <div style="${_orgCardStyle} text-align:center; padding:16px;">
+            <p style="font-family:'Outfit',sans-serif; font-size:28px; font-weight:800; color:var(--lime);" id="stat-checkin">0</p>
+            <p style="font-size:11px; color:var(--c-dim); margin-top:4px;">チェックイン済み</p>
+          </div>
+          <div style="${_orgCardStyle} text-align:center; padding:16px;">
+            <p style="font-family:'Outfit',sans-serif; font-size:28px; font-weight:800; color:var(--amber);" id="stat-remain">-</p>
+            <p style="font-size:11px; color:var(--c-dim); margin-top:4px;">未入場</p>
+          </div>
+        </div>
+
+        <!-- QR入力エリア -->
+        <div style="${_orgCardStyle}">
+          <h3 style="font-size:14px; font-weight:700; color:var(--c-text); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+            <span class="material-icons-outlined" style="font-size:18px; color:var(--accent);">qr_code</span>
+            QRコード読み取り
+          </h3>
+
+          <!-- 案内 -->
+          <div style="background:var(--accent-dim); border:1px solid rgba(0,217,255,0.2); border-radius:12px; padding:12px 16px; margin-bottom:16px; display:flex; align-items:flex-start; gap:10px;">
+            <span class="material-icons-outlined" style="font-size:16px; color:var(--accent); flex-shrink:0; margin-top:1px;">info</span>
+            <div>
+              <p style="font-size:12px; font-weight:700; color:var(--accent); margin-bottom:2px;">スキャン方法</p>
+              <p style="font-size:12px; color:var(--c-text-2); line-height:1.5;">QRコードリーダーアプリまたはスマートフォンのカメラでスキャンすると、下の入力欄にQRデータが自動入力されます。または直接貼り付けてください。</p>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="qr-input"
+              placeholder="QRコードデータをここに貼り付け... (LINKUP:...)"
+              style="${_orgInputStyle} flex:1; font-family:'JetBrains Mono',monospace;"
+              onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-dim)'"
+              onblur="this.style.borderColor='var(--c-border)';this.style.boxShadow='none'"
+              onkeydown="if(event.key==='Enter') _doCheckin()">
+            <button onclick="_doCheckin()"
+              id="checkin-btn"
+              style="padding:10px 20px; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; cursor:pointer; border-radius:10px; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px; flex-shrink:0; transition:all 0.15s;">
+              <span class="material-icons-outlined" style="font-size:18px;">check_circle</span>
+              確認
+            </button>
+          </div>
+
+          <!-- 結果表示 -->
+          <div id="checkin-result" style="display:none; margin-top:16px;"></div>
+        </div>
+
+        <!-- チェックイン履歴 -->
+        <div style="background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; overflow:hidden;">
+          <div style="padding:14px 20px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between;">
+            <h3 style="font-size:13px; font-weight:700; color:var(--c-text);">本日のチェックイン履歴</h3>
+            <button onclick="_loadCheckinHistory()"
+              style="font-size:11px; color:var(--accent); background:none; border:none; cursor:pointer; font-weight:600;">
+              更新
+            </button>
+          </div>
+          <div id="checkin-history" style="padding:32px 20px; text-align:center; color:var(--c-dim);">
+            <span class="material-icons-outlined" style="font-size:32px; display:block; margin-bottom:6px; color:var(--c-muted);">history</span>
+            <p style="font-size:12px;">チェックインを実行すると履歴が表示されます</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  window._onCheckinEventChange = function() {
+    const sel  = document.getElementById('checkin-event-select');
+    const area = document.getElementById('checkin-scan-area');
+    if (sel.value) {
+      area.style.display = 'flex';
+      _loadCheckinStats(sel.value);
+      setTimeout(() => document.getElementById('qr-input')?.focus(), 100);
+    } else {
+      area.style.display = 'none';
+    }
+  };
+
+  window._loadCheckinStats = async function(eventId) {
+    try {
+      const data = await window.LinkUpAPI._requestFlexible(`/api/organizer/events/${eventId}/checkin-stats`, { method: 'GET', auth: true });
+      document.getElementById('stat-total').textContent   = data.total_tickets || '-';
+      document.getElementById('stat-checkin').textContent = data.checked_in || 0;
+      document.getElementById('stat-remain').textContent  = (data.total_tickets - data.checked_in) || '-';
+    } catch(e) {}
+  };
+
+  window._doCheckin = async function() {
+    const qrInput     = document.getElementById('qr-input');
+    const eventSelect = document.getElementById('checkin-event-select');
+    const resultEl    = document.getElementById('checkin-result');
+    const btn         = document.getElementById('checkin-btn');
+
+    const qrData  = qrInput?.value?.trim();
+    const eventId = eventSelect?.value;
+
+    const showWarn = (msg) => {
+      resultEl.innerHTML = `
+        <div style="padding:12px 16px; background:rgba(255,170,0,0.1); border:1px solid rgba(255,170,0,0.3); border-radius:12px; display:flex; align-items:center; gap:8px; font-size:13px; color:var(--amber);">
+          <span class="material-icons-outlined" style="font-size:16px;">warning</span>
+          ${msg}
+        </div>
+      `;
+      resultEl.style.display = 'block';
+    };
+
+    if (!qrData)  { showWarn('QRコードデータを入力してください'); return; }
+    if (!eventId) { showWarn('イベントを選択してください'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<div style="width:18px;height:18px;border:2px solid rgba(5,8,15,0.3);border-top-color:var(--c-bg);border-radius:50%;animation:spin 0.9s linear infinite;"></div>';
+    resultEl.style.display = 'none';
+
+    try {
+      const res = await window.LinkUpAPI._requestFlexible('/api/checkin/verify', {
+        method: 'POST',
+        body: JSON.stringify({ qr_data: qrData, event_id: eventId }),
+        auth: true,
+      });
+
+      resultEl.innerHTML = `
+        <div style="padding:16px; background:rgba(57,255,20,0.08); border:1.5px solid rgba(57,255,20,0.35); border-radius:14px;">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+            <div style="width:40px; height:40px; background:rgba(57,255,20,0.15); border:2px solid rgba(57,255,20,0.4); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <span class="material-icons-outlined" style="font-size:22px; color:var(--lime);">check</span>
+            </div>
+            <div>
+              <p style="font-size:16px; font-weight:800; color:var(--lime);">チェックイン完了！</p>
+              <p style="font-size:11px; color:var(--c-dim);">${new Date().toLocaleTimeString('ja-JP')}</p>
+            </div>
+          </div>
+          <div style="background:var(--c-raised); border-radius:10px; padding:10px 14px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="material-icons-outlined" style="font-size:14px; color:var(--c-dim);">person</span>
+              <span style="font-size:13px; font-weight:700; color:var(--c-text);">${_escapeHtml(res.attendee_name || '参加者')}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="material-icons-outlined" style="font-size:14px; color:var(--c-dim);">confirmation_number</span>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--c-dim);">${_escapeHtml(res.order_number || '')}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      qrInput.value = '';
+      qrInput.focus();
+      _addCheckinHistoryItem(res);
+      const cnt = document.getElementById('stat-checkin');
+      if (cnt) cnt.textContent = parseInt(cnt.textContent || '0') + 1;
+
+    } catch(err) {
+      const isAlready = err.message && err.message.includes('チェックイン済み');
+      resultEl.innerHTML = `
+        <div style="padding:16px; background:var(--hot-dim); border:1.5px solid rgba(255,51,102,0.35); border-radius:14px; display:flex; align-items:center; gap:12px;">
+          <div style="width:40px; height:40px; background:rgba(255,51,102,0.2); border:2px solid rgba(255,51,102,0.4); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span class="material-icons-outlined" style="font-size:22px; color:var(--hot);">${isAlready ? 'repeat' : 'error'}</span>
+          </div>
+          <div>
+            <p style="font-size:14px; font-weight:800; color:var(--hot);">${isAlready ? 'すでにチェックイン済み' : 'チェックイン失敗'}</p>
+            <p style="font-size:12px; color:var(--c-dim);">${_escapeHtml(err.message)}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    resultEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-icons-outlined" style="font-size:18px;">check_circle</span>確認';
+  };
+
+  const checkinLog = [];
+  window._addCheckinHistoryItem = function(res) {
+    checkinLog.unshift(res);
+    const historyEl = document.getElementById('checkin-history');
+    if (!historyEl) return;
+    historyEl.innerHTML = checkinLog.slice(0, 20).map(item => `
+      <div style="display:flex; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--c-border); last-child:border-0; transition:background 0.15s;"
+        onmouseenter="this.style.background='var(--c-raised)'" onmouseleave="this.style.background='none'">
+        <div style="width:32px; height:32px; background:rgba(57,255,20,0.1); border:1px solid rgba(57,255,20,0.3); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <span class="material-icons-outlined" style="font-size:16px; color:var(--lime);">check</span>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <p style="font-size:13px; font-weight:700; color:var(--c-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escapeHtml(item.attendee_name || '参加者')}</p>
+          <p style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--c-dim);">${_escapeHtml(item.order_number || '')}</p>
+        </div>
+        <span style="font-size:11px; color:var(--c-dim); flex-shrink:0;">${new Date(item.checked_in_at || Date.now()).toLocaleTimeString('ja-JP')}</span>
+      </div>
+    `).join('');
+  };
+
+  window._loadCheckinHistory = function() {
+    const eventId = document.getElementById('checkin-event-select')?.value;
+    if (eventId) _loadCheckinStats(eventId);
+  };
+}
+
 // グローバル公開
-window._orgOverview      = _orgOverview;
-window._orgEvents        = _orgEvents;
-window._orgSettings      = _orgSettings;
+window._orgOverview          = _orgOverview;
+window._orgEvents            = _orgEvents;
+window._orgCheckin           = _orgCheckin;
+window._orgSettings          = _orgSettings;
 window._orgLoadEventsPreview = _orgLoadEventsPreview;

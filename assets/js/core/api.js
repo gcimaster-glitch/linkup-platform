@@ -166,4 +166,26 @@ window._escapeHtml = _escapeHtml;
 // グローバル公開
 // ─────────────────────────────────────────
 
-window.LinkUpAPI = { Auth, Events, Orders, Users, _request };
+// ─────────────────────────────────────────
+// 汎用リクエストラッパー（detail.js等から使用）
+// 使い方: window.LinkUpAPI._request(path, { method, body, auth })
+// ─────────────────────────────────────────
+async function _requestFlexible(path, opts = {}) {
+  const method = opts.method || 'GET';
+  const auth = opts.auth || false;
+  const options = {
+    method,
+    headers: _headers(auth),
+  };
+  if (opts.body) options.body = opts.body; // body is already stringified
+
+  const res = await fetch(API_BASE + path, options);
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.error || `サーバーエラー (${res.status})`);
+  }
+  return data;
+}
+
+window.LinkUpAPI = { Auth, Events, Orders, Users, _request, _requestFlexible };

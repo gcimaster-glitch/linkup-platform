@@ -5,9 +5,11 @@
 /category/* /index.html 200
 /pages/* /index.html 200
 /dashboard /index.html 200
+/dashboard/* /index.html 200
 /organizer /index.html 200
 /organizer/* /index.html 200
 /admin /index.html 200
+/admin/* /index.html 200
 
 # ─── 静的ファイル ──────────────────────────────────────────
 /sitemap.xml /sitemap.xml 200

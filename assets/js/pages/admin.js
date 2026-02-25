@@ -1,18 +1,9 @@
 /**
- * 管理者ダッシュボード
- *
- * API:
- *   GET  /api/admin/stats        – 統計情報
- *   GET  /api/admin/events       – イベント一覧（承認管理）
- *   PUT  /api/admin/events/:id/approve – イベント承認
- *   PUT  /api/admin/events/:id/reject  – イベント却下
- *   DELETE /api/admin/events/:id – イベント削除
- *   GET  /api/admin/users        – ユーザー一覧
- *   PUT  /api/admin/users/:id    – ユーザー更新
- *   GET  /api/orders             – 全注文（管理者向け）
+ * 管理者ダッシュボード — Frontend Design Skill準拠
+ * Design: "Code Editor Dark" — ネオンシアン + IDE暗黒テーマ
  */
 
-// ─── 管理者専用API ────────────────────────────
+// ─── 管理者専用API ────────────────────────────────────
 
 const AdminAPI = {
   stats: () =>
@@ -56,49 +47,56 @@ const AdminAPI = {
   },
 };
 
-// ─── メインレンダリング ──────────────────────────
+// ─── スタイルヘルパー ─────────────────────────────────
+const _admCard = `background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; padding:20px;`;
+const _admInput = `background:var(--c-raised); border:1.5px solid var(--c-border); color:var(--c-text); border-radius:10px; padding:8px 12px; font-size:13px; outline:none; transition:border-color 0.15s;`;
+const _admSpinner = `<div style="display:flex;justify-content:center;padding:48px 0;"><div style="width:32px;height:32px;border:2.5px solid var(--c-border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.9s linear infinite;"></div></div>`;
+
+// ─── メインレンダリング ─────────────────────────────
 
 async function renderAdmin(params = {}) {
-  // ロールガード
   if (!AppAuth.requireRole(['admin'])) return;
 
   const user = window.currentUser;
-  const tab = params.tab || 'dashboard';
+  const tab  = params.tab || 'dashboard';
+  const app  = document.getElementById('app');
 
-  const app = document.getElementById('app');
   app.innerHTML = `
-    <div class="min-h-screen bg-slate-50 flex flex-col">
+    <div style="min-height:100vh; background:var(--c-bg); display:flex; flex-direction:column;">
       <!-- 管理者ヘッダー -->
-      <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <span class="material-icons-outlined text-red-400">admin_panel_settings</span>
-          <span class="font-bold text-lg">LinkUp 管理コンソール</span>
+      <div style="background:var(--c-canvas); border-bottom:1px solid rgba(255,51,102,0.2); padding:12px 24px; display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="material-icons-outlined" style="color:var(--hot); font-size:20px;">admin_panel_settings</span>
+          <span style="font-family:'Outfit',sans-serif; font-size:16px; font-weight:800; color:var(--c-text);">LinkUp 管理コンソール</span>
+          <span style="padding:2px 8px; background:var(--hot-dim); border:1px solid rgba(255,51,102,0.3); border-radius:99px; font-size:10px; font-weight:700; color:var(--hot);">ADMIN</span>
         </div>
-        <div class="flex items-center gap-3">
-          <span class="text-sm text-slate-300">${_escapeHtml(user?.display_name || user?.email || 'Admin')}</span>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:12px; color:var(--c-dim);">${_escapeHtml(user?.display_name || user?.email || 'Admin')}</span>
           <button onclick="AppRouter.go('home')"
-            class="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition">
+            style="padding:6px 14px; background:var(--c-raised); border:1px solid var(--c-border); color:var(--c-dim); border-radius:8px; font-size:12px; cursor:pointer; transition:all 0.15s;"
+            onmouseenter="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+            onmouseleave="this.style.borderColor='var(--c-border)';this.style.color='var(--c-dim)'">
             サイトへ戻る
           </button>
         </div>
       </div>
 
-      <div class="flex flex-1">
+      <div style="display:flex; flex:1;">
         <!-- サイドバー（PC） -->
-        <aside class="w-56 bg-slate-800 text-white flex-shrink-0 hidden lg:block">
-          <nav class="p-4 space-y-1">
+        <aside style="width:220px; background:var(--c-canvas); border-right:1px solid var(--c-border); flex-shrink:0; padding:16px 12px;" class="hidden lg:block">
+          <nav>
             ${_adminNavItem('dashboard', tab, 'dashboard', 'ダッシュボード')}
-            <p class="text-[10px] text-slate-500 uppercase tracking-wider px-2 pt-4 pb-1">コンテンツ</p>
+            <p style="font-size:10px; color:var(--c-muted); text-transform:uppercase; letter-spacing:0.1em; padding:16px 10px 6px;">コンテンツ</p>
             ${_adminNavItem('events', tab, 'event', 'イベント管理')}
             ${_adminNavItem('tickets', tab, 'confirmation_number', 'チケット・注文')}
             ${_adminNavItem('users', tab, 'people', 'ユーザー管理')}
-            <p class="text-[10px] text-slate-500 uppercase tracking-wider px-2 pt-4 pb-1">入場管理</p>
+            <p style="font-size:10px; color:var(--c-muted); text-transform:uppercase; letter-spacing:0.1em; padding:16px 10px 6px;">入場管理</p>
             ${_adminNavItem('checkin', tab, 'qr_code_scanner', 'QR入場受付')}
           </nav>
         </aside>
 
         <!-- モバイルタブ -->
-        <div class="lg:hidden w-full border-b border-slate-200 bg-white flex overflow-x-auto">
+        <div style="display:flex; overflow-x:auto; border-bottom:1px solid var(--c-border); background:var(--c-canvas);" class="lg:hidden">
           ${_adminMobileTab('dashboard', tab, 'dashboard', '概要')}
           ${_adminMobileTab('events', tab, 'event', 'イベント')}
           ${_adminMobileTab('tickets', tab, 'confirmation_number', '注文')}
@@ -107,18 +105,13 @@ async function renderAdmin(params = {}) {
         </div>
 
         <!-- メインコンテンツ -->
-        <main class="flex-1 overflow-auto">
-          <div class="p-6" id="admin-content">
-            <div class="flex justify-center py-16">
-              <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            </div>
-          </div>
+        <main style="flex:1; overflow:auto; padding:24px;" id="admin-content">
+          ${_admSpinner}
         </main>
       </div>
     </div>
   `;
 
-  // タブ描画
   switch (tab) {
     case 'dashboard': await _adminDashboard(); break;
     case 'events':    await _adminEvents();    break;
@@ -133,9 +126,16 @@ function _adminNavItem(key, active, icon, label) {
   const isActive = key === active;
   return `
     <button onclick="AppRouter.go('admin', { tab: '${key}' })"
-      class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition
-        ${isActive ? 'bg-blue-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-700 hover:text-white'}">
-      <span class="material-icons-outlined text-sm">${icon}</span>${label}
+      style="
+        width:100%; display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:none; cursor:pointer;
+        font-size:13px; font-weight:${isActive ? '700' : '500'}; margin-bottom:2px; transition:all 0.15s; text-align:left;
+        ${isActive
+          ? 'background:var(--accent-dim); color:var(--accent); border:1px solid rgba(0,217,255,0.25);'
+          : 'background:none; color:var(--c-dim); border:1px solid transparent;'}
+      "
+      onmouseenter="${!isActive ? "this.style.color='var(--c-text-1)';this.style.background='var(--c-raised)'" : ''}"
+      onmouseleave="${!isActive ? "this.style.color='var(--c-dim)';this.style.background='none'" : ''}">
+      <span class="material-icons-outlined" style="font-size:16px;">${icon}</span>${label}
     </button>
   `;
 }
@@ -144,70 +144,76 @@ function _adminMobileTab(key, active, icon, label) {
   const isActive = key === active;
   return `
     <button onclick="AppRouter.go('admin', { tab: '${key}' })"
-      class="flex flex-col items-center gap-0.5 px-4 py-2.5 text-xs transition whitespace-nowrap
-        ${isActive ? 'text-blue-600 border-b-2 border-blue-600 font-bold' : 'text-slate-500'}">
-      <span class="material-icons-outlined text-base">${icon}</span>${label}
+      style="
+        display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 16px; font-size:11px; white-space:nowrap; cursor:pointer; border:none; background:none; border-bottom:2px solid;
+        transition:all 0.15s;
+        ${isActive
+          ? 'color:var(--accent); border-bottom-color:var(--accent); font-weight:700;'
+          : 'color:var(--c-dim); border-bottom-color:transparent;'}
+      ">
+      <span class="material-icons-outlined" style="font-size:18px;">${icon}</span>${label}
     </button>
   `;
 }
 
-// ─── ダッシュボードタブ ──────────────────────────
+// ─── ダッシュボードタブ ───────────────────────────────
 
 async function _adminDashboard() {
   const el = document.getElementById('admin-content');
 
   try {
-    const data = await AdminAPI.stats();
+    const data  = await AdminAPI.stats();
     const stats = data.stats || data || {};
 
     el.innerHTML = `
-      <h2 class="text-xl font-bold text-slate-800 mb-6">ダッシュボード</h2>
+      <h2 style="font-family:'Outfit',sans-serif; font-size:20px; font-weight:800; color:var(--c-text); margin-bottom:20px;">ダッシュボード</h2>
 
       <!-- KPIカード -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        ${_adminStatCard('people', 'ユーザー数', stats.total_users || stats.users || '—', 'text-blue-600 bg-blue-50')}
-        ${_adminStatCard('event', 'イベント数', stats.total_events || stats.events || '—', 'text-green-600 bg-green-50')}
-        ${_adminStatCard('confirmation_number', '総注文数', stats.total_orders || stats.orders || '—', 'text-purple-600 bg-purple-50')}
-        ${_adminStatCard('payments', '総売上', stats.total_revenue != null ? '¥' + Number(stats.total_revenue).toLocaleString() : '—', 'text-orange-600 bg-orange-50')}
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
+        ${_adminStatCard('people',              'ユーザー数', stats.total_users  || stats.users  || '—', 'var(--accent)')}
+        ${_adminStatCard('event',               'イベント数', stats.total_events || stats.events || '—', 'var(--lime)'  )}
+        ${_adminStatCard('confirmation_number', '総注文数',   stats.total_orders || stats.orders || '—', 'var(--violet)')}
+        ${_adminStatCard('payments', '総売上',
+          stats.total_revenue != null ? '¥' + Number(stats.total_revenue).toLocaleString() : '—',
+          'var(--amber)')}
       </div>
 
       <!-- 承認待ちイベント -->
-      <div class="bg-white rounded-2xl shadow-sm p-5 mb-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-bold text-slate-800">承認待ちイベント</h3>
+      <div style="${_admCard} margin-bottom:24px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+          <h3 style="font-size:14px; font-weight:700; color:var(--c-text);">承認待ちイベント</h3>
           <button onclick="AppRouter.go('admin', { tab: 'events' })"
-            class="text-xs text-blue-600 hover:underline">すべて見る →</button>
+            style="font-size:12px; color:var(--accent); background:none; border:none; cursor:pointer; font-weight:600;">
+            すべて見る →
+          </button>
         </div>
-        <div id="pending-events-list">
-          <div class="text-center text-slate-400 py-4 text-sm">読み込み中...</div>
-        </div>
+        <div id="pending-events-list">${_admSpinner}</div>
       </div>
 
       <!-- クイックアクション -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        ${_adminQuickAction('event', 'events', 'イベント管理')}
-        ${_adminQuickAction('people', 'users', 'ユーザー管理')}
-        ${_adminQuickAction('confirmation_number', 'tickets', 'チケット・注文')}
-        ${_adminQuickAction('qr_code_scanner', 'checkin', 'QR入場受付')}
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+        ${_adminQuickAction('event',               'events',   'イベント管理')}
+        ${_adminQuickAction('people',              'users',    'ユーザー管理')}
+        ${_adminQuickAction('confirmation_number', 'tickets',  'チケット・注文')}
+        ${_adminQuickAction('qr_code_scanner',     'checkin',  'QR入場受付')}
       </div>
     `;
 
-    // 承認待ちイベントを読み込む
     _loadPendingEvents();
 
   } catch (err) {
-    el.innerHTML = `<div class="bg-red-50 text-red-700 rounded-xl p-5">${_escapeHtml(err.message)}</div>`;
+    el.innerHTML = `<div style="${_admCard}"><p style="color:var(--hot);">${_escapeHtml(err.message)}</p></div>`;
   }
 }
 
-function _adminStatCard(icon, label, value, colorCls) {
+function _adminStatCard(icon, label, value, color) {
   return `
-    <div class="bg-white rounded-2xl p-5 shadow-sm">
-      <div class="flex items-center gap-3 mb-2">
-        <span class="material-icons-outlined ${colorCls} p-2 rounded-lg text-lg">${icon}</span>
+    <div style="${_admCard}">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <span class="material-icons-outlined" style="font-size:16px; color:${color};">${icon}</span>
+        <p style="font-size:11px; color:var(--c-dim);">${label}</p>
       </div>
-      <p class="text-2xl font-bold text-slate-800">${value}</p>
-      <p class="text-xs text-slate-500 mt-1">${label}</p>
+      <p style="font-family:'Outfit',sans-serif; font-size:24px; font-weight:800; color:${color};">${value}</p>
     </div>
   `;
 }
@@ -215,9 +221,11 @@ function _adminStatCard(icon, label, value, colorCls) {
 function _adminQuickAction(icon, tab, label) {
   return `
     <button onclick="AppRouter.go('admin', { tab: '${tab}' })"
-      class="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition text-center">
-      <span class="material-icons-outlined text-blue-600 text-2xl block mb-2">${icon}</span>
-      <p class="text-xs font-medium text-slate-700">${label}</p>
+      style="${_admCard} cursor:pointer; text-align:center; transition:all 0.2s; padding:20px;"
+      onmouseenter="this.style.borderColor='var(--accent)';this.style.background='rgba(0,217,255,0.04)'"
+      onmouseleave="this.style.borderColor='var(--c-border)';this.style.background='var(--c-surface)'">
+      <span class="material-icons-outlined" style="font-size:28px; color:var(--accent); display:block; margin-bottom:8px;">${icon}</span>
+      <p style="font-size:12px; font-weight:600; color:var(--c-text-1);">${label}</p>
     </button>
   `;
 }
@@ -227,62 +235,64 @@ async function _loadPendingEvents() {
   if (!el) return;
 
   try {
-    const data = await AdminAPI.events({ status: 'pending', limit: 5 });
+    const data   = await AdminAPI.events({ status: 'pending', limit: 5 });
     const events = data.events || [];
 
     if (events.length === 0) {
-      el.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">承認待ちのイベントはありません</p>`;
+      el.innerHTML = `<p style="color:var(--c-dim); font-size:13px; text-align:center; padding:16px;">承認待ちのイベントはありません</p>`;
       return;
     }
 
     el.innerHTML = events.map(e => `
-      <div class="flex items-center gap-3 p-3 border border-slate-100 rounded-lg mb-2">
-        <img src="${_escapeHtml(e.cover_image_url || '')}" class="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+      <div style="display:flex; align-items:center; gap:12px; padding:10px; background:var(--c-raised); border-radius:10px; margin-bottom:8px;">
+        <img src="${_escapeHtml(e.cover_image_url || '')}" style="width:44px; height:44px; border-radius:10px; object-fit:cover; flex-shrink:0;"
           onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100&q=60'">
-        <div class="flex-1 min-w-0">
-          <p class="font-medium text-sm text-slate-800 truncate">${_escapeHtml(e.title || '')}</p>
-          <p class="text-xs text-slate-400">${_escapeHtml(e.organizer_name || '')} · ${e.start_datetime ? new Date(e.start_datetime).toLocaleDateString('ja-JP') : ''}</p>
+        <div style="flex:1; min-width:0;">
+          <p style="font-size:13px; font-weight:600; color:var(--c-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escapeHtml(e.title || '')}</p>
+          <p style="font-size:11px; color:var(--c-dim);">${_escapeHtml(e.organizer_name || '')} · ${e.start_datetime ? new Date(e.start_datetime).toLocaleDateString('ja-JP') : ''}</p>
         </div>
-        <div class="flex gap-2 flex-shrink-0">
+        <div style="display:flex; gap:6px; flex-shrink:0;">
           <button onclick="_adminApproveEvent('${_escapeHtml(e.event_id)}')"
-            class="px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 font-medium">承認</button>
+            style="padding:5px 12px; background:rgba(57,255,20,0.15); border:1px solid rgba(57,255,20,0.4); color:var(--lime); border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; transition:all 0.15s;">
+            承認
+          </button>
           <button onclick="_adminRejectEventPrompt('${_escapeHtml(e.event_id)}')"
-            class="px-3 py-1.5 bg-red-100 text-red-700 text-xs rounded-lg hover:bg-red-200 font-medium">却下</button>
+            style="padding:5px 12px; background:var(--hot-dim); border:1px solid rgba(255,51,102,0.3); color:var(--hot); border-radius:8px; font-size:11px; font-weight:700; cursor:pointer; transition:all 0.15s;">
+            却下
+          </button>
         </div>
       </div>
     `).join('');
   } catch (err) {
-    el.innerHTML = `<p class="text-red-500 text-sm">${_escapeHtml(err.message)}</p>`;
+    el.innerHTML = `<p style="color:var(--hot); font-size:13px;">${_escapeHtml(err.message)}</p>`;
   }
 }
 
-// ─── イベント管理タブ ────────────────────────────
+// ─── イベント管理タブ ─────────────────────────────────
 
 async function _adminEvents() {
   const el = document.getElementById('admin-content');
   el.innerHTML = `
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-bold text-slate-800">イベント管理</h2>
-      <div class="flex gap-2">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <h2 style="font-family:'Outfit',sans-serif; font-size:20px; font-weight:800; color:var(--c-text);">イベント管理</h2>
+      <div style="display:flex; gap:8px;">
         <select id="event-status-filter" onchange="_adminEventsLoad()"
-          class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">すべて</option>
-          <option value="pending">承認待ち</option>
-          <option value="published">公開中</option>
-          <option value="draft">下書き</option>
-          <option value="cancelled">キャンセル済</option>
+          style="${_admInput} appearance:none;"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--c-border)'">
+          <option value="" style="background:var(--c-raised);">すべて</option>
+          <option value="pending" style="background:var(--c-raised);">承認待ち</option>
+          <option value="published" style="background:var(--c-raised);">公開中</option>
+          <option value="draft" style="background:var(--c-raised);">下書き</option>
+          <option value="cancelled" style="background:var(--c-raised);">キャンセル済</option>
         </select>
         <button onclick="_adminEventsCsvDownload()"
-          class="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700">
-          <span class="material-icons-outlined text-sm">download</span>CSV
+          style="display:flex; align-items:center; gap:6px; padding:8px 16px; background:var(--c-raised); border:1px solid var(--c-border); color:var(--c-text-1); border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s;"
+          onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--c-border)'">
+          <span class="material-icons-outlined" style="font-size:16px;">download</span>CSV
         </button>
       </div>
     </div>
-    <div id="events-table">
-      <div class="flex justify-center py-12">
-        <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-      </div>
-    </div>
+    <div id="events-table">${_admSpinner}</div>
   `;
 
   await _adminEventsLoad();
@@ -293,36 +303,35 @@ async function _adminEventsLoad() {
   if (!el) return;
 
   const statusEl = document.getElementById('event-status-filter');
-  const status = statusEl ? statusEl.value : '';
+  const status   = statusEl ? statusEl.value : '';
 
-  el.innerHTML = `<div class="flex justify-center py-8"><div class="w-6 h-6 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div></div>`;
+  el.innerHTML = _admSpinner;
 
   try {
-    const data = await AdminAPI.events({ status, limit: 100 });
+    const data   = await AdminAPI.events({ status, limit: 100 });
     const events = data.events || [];
 
     if (events.length === 0) {
-      el.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-400">イベントがありません</div>`;
+      el.innerHTML = `<div style="${_admCard} text-align:center; padding:48px;"><p style="color:var(--c-dim);">イベントがありません</p></div>`;
       return;
     }
 
-    // CSVデータを保存
     window._adminEventsData = events;
 
     el.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">イベント</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hidden md:table-cell">主催者</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider hidden lg:table-cell">日時</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">ステータス</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">操作</th>
+      <div style="background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:var(--c-raised);">
+                <th style="text-align:left; padding:12px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;">イベント</th>
+                <th style="text-align:left; padding:12px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;" class="hidden md:table-cell">主催者</th>
+                <th style="text-align:left; padding:12px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;" class="hidden lg:table-cell">日時</th>
+                <th style="text-align:left; padding:12px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;">ステータス</th>
+                <th style="text-align:left; padding:12px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;">操作</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
               ${events.map((e, i) => _adminEventRow(e, i)).join('')}
             </tbody>
           </table>
@@ -330,51 +339,52 @@ async function _adminEventsLoad() {
       </div>
     `;
   } catch (err) {
-    el.innerHTML = `<div class="bg-red-50 text-red-700 rounded-xl p-5">${_escapeHtml(err.message)}</div>`;
+    el.innerHTML = `<div style="${_admCard}"><p style="color:var(--hot);">${_escapeHtml(err.message)}</p></div>`;
   }
 }
 
 function _adminEventRow(e, i) {
-  const statusMap = {
-    pending:   ['承認待ち', 'bg-yellow-100 text-yellow-700'],
-    published: ['公開中',   'bg-green-100 text-green-700'],
-    draft:     ['下書き',   'bg-slate-100 text-slate-600'],
-    cancelled: ['キャンセル', 'bg-red-100 text-red-700'],
+  const statusStyles = {
+    pending:   { label: '承認待ち', color: 'var(--amber)', bg: 'rgba(255,170,0,0.1)',  border: 'rgba(255,170,0,0.3)' },
+    published: { label: '公開中',   color: 'var(--lime)',  bg: 'rgba(57,255,20,0.1)', border: 'rgba(57,255,20,0.3)' },
+    draft:     { label: '下書き',   color: 'var(--c-dim)', bg: 'var(--c-raised)',       border: 'var(--c-border)' },
+    cancelled: { label: 'キャンセル', color: 'var(--hot)', bg: 'var(--hot-dim)',        border: 'rgba(255,51,102,0.3)' },
   };
-  const [statusLabel, statusCls] = statusMap[e.status] || ['不明', 'bg-slate-100 text-slate-600'];
+  const s    = statusStyles[e.status] || { label: '不明', color: 'var(--c-dim)', bg: 'var(--c-raised)', border: 'var(--c-border)' };
   const date = e.start_datetime ? new Date(e.start_datetime).toLocaleDateString('ja-JP') : '—';
 
   return `
-    <tr class="${i % 2 === 0 ? '' : 'bg-slate-50/50'} hover:bg-blue-50/30 transition-colors">
-      <td class="px-4 py-3 cursor-pointer" onclick="AppRouter.go('detail', { id: '${_escapeHtml(e.event_id)}' })">
-        <div class="flex items-center gap-3">
-          <img src="${_escapeHtml(e.cover_image_url || '')}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+    <tr style="border-top:1px solid var(--c-border); transition:background 0.15s;"
+      onmouseenter="this.style.background='var(--c-raised)'" onmouseleave="this.style.background='none'">
+      <td style="padding:12px 16px; cursor:pointer;" onclick="AppRouter.go('detail', { id: '${_escapeHtml(e.event_id)}' })">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <img src="${_escapeHtml(e.cover_image_url || '')}" style="width:38px; height:38px; border-radius:8px; object-fit:cover; flex-shrink:0;"
             onerror="this.src='https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=100&q=60'">
-          <div class="min-w-0">
-            <p class="font-medium text-slate-800 truncate max-w-xs hover:text-blue-600 transition-colors">${_escapeHtml(e.title || '')}</p>
-            <p class="text-xs text-slate-400">${_escapeHtml(e.category || '')} · ${e.event_type === 'online' ? 'オンライン' : 'オフライン'}</p>
+          <div style="min-width:0;">
+            <p style="font-size:13px; font-weight:600; color:var(--c-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${_escapeHtml(e.title || '')}</p>
+            <p style="font-size:11px; color:var(--c-dim);">${_escapeHtml(e.category || '')} · ${e.event_type === 'online' ? 'オンライン' : 'オフライン'}</p>
           </div>
         </div>
       </td>
-      <td class="px-4 py-3 text-slate-600 hidden md:table-cell">${_escapeHtml(e.organizer_name || '—')}</td>
-      <td class="px-4 py-3 text-slate-600 hidden lg:table-cell">${date}</td>
-      <td class="px-4 py-3">
-        <span class="px-2 py-1 rounded-full text-xs font-bold ${statusCls}">${statusLabel}</span>
+      <td style="padding:12px 16px; color:var(--c-text-2); font-size:12px;" class="hidden md:table-cell">${_escapeHtml(e.organizer_name || '—')}</td>
+      <td style="padding:12px 16px; color:var(--c-dim); font-size:12px;" class="hidden lg:table-cell">${date}</td>
+      <td style="padding:12px 16px;">
+        <span style="padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700; color:${s.color}; background:${s.bg}; border:1px solid ${s.border};">${s.label}</span>
       </td>
-      <td class="px-4 py-3">
-        <div class="flex gap-1.5 flex-wrap">
+      <td style="padding:12px 16px;">
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
           <button onclick="AppRouter.go('detail', { id: '${_escapeHtml(e.event_id)}' })"
-            class="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-lg hover:bg-blue-100 flex items-center gap-1">
-            <span class="material-icons-outlined text-xs">open_in_new</span>詳細
+            style="padding:4px 10px; background:var(--accent-dim); border:1px solid rgba(0,217,255,0.3); color:var(--accent); border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:3px;">
+            <span class="material-icons-outlined" style="font-size:12px;">open_in_new</span>詳細
           </button>
           ${e.status === 'pending' ? `
             <button onclick="_adminApproveEvent('${_escapeHtml(e.event_id)}')"
-              class="px-2.5 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700">承認</button>
+              style="padding:4px 10px; background:rgba(57,255,20,0.1); border:1px solid rgba(57,255,20,0.3); color:var(--lime); border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">承認</button>
             <button onclick="_adminRejectEventPrompt('${_escapeHtml(e.event_id)}')"
-              class="px-2.5 py-1 bg-red-100 text-red-700 text-xs rounded-lg hover:bg-red-200">却下</button>
+              style="padding:4px 10px; background:var(--hot-dim); border:1px solid rgba(255,51,102,0.3); color:var(--hot); border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;">却下</button>
           ` : ''}
           <button onclick="_adminDeleteEventConfirm('${_escapeHtml(e.event_id)}', '${_escapeHtml(e.title || '')}')"
-            class="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs rounded-lg hover:bg-slate-200">削除</button>
+            style="padding:4px 10px; background:var(--c-raised); border:1px solid var(--c-border); color:var(--c-dim); border-radius:6px; font-size:11px; font-weight:600; cursor:pointer;">削除</button>
         </div>
       </td>
     </tr>
@@ -394,7 +404,7 @@ window._adminApproveEvent = async (eventId) => {
 
 window._adminRejectEventPrompt = (eventId) => {
   const reason = prompt('却下理由を入力してください（任意）:');
-  if (reason === null) return; // キャンセル
+  if (reason === null) return;
   _adminRejectEventExec(eventId, reason || '');
 };
 
@@ -425,52 +435,38 @@ async function _adminDeleteEventExec(eventId) {
 
 function _adminEventsCsvDownload() {
   const events = window._adminEventsData || [];
-  if (events.length === 0) {
-    AppUI.toast('データがありません', 'warning');
-    return;
-  }
+  if (events.length === 0) { AppUI.toast('データがありません', 'warning'); return; }
 
   const headers = ['イベントID', 'タイトル', '主催者', 'カテゴリ', 'タイプ', '開始日時', '最大参加者', 'ステータス', '価格'];
   const rows = events.map(e => [
-    e.event_id || '',
-    e.title || '',
-    e.organizer_name || '',
-    e.category || '',
+    e.event_id || '', e.title || '', e.organizer_name || '', e.category || '',
     e.type === 'online' ? 'オンライン' : 'オフライン',
     e.start_datetime ? new Date(e.start_datetime).toLocaleString('ja-JP') : '',
-    e.max_attendees || '',
-    e.status || '',
-    e.price != null ? e.price : '',
+    e.max_attendees || '', e.status || '', e.price != null ? e.price : '',
   ]);
 
   const csv = '\uFEFF' + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `linkup_events_${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `linkup_events_${new Date().toISOString().slice(0,10)}.csv` });
+  a.click(); URL.revokeObjectURL(url);
   AppUI.toast('CSVをダウンロードしました', 'success');
 }
 
-// ─── チケット・注文タブ ──────────────────────────
+// ─── チケット・注文タブ ───────────────────────────────
 
 async function _adminTickets() {
   const el = document.getElementById('admin-content');
   el.innerHTML = `
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-bold text-slate-800">チケット・注文管理</h2>
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+      <h2 style="font-family:'Outfit',sans-serif; font-size:20px; font-weight:800; color:var(--c-text);">チケット・注文管理</h2>
       <button onclick="_adminOrdersCsvDownload()"
-        class="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700">
-        <span class="material-icons-outlined text-sm">download</span>CSV
+        style="display:flex; align-items:center; gap:6px; padding:8px 16px; background:var(--c-raised); border:1px solid var(--c-border); color:var(--c-text-1); border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.15s;"
+        onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--c-border)'">
+        <span class="material-icons-outlined" style="font-size:16px;">download</span>CSV
       </button>
     </div>
-    <div id="orders-table">
-      <div class="flex justify-center py-12">
-        <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-      </div>
-    </div>
+    <div id="orders-table">${_admSpinner}</div>
   `;
 
   await _adminOrdersLoad();
@@ -481,12 +477,10 @@ async function _adminOrdersLoad() {
   if (!el) return;
 
   try {
-    // admin専用エンドポイントがない場合は通常のordersを使用
     let data;
     try {
       data = await AdminAPI.orders({ limit: 100 });
     } catch (e) {
-      // fallback to regular orders endpoint
       data = await window.LinkUpAPI._request('GET', '/api/orders', null, true);
     }
     const orders = data.orders || [];
@@ -494,42 +488,42 @@ async function _adminOrdersLoad() {
     window._adminOrdersData = orders;
 
     if (orders.length === 0) {
-      el.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-400">注文がありません</div>`;
+      el.innerHTML = `<div style="${_admCard} text-align:center; padding:48px;"><p style="color:var(--c-dim);">注文がありません</p></div>`;
       return;
     }
 
-    const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+    const totalRevenue   = orders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
     const completedCount = orders.filter(o => o.payment_status === 'completed').length;
 
     el.innerHTML = `
-      <div class="grid grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-xl p-4 shadow-sm text-center">
-          <p class="text-2xl font-bold text-slate-800">${orders.length}</p>
-          <p class="text-xs text-slate-500 mt-1">総注文数</p>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px;">
+        <div style="${_admCard} text-align:center;">
+          <p style="font-family:'Outfit',sans-serif; font-size:28px; font-weight:800; color:var(--accent);">${orders.length}</p>
+          <p style="font-size:11px; color:var(--c-dim); margin-top:4px;">総注文数</p>
         </div>
-        <div class="bg-white rounded-xl p-4 shadow-sm text-center">
-          <p class="text-2xl font-bold text-green-600">${completedCount}</p>
-          <p class="text-xs text-slate-500 mt-1">完了</p>
+        <div style="${_admCard} text-align:center;">
+          <p style="font-family:'Outfit',sans-serif; font-size:28px; font-weight:800; color:var(--lime);">${completedCount}</p>
+          <p style="font-size:11px; color:var(--c-dim); margin-top:4px;">完了</p>
         </div>
-        <div class="bg-white rounded-xl p-4 shadow-sm text-center">
-          <p class="text-xl font-bold text-blue-600">¥${totalRevenue.toLocaleString()}</p>
-          <p class="text-xs text-slate-500 mt-1">総売上</p>
+        <div style="${_admCard} text-align:center;">
+          <p style="font-family:'Outfit',sans-serif; font-size:24px; font-weight:800; color:var(--amber);">¥${totalRevenue.toLocaleString()}</p>
+          <p style="font-size:11px; color:var(--c-dim); margin-top:4px;">総売上</p>
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">注文番号</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase hidden md:table-cell">イベント</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase hidden lg:table-cell">日時</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">金額</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">状態</th>
+      <div style="background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:var(--c-raised);">
+                <th style="text-align:left; padding:10px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;">注文番号</th>
+                <th style="text-align:left; padding:10px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;" class="hidden md:table-cell">イベント</th>
+                <th style="text-align:left; padding:10px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;" class="hidden lg:table-cell">日時</th>
+                <th style="text-align:left; padding:10px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;">金額</th>
+                <th style="text-align:left; padding:10px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;">状態</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
               ${orders.map((o, i) => _adminOrderRow(o, i)).join('')}
             </tbody>
           </table>
@@ -537,27 +531,28 @@ async function _adminOrdersLoad() {
       </div>
     `;
   } catch (err) {
-    el.innerHTML = `<div class="bg-red-50 text-red-700 rounded-xl p-5">${_escapeHtml(err.message)}</div>`;
+    el.innerHTML = `<div style="${_admCard}"><p style="color:var(--hot);">${_escapeHtml(err.message)}</p></div>`;
   }
 }
 
 function _adminOrderRow(o, i) {
   const date = o.created_at ? new Date(o.created_at).toLocaleDateString('ja-JP') : '—';
-  const statusMap = {
-    completed: ['完了', 'bg-green-100 text-green-700'],
-    pending:   ['保留中', 'bg-yellow-100 text-yellow-700'],
-    cancelled: ['キャンセル', 'bg-red-100 text-red-700'],
+  const statusStyles = {
+    completed: { label: '完了',    color: 'var(--lime)',  bg: 'rgba(57,255,20,0.1)' },
+    pending:   { label: '保留中',  color: 'var(--amber)', bg: 'rgba(255,170,0,0.1)' },
+    cancelled: { label: 'キャンセル', color: 'var(--hot)', bg: 'var(--hot-dim)' },
   };
-  const [statusLabel, statusCls] = statusMap[o.payment_status] || ['不明', 'bg-slate-100 text-slate-600'];
+  const s = statusStyles[o.payment_status] || { label: '不明', color: 'var(--c-dim)', bg: 'var(--c-raised)' };
 
   return `
-    <tr class="${i % 2 === 0 ? '' : 'bg-slate-50/50'}">
-      <td class="px-4 py-3 font-mono text-xs text-slate-600">${_escapeHtml(o.order_number || o.order_id || '—')}</td>
-      <td class="px-4 py-3 text-slate-700 hidden md:table-cell max-w-xs truncate">${_escapeHtml(o.event_title || '—')}</td>
-      <td class="px-4 py-3 text-slate-500 hidden lg:table-cell">${date}</td>
-      <td class="px-4 py-3 font-medium">¥${Number(o.total_amount || 0).toLocaleString()}</td>
-      <td class="px-4 py-3">
-        <span class="px-2 py-1 rounded-full text-xs font-bold ${statusCls}">${statusLabel}</span>
+    <tr style="border-top:1px solid var(--c-border); transition:background 0.15s;"
+      onmouseenter="this.style.background='var(--c-raised)'" onmouseleave="this.style.background='none'">
+      <td style="padding:10px 16px;"><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--c-dim);">${_escapeHtml(o.order_number || o.order_id || '—')}</span></td>
+      <td style="padding:10px 16px; color:var(--c-text-1); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" class="hidden md:table-cell">${_escapeHtml(o.event_title || '—')}</td>
+      <td style="padding:10px 16px; color:var(--c-dim); font-size:12px;" class="hidden lg:table-cell">${date}</td>
+      <td style="padding:10px 16px; font-weight:700; color:var(--c-text);">¥${Number(o.total_amount || 0).toLocaleString()}</td>
+      <td style="padding:10px 16px;">
+        <span style="padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700; color:${s.color}; background:${s.bg};">${s.label}</span>
       </td>
     </tr>
   `;
@@ -565,10 +560,7 @@ function _adminOrderRow(o, i) {
 
 function _adminOrdersCsvDownload() {
   const orders = window._adminOrdersData || [];
-  if (orders.length === 0) {
-    AppUI.toast('データがありません', 'warning');
-    return;
-  }
+  if (orders.length === 0) { AppUI.toast('データがありません', 'warning'); return; }
 
   const headers = ['注文番号', 'イベント', '購入日', '金額', '状態'];
   const rows = orders.map(o => [
@@ -582,38 +574,33 @@ function _adminOrdersCsvDownload() {
   const csv = '\uFEFF' + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `linkup_orders_${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `linkup_orders_${new Date().toISOString().slice(0,10)}.csv` });
+  a.click(); URL.revokeObjectURL(url);
   AppUI.toast('CSVをダウンロードしました', 'success');
 }
 
-// ─── ユーザー管理タブ ────────────────────────────
+// ─── ユーザー管理タブ ─────────────────────────────────
 
 async function _adminUsers() {
   const el = document.getElementById('admin-content');
   el.innerHTML = `
-    <div class="flex items-center justify-between mb-6">
-      <h2 class="text-xl font-bold text-slate-800">ユーザー管理</h2>
-      <div class="flex gap-2">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+      <h2 style="font-family:'Outfit',sans-serif; font-size:20px; font-weight:800; color:var(--c-text);">ユーザー管理</h2>
+      <div style="display:flex; gap:8px;">
         <input id="user-search" type="text" placeholder="メール・名前で検索..."
-          class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48">
+          style="${_admInput}"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--c-border)'">
         <select id="user-role-filter" onchange="_adminUsersLoad()"
-          class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">すべてのロール</option>
-          <option value="admin">管理者</option>
-          <option value="organizer">主催者</option>
-          <option value="attendee">参加者</option>
+          style="${_admInput} appearance:none;"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--c-border)'">
+          <option value="" style="background:var(--c-raised);">すべてのロール</option>
+          <option value="admin" style="background:var(--c-raised);">管理者</option>
+          <option value="organizer" style="background:var(--c-raised);">主催者</option>
+          <option value="attendee" style="background:var(--c-raised);">参加者</option>
         </select>
       </div>
     </div>
-    <div id="users-table">
-      <div class="flex justify-center py-12">
-        <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-      </div>
-    </div>
+    <div id="users-table">${_admSpinner}</div>
   `;
 
   document.getElementById('user-search')?.addEventListener('keydown', (e) => {
@@ -627,37 +614,32 @@ async function _adminUsersLoad() {
   const el = document.getElementById('users-table');
   if (!el) return;
 
-  const searchEl = document.getElementById('user-search');
-  const roleEl   = document.getElementById('user-role-filter');
-  const search   = searchEl ? searchEl.value.trim() : '';
-  const role     = roleEl   ? roleEl.value : '';
+  const search = document.getElementById('user-search')?.value?.trim() || '';
+  const role   = document.getElementById('user-role-filter')?.value || '';
 
-  el.innerHTML = `<div class="flex justify-center py-8"><div class="w-6 h-6 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div></div>`;
+  el.innerHTML = _admSpinner;
 
   try {
     const data  = await AdminAPI.users({ search, role, limit: 100 });
     const users = data.users || [];
 
     if (users.length === 0) {
-      el.innerHTML = `<div class="bg-white rounded-xl p-8 text-center text-slate-400">ユーザーが見つかりません</div>`;
+      el.innerHTML = `<div style="${_admCard} text-align:center; padding:48px;"><p style="color:var(--c-dim);">ユーザーが見つかりません</p></div>`;
       return;
     }
 
     el.innerHTML = `
-      <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">#</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">ユーザー</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase hidden md:table-cell">メール</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">ロール</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase hidden lg:table-cell">登録日</th>
-                <th class="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">操作</th>
+      <div style="background:var(--c-surface); border:1px solid var(--c-border); border-radius:16px; overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:var(--c-raised);">
+                ${['#','ユーザー','メール','ロール','登録日','操作'].map(h => `
+                  <th style="text-align:left; padding:10px 16px; font-size:10px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em;">${h}</th>
+                `).join('')}
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody>
               ${users.map((u, i) => _adminUserRow(u, i)).join('')}
             </tbody>
           </table>
@@ -665,38 +647,43 @@ async function _adminUsersLoad() {
       </div>
     `;
   } catch (err) {
-    el.innerHTML = `<div class="bg-red-50 text-red-700 rounded-xl p-5">${_escapeHtml(err.message)}</div>`;
+    el.innerHTML = `<div style="${_admCard}"><p style="color:var(--hot);">${_escapeHtml(err.message)}</p></div>`;
   }
 }
 
 function _adminUserRow(u, i) {
-  const roleMap = {
-    admin:    ['管理者', 'bg-red-100 text-red-700'],
-    organizer: ['主催者', 'bg-purple-100 text-purple-700'],
-    attendee:  ['参加者', 'bg-blue-100 text-blue-700'],
+  const roleStyles = {
+    admin:    { label: '管理者',  color: 'var(--hot)',    bg: 'var(--hot-dim)'               },
+    organizer:{ label: '主催者',  color: 'var(--violet)', bg: 'rgba(155,89,255,0.1)'         },
+    attendee: { label: '参加者',  color: 'var(--accent)', bg: 'var(--accent-dim)'            },
   };
-  const [roleLabel, roleCls] = roleMap[u.role] || ['不明', 'bg-slate-100 text-slate-600'];
-  const date = u.created_at ? new Date(u.created_at).toLocaleDateString('ja-JP') : '—';
-  const avatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.display_name || 'U')}&background=2563EB&color=fff&size=40`;
+  const r      = roleStyles[u.role] || { label: '不明', color: 'var(--c-dim)', bg: 'var(--c-raised)' };
+  const date   = u.created_at ? new Date(u.created_at).toLocaleDateString('ja-JP') : '—';
+  const avatar = u.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.display_name || 'U')}&background=00D9FF&color=0A0F1E&bold=true&size=40`;
 
   return `
-    <tr class="${i % 2 === 0 ? '' : 'bg-slate-50/50'}">
-      <td class="px-4 py-3 text-slate-400 text-xs">${i + 1}</td>
-      <td class="px-4 py-3">
-        <div class="flex items-center gap-2.5">
-          <img src="${avatar}" class="w-8 h-8 rounded-full object-cover"
-            onerror="this.src='https://ui-avatars.com/api/?name=U&background=2563EB&color=fff&size=40'">
-          <span class="font-medium text-slate-800">${_escapeHtml(u.display_name || u.name || '—')}</span>
+    <tr style="border-top:1px solid var(--c-border); transition:background 0.15s;"
+      onmouseenter="this.style.background='var(--c-raised)'" onmouseleave="this.style.background='none'">
+      <td style="padding:10px 16px; color:var(--c-muted); font-size:11px;">${i + 1}</td>
+      <td style="padding:10px 16px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <img src="${avatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--c-border);"
+            onerror="this.src='https://ui-avatars.com/api/?name=U&background=00D9FF&color=0A0F1E&bold=true&size=40'">
+          <span style="font-size:13px; font-weight:600; color:var(--c-text);">${_escapeHtml(u.display_name || u.name || '—')}</span>
         </div>
       </td>
-      <td class="px-4 py-3 text-slate-500 hidden md:table-cell">${_escapeHtml(u.email || '—')}</td>
-      <td class="px-4 py-3">
-        <span class="px-2 py-1 rounded-full text-xs font-bold ${roleCls}">${roleLabel}</span>
+      <td style="padding:10px 16px; color:var(--c-dim); font-size:12px;">${_escapeHtml(u.email || '—')}</td>
+      <td style="padding:10px 16px;">
+        <span style="padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700; color:${r.color}; background:${r.bg};">${r.label}</span>
       </td>
-      <td class="px-4 py-3 text-slate-500 hidden lg:table-cell">${date}</td>
-      <td class="px-4 py-3">
+      <td style="padding:10px 16px; color:var(--c-dim); font-size:12px;">${date}</td>
+      <td style="padding:10px 16px;">
         <button onclick="_adminEditUserModal('${_escapeHtml(u.user_id)}')"
-          class="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs rounded-lg hover:bg-slate-200">編集</button>
+          style="padding:5px 12px; background:var(--c-raised); border:1px solid var(--c-border); color:var(--c-dim); border-radius:8px; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.15s;"
+          onmouseenter="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
+          onmouseleave="this.style.borderColor='var(--c-border)';this.style.color='var(--c-dim)'">
+          編集
+        </button>
       </td>
     </tr>
   `;
@@ -705,36 +692,40 @@ function _adminUserRow(u, i) {
 window._adminEditUserModal = async (userId) => {
   try {
     const data = await window.LinkUpAPI._request('GET', `/api/admin/users/${userId}`, null, true);
-    const u = data.user || data;
+    const u    = data.user || data;
 
-    const modal = document.getElementById('modal-content');
+    const modal     = document.getElementById('modal-content');
     const container = document.getElementById('modal-container');
 
+    const iStyle = `width:100%; background:var(--c-raised); border:1.5px solid var(--c-border); color:var(--c-text); border-radius:10px; padding:10px 14px; font-size:13px; outline:none; transition:border-color 0.15s; box-sizing:border-box;`;
+
     modal.innerHTML = `
-      <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
-        <h3 class="text-lg font-bold text-slate-800 mb-4">ユーザー編集</h3>
-        <form id="admin-user-form" class="space-y-4">
+      <div style="background:var(--c-surface); border:1px solid rgba(0,217,255,0.2); border-radius:16px; padding:24px; width:100%; max-width:400px; margin:0 16px; box-shadow:0 32px 80px rgba(0,0,0,0.7);">
+        <h3 style="font-size:16px; font-weight:800; color:var(--c-text); margin-bottom:20px;">ユーザー編集</h3>
+        <form id="admin-user-form" style="display:flex; flex-direction:column; gap:14px;">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">表示名</label>
+            <label style="display:block; font-size:11px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">表示名</label>
             <input type="text" name="display_name" value="${_escapeHtml(u.display_name || u.name || '')}"
-              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              style="${iStyle}"
+              onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-dim)'"
+              onblur="this.style.borderColor='var(--c-border)';this.style.boxShadow='none'">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">ロール</label>
-            <select name="role"
-              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="attendee" ${u.role === 'attendee' ? 'selected' : ''}>参加者</option>
-              <option value="organizer" ${u.role === 'organizer' ? 'selected' : ''}>主催者</option>
-              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>管理者</option>
+            <label style="display:block; font-size:11px; font-weight:700; color:var(--c-dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">ロール</label>
+            <select name="role" style="${iStyle} appearance:none;"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--c-border)'">
+              <option value="attendee"  ${u.role === 'attendee'  ? 'selected' : ''} style="background:var(--c-raised);">参加者</option>
+              <option value="organizer" ${u.role === 'organizer' ? 'selected' : ''} style="background:var(--c-raised);">主催者</option>
+              <option value="admin"     ${u.role === 'admin'     ? 'selected' : ''} style="background:var(--c-raised);">管理者</option>
             </select>
           </div>
-          <div class="flex gap-3 pt-2">
+          <div style="display:flex; gap:10px; margin-top:4px;">
             <button type="submit"
-              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition text-sm">
+              style="flex:1; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:800; cursor:pointer;">
               保存する
             </button>
             <button type="button" onclick="AppUI.closeModal()"
-              class="flex-1 bg-slate-100 text-slate-700 font-bold py-2.5 rounded-lg hover:bg-slate-200 text-sm">
+              style="flex:1; background:var(--c-raised); border:1px solid var(--c-border); color:var(--c-dim); border-radius:10px; padding:12px; font-size:14px; font-weight:600; cursor:pointer;">
               キャンセル
             </button>
           </div>
@@ -750,7 +741,7 @@ window._adminEditUserModal = async (userId) => {
       try {
         await AdminAPI.updateUser(userId, {
           display_name: fd.get('display_name'),
-          role: fd.get('role'),
+          role:         fd.get('role'),
         });
         AppUI.closeModal();
         AppUI.toast('ユーザーを更新しました', 'success');
@@ -764,74 +755,77 @@ window._adminEditUserModal = async (userId) => {
   }
 };
 
-// ─── QR入場受付タブ ──────────────────────────────
+// ─── QR入場受付タブ ───────────────────────────────────
 
 async function _adminCheckin() {
   const el = document.getElementById('admin-content');
 
   el.innerHTML = `
-    <h2 class="text-xl font-bold text-slate-800 mb-6">QR入場受付</h2>
+    <h2 style="font-family:'Outfit',sans-serif; font-size:20px; font-weight:800; color:var(--c-text); margin-bottom:20px;">QR入場受付</h2>
 
-    <div class="grid lg:grid-cols-2 gap-6">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
 
       <!-- 手動入力確認 -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <span class="material-icons-outlined text-blue-600">search</span>
+      <div style="${_admCard}">
+        <h3 style="font-size:14px; font-weight:700; color:var(--c-text); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+          <span class="material-icons-outlined" style="font-size:18px; color:var(--accent);">search</span>
           注文番号・チケットID検証
         </h3>
-        <div class="flex gap-2 mb-4">
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
           <input id="checkin-input" type="text" placeholder="注文番号またはチケットIDを入力"
-            class="flex-1 border border-slate-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            style="${_admInput} flex:1; font-family:'JetBrains Mono',monospace;"
+            onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px var(--accent-dim)'"
+            onblur="this.style.borderColor='var(--c-border)';this.style.boxShadow='none'">
           <button onclick="_adminVerifyTicket()"
-            class="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 text-sm">
+            style="padding:8px 16px; background:linear-gradient(135deg,var(--accent),#00AACC); color:var(--c-bg); border:none; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0;">
             確認
           </button>
         </div>
         <div id="checkin-result"></div>
       </div>
 
-      <!-- QR スキャナー -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <span class="material-icons-outlined text-blue-600">qr_code_scanner</span>
+      <!-- QRスキャナー案内 -->
+      <div style="${_admCard}">
+        <h3 style="font-size:14px; font-weight:700; color:var(--c-text); margin-bottom:16px; display:flex; align-items:center; gap:8px;">
+          <span class="material-icons-outlined" style="font-size:18px; color:var(--accent);">qr_code_scanner</span>
           QRコードスキャン
         </h3>
-        <p class="text-sm text-slate-500 mb-4">
+        <p style="font-size:13px; color:var(--c-dim); margin-bottom:16px; line-height:1.6;">
           参加者のチケットのQRコードをスキャンして入場確認を行います。
         </p>
         <button onclick="_adminStartQRScan()"
-          class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2">
-          <span class="material-icons-outlined">qr_code_scanner</span>
+          style="width:100%; padding:12px; background:var(--accent-dim); border:1px solid rgba(0,217,255,0.3); color:var(--accent); border-radius:12px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.15s;"
+          onmouseenter="this.style.background='rgba(0,217,255,0.12)'" onmouseleave="this.style.background='var(--accent-dim)'">
+          <span class="material-icons-outlined" style="font-size:20px;">qr_code_scanner</span>
           カメラでスキャン開始
         </button>
-        <div id="qr-scanner-container" class="mt-4"></div>
+        <div id="qr-scanner-container" style="margin-top:12px;"></div>
       </div>
-
     </div>
 
-    <!-- 入場ログ（最近の確認履歴） -->
-    <div class="bg-white rounded-2xl p-6 shadow-sm mt-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-bold text-slate-800 flex items-center gap-2">
-          <span class="material-icons-outlined text-slate-500">history</span>
+    <!-- 入場ログ -->
+    <div style="${_admCard}">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <h3 style="font-size:14px; font-weight:700; color:var(--c-text); display:flex; align-items:center; gap:8px;">
+          <span class="material-icons-outlined" style="font-size:16px; color:var(--c-dim);">history</span>
           本日の入場ログ
         </h3>
         <button onclick="_adminClearCheckinLog()"
-          class="text-xs text-slate-400 hover:text-slate-600">ログをクリア</button>
+          style="font-size:12px; color:var(--c-dim); background:none; border:none; cursor:pointer; transition:color 0.15s;"
+          onmouseenter="this.style.color='var(--hot)'" onmouseleave="this.style.color='var(--c-dim)'">
+          ログをクリア
+        </button>
       </div>
       <div id="checkin-log">
-        <p class="text-slate-400 text-sm text-center py-4">まだ確認記録はありません</p>
+        <p style="color:var(--c-dim); font-size:13px; text-align:center; padding:24px;">まだ確認記録はありません</p>
       </div>
     </div>
   `;
 
-  // Enter キーで確認
   document.getElementById('checkin-input')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') _adminVerifyTicket();
   });
 
-  // ローカルストレージからログを復元
   _adminRenderCheckinLog();
 }
 
@@ -841,64 +835,62 @@ window._adminVerifyTicket = async () => {
   const code   = input?.value?.trim();
 
   if (!code) {
-    result.innerHTML = `<div class="bg-yellow-50 text-yellow-700 rounded-lg p-3 text-sm">チケットIDまたは注文番号を入力してください</div>`;
+    result.innerHTML = `<div style="padding:10px 14px; background:rgba(255,170,0,0.1); border:1px solid rgba(255,170,0,0.3); border-radius:10px; font-size:13px; color:var(--amber);">チケットIDまたは注文番号を入力してください</div>`;
     return;
   }
 
-  result.innerHTML = `<div class="text-center py-4"><div class="w-6 h-6 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div></div>`;
+  result.innerHTML = `<div style="text-align:center; padding:16px;"><div style="width:24px;height:24px;border:2.5px solid var(--c-border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.9s linear infinite;margin:0 auto;"></div></div>`;
 
   try {
-    // バックエンドのcheckin APIを呼ぶ（なければorders APIで確認）
     let data;
     try {
       data = await window.LinkUpAPI._request('POST', '/api/checkin/verify', { code }, true);
     } catch (e) {
-      // fallback: ordersで検索
       data = { success: false, message: e.message };
     }
 
     const ok = data.success || data.valid;
     const entry = {
       code,
-      status: ok ? 'valid' : 'invalid',
+      status:  ok ? 'valid' : 'invalid',
       message: data.message || (ok ? '入場確認済み' : '無効なチケット'),
-      event: data.event_title || data.event || '',
-      user: data.user_name || data.user || '',
-      time: new Date().toLocaleTimeString('ja-JP'),
+      event:   data.event_title || data.event || '',
+      user:    data.user_name   || data.user  || '',
+      time:    new Date().toLocaleTimeString('ja-JP'),
     };
 
     _adminAddCheckinLog(entry);
     _adminRenderCheckinLog();
 
     result.innerHTML = ok ? `
-      <div class="bg-green-50 border border-green-200 rounded-xl p-4">
-        <div class="flex items-center gap-2 mb-2">
-          <span class="material-icons-outlined text-green-600 text-2xl">check_circle</span>
-          <span class="font-bold text-green-800">入場OK</span>
+      <div style="padding:16px; background:rgba(57,255,20,0.08); border:1.5px solid rgba(57,255,20,0.35); border-radius:12px;">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+          <span class="material-icons-outlined" style="font-size:28px; color:var(--lime);">check_circle</span>
+          <span style="font-size:16px; font-weight:800; color:var(--lime);">入場OK</span>
         </div>
-        ${entry.event ? `<p class="text-sm text-slate-600 mb-1">イベント: ${_escapeHtml(entry.event)}</p>` : ''}
-        ${entry.user  ? `<p class="text-sm text-slate-600">参加者: ${_escapeHtml(entry.user)}</p>`  : ''}
+        ${entry.event ? `<p style="font-size:13px; color:var(--c-text-2); margin-bottom:4px;">イベント: ${_escapeHtml(entry.event)}</p>` : ''}
+        ${entry.user  ? `<p style="font-size:13px; color:var(--c-text-2);">参加者: ${_escapeHtml(entry.user)}</p>` : ''}
       </div>
     ` : `
-      <div class="bg-red-50 border border-red-200 rounded-xl p-4">
-        <div class="flex items-center gap-2">
-          <span class="material-icons-outlined text-red-600">cancel</span>
-          <span class="font-bold text-red-700">無効なチケット</span>
+      <div style="padding:16px; background:var(--hot-dim); border:1.5px solid rgba(255,51,102,0.35); border-radius:12px; display:flex; align-items:center; gap:10px;">
+        <span class="material-icons-outlined" style="font-size:28px; color:var(--hot);">cancel</span>
+        <div>
+          <p style="font-size:14px; font-weight:800; color:var(--hot);">無効なチケット</p>
+          <p style="font-size:12px; color:var(--c-dim); margin-top:4px;">${_escapeHtml(entry.message)}</p>
         </div>
-        <p class="text-sm text-red-600 mt-1">${_escapeHtml(entry.message)}</p>
       </div>
     `;
 
     input.value = '';
   } catch (err) {
-    result.innerHTML = `<div class="bg-red-50 text-red-700 rounded-xl p-4">${_escapeHtml(err.message)}</div>`;
+    result.innerHTML = `<div style="padding:10px 14px; background:var(--hot-dim); border:1px solid rgba(255,51,102,0.3); border-radius:10px; font-size:13px; color:var(--hot);">${_escapeHtml(err.message)}</div>`;
   }
 };
 
 function _adminAddCheckinLog(entry) {
   const logs = JSON.parse(localStorage.getItem('admin_checkin_log') || '[]');
   logs.unshift(entry);
-  if (logs.length > 50) logs.pop(); // 最大50件
+  if (logs.length > 50) logs.pop();
   localStorage.setItem('admin_checkin_log', JSON.stringify(logs));
 }
 
@@ -906,27 +898,25 @@ function _adminRenderCheckinLog() {
   const el = document.getElementById('checkin-log');
   if (!el) return;
 
-  const today = new Date().toLocaleDateString('ja-JP');
-  const logs = JSON.parse(localStorage.getItem('admin_checkin_log') || '[]')
-    .filter(l => l.date === today || !l.date); // 本日のみ
+  const logs = JSON.parse(localStorage.getItem('admin_checkin_log') || '[]');
 
   if (logs.length === 0) {
-    el.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">まだ確認記録はありません</p>`;
+    el.innerHTML = `<p style="color:var(--c-dim); font-size:13px; text-align:center; padding:24px;">まだ確認記録はありません</p>`;
     return;
   }
 
   el.innerHTML = `
-    <div class="space-y-2 max-h-64 overflow-y-auto">
+    <div style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
       ${logs.map(l => `
-        <div class="flex items-center gap-3 p-3 rounded-lg ${l.status === 'valid' ? 'bg-green-50' : 'bg-red-50'}">
-          <span class="material-icons-outlined text-sm ${l.status === 'valid' ? 'text-green-600' : 'text-red-500'}">
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:${l.status === 'valid' ? 'rgba(57,255,20,0.06)' : 'var(--hot-dim)'}; border:1px solid ${l.status === 'valid' ? 'rgba(57,255,20,0.2)' : 'rgba(255,51,102,0.2)'}; border-radius:10px;">
+          <span class="material-icons-outlined" style="font-size:16px; color:${l.status === 'valid' ? 'var(--lime)' : 'var(--hot)'};">
             ${l.status === 'valid' ? 'check_circle' : 'cancel'}
           </span>
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium ${l.status === 'valid' ? 'text-green-800' : 'text-red-700'} truncate">${_escapeHtml(l.code)}</p>
-            ${l.event ? `<p class="text-xs text-slate-500 truncate">${_escapeHtml(l.event)}</p>` : ''}
+          <div style="flex:1; min-width:0;">
+            <p style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:${l.status === 'valid' ? 'var(--lime)' : 'var(--hot)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${_escapeHtml(l.code)}</p>
+            ${l.event ? `<p style="font-size:11px; color:var(--c-dim);">${_escapeHtml(l.event)}</p>` : ''}
           </div>
-          <span class="text-xs text-slate-400 flex-shrink-0">${l.time}</span>
+          <span style="font-size:11px; color:var(--c-dim); flex-shrink:0;">${l.time}</span>
         </div>
       `).join('')}
     </div>
@@ -942,19 +932,17 @@ window._adminClearCheckinLog = () => {
 window._adminStartQRScan = () => {
   const container = document.getElementById('qr-scanner-container');
   if (!container) return;
-
   container.innerHTML = `
-    <div class="bg-slate-50 rounded-xl p-4 text-center">
-      <span class="material-icons-outlined text-4xl text-slate-400 block mb-2">photo_camera</span>
-      <p class="text-sm text-slate-600 mb-3">カメラのアクセスが必要です</p>
-      <p class="text-xs text-slate-400">
-        QRコードスキャン機能はカメラAPIが必要なため、<br>
-        スマートフォンや対応ブラウザでご利用ください。<br>
-        現在は手動入力での確認が可能です。
-      </p>
+    <div style="background:var(--c-raised); border:1px solid var(--c-border); border-radius:12px; padding:20px; text-align:center;">
+      <span class="material-icons-outlined" style="font-size:36px; color:var(--c-muted); display:block; margin-bottom:8px;">photo_camera</span>
+      <p style="font-size:12px; color:var(--c-dim); line-height:1.6;">QRコードスキャン機能はカメラAPIが必要なため、<br>スマートフォンや対応ブラウザでご利用ください。<br>現在は手動入力での確認が可能です。</p>
     </div>
   `;
 };
 
 // グローバルに公開
-window.renderAdmin = renderAdmin;
+window._adminDashboard = _adminDashboard;
+window._adminEvents    = _adminEvents;
+window._adminTickets   = _adminTickets;
+window._adminUsers     = _adminUsers;
+window._adminCheckin   = _adminCheckin;

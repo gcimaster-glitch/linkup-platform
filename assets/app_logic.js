@@ -330,29 +330,20 @@
         }
 
         async function login(provider) {
-            // Only 'email' uses real login now, others are mocks or need implementation
             if (provider === 'email') {
-                // Show simple email/pass form
+                // メールログインフォームを表示
                 const modal = document.getElementById('modal-content');
                 modal.innerHTML = `
                     <div class="p-8">
                         <h3 class="text-xl font-bold mb-4">メールアドレスでログイン</h3>
-                        <input id="login-email" type="email" placeholder="Email" class="w-full p-3 border mb-3 rounded" value="user@demo.com">
-                        <input id="login-pass" type="password" placeholder="Password" class="w-full p-3 border mb-4 rounded" value="demo123">
+                        <input id="login-email" type="email" placeholder="Email" class="w-full p-3 border mb-3 rounded">
+                        <input id="login-pass" type="password" placeholder="Password" class="w-full p-3 border mb-4 rounded">
                         <button onclick="performLogin()" class="w-full bg-primary text-white py-3 rounded font-bold">ログイン</button>
                     </div>
                 `;
-            } else {
-                store.user = { 
-                    id: 'u-demo-001', 
-                    name: 'LinkUp User', 
-                    email: 'user@example.com',
-                    icon: `https://ui-avatars.com/api/?name=LinkUp+User&background=2563EB&color=fff`,
-                    kycStatus: 'unverified'
-                };
-                closeModal();
-                updateNav();
-                showToast('ログインしました', 'login');
+            } else if (provider === 'google' || provider === 'line') {
+                // Google/LINE OAuth → バックエンドのOAuthルートにリダイレクト
+                AppAuth.loginWithSocial(provider);
             }
         }
 

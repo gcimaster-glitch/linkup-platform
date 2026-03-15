@@ -166,4 +166,4 @@ window._escapeHtml = _escapeHtml;
 // グローバル公開
 // ─────────────────────────────────────────
 
-window.LinkUpAPI = { Auth, Events, Orders, Users, _request };
+window.LinkUpAPI = { Auth, Events, Orders, Users, _request, BASE_URL: '' };

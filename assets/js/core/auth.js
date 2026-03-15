@@ -35,6 +35,51 @@ const AppAuth = {
   // ─── 初期化（ページ読み込み時に呼ぶ） ──────────────
 
   async init() {
+    // OAuthコールバック処理（URLパラメータにauth_tokenがある場合）
+    const urlParams = new URLSearchParams(window.location.search);
+    const authToken = urlParams.get('auth_token');
+    const authProvider = urlParams.get('auth_provider');
+    const authError = urlParams.get('auth_error');
+
+    if (authError) {
+      // エラーパラメータをURLから除去
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+      // エラーメッセージは少し遅延してUIが準備できてから表示
+      setTimeout(() => {
+        AppUI.toast('ソーシャルログインに失敗しました: ' + authError, 'error');
+      }, 500);
+    }
+
+    if (authToken) {
+      // OAuthトークンをlocalStorageに保存
+      this.saveToken(authToken);
+      // URLパラメータをクリーンアップ
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+
+      try {
+        const data = await window.LinkUpAPI.Auth.me();
+        window.currentUser = data.user;
+        AppUI.updateNav();
+        const providerName = authProvider === 'google' ? 'Google' : authProvider === 'line' ? 'LINE' : 'ソーシャル';
+        setTimeout(() => {
+          AppUI.toast(`${providerName}でログインしました！ようこそ、${data.user.display_name || data.user.name}さん！`, 'success');
+          if (data.user.role === 'organizer') {
+            AppRouter.go('organizer');
+          } else {
+            AppRouter.go('dashboard');
+          }
+        }, 300);
+        return;
+      } catch (err) {
+        console.warn('OAuthトークン検証エラー:', err.message);
+        this.clearToken();
+        window.currentUser = null;
+      }
+    }
+
+    // 通常のトークン復元
     const token = this.getToken();
     if (!token) return;
 
@@ -47,6 +92,15 @@ const AppAuth = {
       this.clearToken();
       window.currentUser = null;
     }
+  },
+
+  // ─── ソーシャルログイン（Google/LINE） ──────────────
+
+  loginWithSocial(provider) {
+    const apiBase = window.LinkUpAPI?.BASE_URL || 'https://link-up.live';
+    const returnPath = window.location.pathname || '/';
+    const loginUrl = `${apiBase}/api/auth/${provider}?return=${encodeURIComponent(returnPath)}`;
+    window.location.href = loginUrl;
   },
 
   // ─── 一般ログイン（参加者・主催者） ────────────────

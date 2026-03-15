@@ -23,6 +23,12 @@ export type Bindings = {
   RESEND_API_KEY: string;
   ENVIRONMENT: string;
   FRONTEND_URL: string;
+  // Google OAuth
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  // LINE OAuth
+  LINE_CHANNEL_ID?: string;
+  LINE_CHANNEL_SECRET?: string;
 };
 
 // Context variables set by auth middleware

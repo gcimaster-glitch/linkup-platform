@@ -2,8 +2,7 @@
  * Cloudflare Pages Function
  * /api/* → https://linkup-backend.gcimaster.workers.dev/api/:splat
  *
- * これにより：
- * - ブラウザはクロスオリジンリクエストを出さない（同一ドメイン）
+ * - redirect: 'manual' でWorkerからの302リダイレクト（OAuth）をそのままブラウザに返す
  * - CORSエラー・Failed to fetch が完全に解消される
  */
 
@@ -16,18 +15,32 @@ export async function onRequest(context) {
   // /api/... のパスをWorkerに転送
   const targetURL = WORKER_BASE + url.pathname + url.search;
 
-  // リクエストを転送（メソッド・ヘッダー・ボディをそのまま）
+  // redirect: 'manual' でOAuthの302リダイレクトをそのままブラウザに返す
   const workerRequest = new Request(targetURL, {
     method: request.method,
     headers: request.headers,
     body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
-    redirect: 'follow',
+    redirect: 'manual',
   });
 
   try {
     const response = await fetch(workerRequest);
 
-    // レスポンスをそのまま返す（CORSヘッダーは不要）
+    // 3xxリダイレクトの場合はLocationヘッダーをそのまま返す（OAuth用）
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (location) {
+        return new Response(null, {
+          status: response.status,
+          headers: {
+            'Location': location,
+            'Cache-Control': 'no-store',
+          },
+        });
+      }
+    }
+
+    // 通常レスポンスはそのまま返す
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,

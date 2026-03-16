@@ -332,7 +332,210 @@ app.post('/setup-admin', async (c) => {
   }
 });
 
-// ─── ヘルスチェック ───────────────────────────────
+// ─── Google OAuth ─────────────────────────────────────────
+
+app.get('/google', (c) => {
+  const clientId = c.env.GOOGLE_CLIENT_ID;
+  if (!clientId) return c.json({ error: 'Google OAuth not configured' }, 500);
+
+  const frontendUrl = c.env.FRONTEND_URL || 'https://link-up.live';
+  const returnPath = c.req.query('return') || '/';
+  const state = btoa(JSON.stringify({ returnPath }));
+  const redirectUri = `${frontendUrl}/api/auth/google/callback`;
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'openid email profile',
+    state,
+    access_type: 'offline',
+    prompt: 'select_account',
+  });
+
+  return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+app.get('/google/callback', async (c) => {
+  const { code, state, error } = c.req.query() as Record<string, string>;
+  const frontendUrl = c.env.FRONTEND_URL || 'https://link-up.live';
+
+  if (error || !code) {
+    return c.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent(error || 'no_code')}`);
+  }
+
+  let returnPath = '/';
+  try {
+    const decoded = JSON.parse(atob(state || ''));
+    returnPath = decoded.returnPath || '/';
+  } catch (_) {}
+
+  try {
+    const clientId = c.env.GOOGLE_CLIENT_ID!;
+    const clientSecret = c.env.GOOGLE_CLIENT_SECRET!;
+    const redirectUri = `${frontendUrl}/api/auth/google/callback`;
+
+    // アクセストークン取得
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+    const tokenData: any = await tokenRes.json();
+    if (!tokenData.access_token) {
+      return c.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent('token_exchange_failed')}`);
+    }
+
+    // ユーザー情報取得
+    const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const googleUser: any = await userRes.json();
+    if (!googleUser.email) {
+      return c.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent('no_email')}`);
+    }
+
+    const db = c.env.DB;
+    // 既存ユーザー検索
+    let user: any = await db.prepare(
+      'SELECT * FROM users WHERE email = ?'
+    ).bind(googleUser.email).first();
+
+    if (!user) {
+      // 新規作成
+      const userId = `u-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const displayName = googleUser.name || googleUser.email.split('@')[0];
+      const avatarUrl = googleUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563EB&color=fff`;
+      await db.prepare(
+        `INSERT INTO users (user_id, email, display_name, avatar_url, role, kyc_status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'attendee', 'verified', datetime('now'), datetime('now'))`
+      ).bind(userId, googleUser.email, displayName, avatarUrl).run();
+      user = { user_id: userId, email: googleUser.email, display_name: displayName, avatar_url: avatarUrl, role: 'attendee', kyc_status: 'verified' };
+    }
+
+    const token = await generateToken(user.user_id, user.role || 'attendee', c.env.JWT_SECRET);
+    const cleanPath = returnPath.startsWith('/') ? returnPath : '/';
+    return c.redirect(`${frontendUrl}${cleanPath}?auth_token=${token}&auth_provider=google`);
+
+  } catch (err: any) {
+    console.error('Google OAuth callback error:', err);
+    return c.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent('server_error')}`);
+  }
+});
+
+// ─── LINE OAuth ──────────────────────────────────────────
+
+app.get('/line', (c) => {
+  const channelId = c.env.LINE_CHANNEL_ID;
+  if (!channelId) return c.json({ error: 'LINE OAuth not configured' }, 500);
+
+  const frontendUrl = c.env.FRONTEND_URL || 'https://link-up.live';
+  const returnPath = c.req.query('return') || '/';
+  const state = btoa(JSON.stringify({ returnPath }));
+  const redirectUri = `${frontendUrl}/api/auth/line/callback`;
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: channelId,
+    redirect_uri: redirectUri,
+    state,
+    scope: 'profile openid email',
+  });
+
+  return c.redirect(`https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`);
+});
+
+app.get('/line/callback', async (c) => {
+  const { code, state, error } = c.req.query() as Record<string, string>;
+  const frontendUrl = c.env.FRONTEND_URL || 'https://link-up.live';
+
+  if (error || !code) {
+    return c.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent(error || 'no_code')}`);
+  }
+
+  let returnPath = '/';
+  try {
+    const decoded = JSON.parse(atob(state || ''));
+    returnPath = decoded.returnPath || '/';
+  } catch (_) {}
+
+  try {
+    const channelId = c.env.LINE_CHANNEL_ID!;
+    const channelSecret = c.env.LINE_CHANNEL_SECRET!;
+    const redirectUri = `${frontendUrl}/api/auth/line/callback`;
+
+    // アクセストークン取得
+    const tokenRes = await fetch('https://api.line.me/oauth2/v2.1/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        client_id: channelId,
+        client_secret: channelSecret,
+      }),
+    });
+    const tokenData: any = await tokenRes.json();
+    if (!tokenData.access_token) {
+      return c.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent('token_exchange_failed')}`);
+    }
+
+    // ユーザー情報取得
+    const profileRes = await fetch('https://api.line.me/v2/profile', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const lineProfile: any = await profileRes.json();
+
+    // メールアドレスは id_tokenから取得
+    let email: string | null = null;
+    if (tokenData.id_token) {
+      try {
+        const payload = JSON.parse(atob(tokenData.id_token.split('.')[1]));
+        email = payload.email || null;
+      } catch (_) {}
+    }
+
+    const lineId = lineProfile.userId;
+    if (!lineId) {
+      return c.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent('no_user_id')}`);
+    }
+
+    const db = c.env.DB;
+    // LINE IDで検索（メールがない場合に対応）
+    let user: any = email
+      ? await db.prepare('SELECT * FROM users WHERE email = ?').bind(email).first()
+      : await db.prepare("SELECT * FROM users WHERE display_name LIKE ? AND role != 'admin'").bind(`%${lineId}%`).first();
+
+    if (!user) {
+      const userId = `u-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const displayName = lineProfile.displayName || `LINEユーザー`;
+      const avatarUrl = lineProfile.pictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=06C755&color=fff`;
+      const userEmail = email || `line_${lineId}@line.user`;
+      await db.prepare(
+        `INSERT INTO users (user_id, email, display_name, avatar_url, role, kyc_status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'attendee', 'verified', datetime('now'), datetime('now'))`
+      ).bind(userId, userEmail, displayName, avatarUrl).run();
+      user = { user_id: userId, email: userEmail, display_name: displayName, avatar_url: avatarUrl, role: 'attendee', kyc_status: 'verified' };
+    }
+
+    const token = await generateToken(user.user_id, user.role || 'attendee', c.env.JWT_SECRET);
+    const cleanPath = returnPath.startsWith('/') ? returnPath : '/';
+    return c.redirect(`${frontendUrl}${cleanPath}?auth_token=${token}&auth_provider=line`);
+
+  } catch (err: any) {
+    console.error('LINE OAuth callback error:', err);
+    return c.redirect(`${frontendUrl}/?auth_error=${encodeURIComponent('server_error')}`);
+  }
+});
+
+// ─── ヘルスチェック ────────────────────
 
 app.get('/health', (c) => c.json({ status: 'ok', db_binding: !!c.env.DB }));
 

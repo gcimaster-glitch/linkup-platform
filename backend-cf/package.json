@@ -1,0 +1,27 @@
+{
+  "name": "linkup-backend-cf",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tidbcloud/serverless": "^0.2.0",
+    "nanoid": "^5.1.5",
+    "stripe": "^20.3.1",
+    "@trpc/server": "^11.6.0",
+    "drizzle-orm": "^0.44.5",
+    "hono": "^4.7.11",
+    "jose": "6.1.0",
+    "superjson": "^1.13.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250514.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.14.4"
+  }
+}

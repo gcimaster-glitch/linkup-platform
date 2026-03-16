@@ -67,3 +67,8 @@ ENV/
 
 # OS
 Thumbs.db
+node_modules/
+dist/
+client/
+shared/
+backend-cf/node_modules/

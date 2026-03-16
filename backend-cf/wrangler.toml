@@ -1,0 +1,20 @@
+name = "linkup-backend"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+account_id = "26a3fcdbd2ec761fceb6e0d4138a5e46"
+
+[vars]
+ENVIRONMENT = "production"
+FRONTEND_URL = "https://link-up.live"
+APP_NAME = "LINK-UP"
+APP_TAGLINE = "人と機会を繋げる"
+
+# Secrets (wrangler secret put で設定):
+# DATABASE_URL
+# JWT_SECRET
+# GOOGLE_CLIENT_ID
+# GOOGLE_CLIENT_SECRET
+# LINE_CHANNEL_ID
+# LINE_CHANNEL_SECRET
+# RESEND_API_KEY

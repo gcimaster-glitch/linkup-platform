@@ -153,6 +153,7 @@ export const orderRouter = router({
               currency: "jpy",
               orderId,
               qrCodeHashes: qrHashes,
+              resendApiKey: ENV.resendApiKey,
             });
           }
         } catch (emailErr) {
@@ -277,6 +278,7 @@ export const orderRouter = router({
             currency: "jpy",
             orderId: order.id,
             qrCodeHashes: qrHashes,
+            resendApiKey: ENV.resendApiKey,
           });
         }
       } catch (emailErr) {

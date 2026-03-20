@@ -193,6 +193,7 @@ export const eventRouter = router({
               eventTitle: event.title,
               changes,
               eventUrl,
+              resendApiKey: ENV.resendApiKey,
             })
           )
         );
